@@ -1,0 +1,1 @@
+[0;32mI (661) esp_psram: SPI SRAM memory test OK[0m

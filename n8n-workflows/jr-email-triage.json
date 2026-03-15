@@ -1,0 +1,138 @@
+{
+  "_comment": "OpenClaw — JR Email Triage Workflow",
+  "_description": "Replaces jrTriageInbox_FULL + forwardToAmanda. Triggered by Gmail Pub/Sub push notification via webhook.",
+  "_version": "1.0",
+  "name": "OpenClaw: JR Email Triage & Route",
+  "nodes": [
+    {
+      "name": "Gmail Push Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "parameters": {
+        "path": "gmail-jr",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "notes": "Receives Pub/Sub notification when JR gets new email. Payload: { emailAddress, historyId, role, timestamp }"
+    },
+    {
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.if",
+      "position": [440, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.emailAddress }}",
+              "operation": "equals",
+              "value2": "jr@privegroup.com"
+            }
+          ]
+        }
+      },
+      "notes": "Verify the notification is for JR's account"
+    },
+    {
+      "name": "Get New Messages",
+      "type": "n8n-nodes-base.gmail",
+      "position": [640, 240],
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "q": "is:unread in:inbox",
+          "includeSpamTrash": false
+        },
+        "limit": 15,
+        "returnAll": false
+      },
+      "notes": "Fetch unread inbox messages. Uses Gmail OAuth — configure credentials in n8n."
+    },
+    {
+      "name": "Triage: Classify Email",
+      "type": "n8n-nodes-base.code",
+      "position": [840, 240],
+      "parameters": {
+        "jsCode": "// Triage rules — classify each email by subject/sender\nconst RULES = [\n  { label: 'Opportunity RE', subjectMatch: /opportunity|deal|acquisition|off.?market|pocket.?listing/i },\n  { label: 'Opportunity RE', fromMatch: /@crexi\\.com|@loopnet\\.com|@costar\\.com/i },\n  { label: 'Construction', subjectMatch: /draw.?request|change.?order|punch.?list|certificate.?of.?occupancy|permit/i },\n  { label: 'Legal', subjectMatch: /LOI|letter.?of.?intent|contract|lease|amendment|estoppel|closing/i },\n  { label: 'Finance', subjectMatch: /loan|mortgage|refinance|appraisal|underwriting|term.?sheet/i },\n  { label: 'Finance', fromMatch: /@citynational\\.com|@jpmorgan\\.com/i },\n  { label: 'Asset Mgmt', subjectMatch: /rent.?roll|NOI|occupancy|tenant|lease.?renewal|cap.?rate/i },\n  { label: 'Team', fromMatch: /@privegroup\\.com/i },\n  { label: 'Scheduling', subjectMatch: /meeting|call|appointment|schedule|calendar/i },\n];\n\nconst results = [];\nfor (const item of $input.all()) {\n  const subject = item.json.subject || '';\n  const from = item.json.from || '';\n  const labels = [];\n  let amandaRoute = null;\n\n  for (const rule of RULES) {\n    let matched = false;\n    if (rule.subjectMatch && rule.subjectMatch.test(subject)) matched = true;\n    if (rule.fromMatch && rule.fromMatch.test(from)) matched = true;\n    if (matched && !labels.includes(rule.label)) labels.push(rule.label);\n  }\n\n  // Determine Amanda route\n  const AMANDA_ROUTES = {\n    'Opportunity RE': { action: 'OPPORTUNITY_RE_FASTSCAN', instruction: 'Run Fast Scan deal analysis.' },\n    'Legal': { action: 'LEGAL_REVIEW', instruction: 'Review for key terms and red flags.' },\n    'Construction': { action: 'CONSTRUCTION_REVIEW', instruction: 'Review construction communication.' },\n    'Finance': { action: 'FINANCE_REVIEW', instruction: 'Review financial communication.' },\n  };\n\n  for (const label of labels) {\n    if (AMANDA_ROUTES[label]) {\n      amandaRoute = AMANDA_ROUTES[label];\n      break; // First match wins\n    }\n  }\n\n  results.push({\n    json: {\n      ...item.json,\n      triageLabels: labels,\n      amandaRoute,\n      shouldForwardToAmanda: !!amandaRoute,\n    }\n  });\n}\n\nreturn results;"
+      },
+      "notes": "Applies triage rules to classify emails and determine Amanda routing."
+    },
+    {
+      "name": "Apply Gmail Labels",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1040, 160],
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": "={{ $json.triageLabels }}"
+      },
+      "notes": "Apply triage labels to each email in Gmail."
+    },
+    {
+      "name": "Should Forward to Amanda?",
+      "type": "n8n-nodes-base.if",
+      "position": [1040, 320],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.shouldForwardToAmanda }}",
+              "operation": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Forward to Amanda",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1240, 280],
+      "parameters": {
+        "operation": "send",
+        "sendTo": "amanda@privegroup.com",
+        "subject": "=[{{ $json.amandaRoute.action }}] {{ $json.subject }}",
+        "message": "FROM JAVIER RABINOVICH\nAction: [{{ $json.amandaRoute.action }}]\nInstruction: {{ $json.amandaRoute.instruction }}\n\nOriginal From: {{ $json.from }}\nOriginal Date: {{ $json.date }}\nOriginal Subject: {{ $json.subject }}\n\n--- ORIGINAL MESSAGE ---\n\n{{ $json.text }}",
+        "options": {
+          "replyTo": "jr@privegroup.com",
+          "senderName": "Javier Rabinovich (via Gmail Router)"
+        }
+      },
+      "notes": "Forwards to Amanda with structured action envelope."
+    },
+    {
+      "name": "Mark as Forwarded",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1440, 280],
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["Forwarded/Amanda"]
+      },
+      "notes": "Anti-loop guard — marks email as already forwarded."
+    },
+    {
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1440, 440],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', processed: $input.all().length }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Push Webhook": { "main": [[{ "node": "Validate Request" }]] },
+    "Validate Request": { "main": [[{ "node": "Get New Messages" }], [{ "node": "Respond OK" }]] },
+    "Get New Messages": { "main": [[{ "node": "Triage: Classify Email" }]] },
+    "Triage: Classify Email": { "main": [[{ "node": "Apply Gmail Labels" }, { "node": "Should Forward to Amanda?" }]] },
+    "Should Forward to Amanda?": { "main": [[{ "node": "Forward to Amanda" }], []] },
+    "Forward to Amanda": { "main": [[{ "node": "Mark as Forwarded" }]] },
+    "Mark as Forwarded": { "main": [[{ "node": "Respond OK" }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York"
+  }
+}

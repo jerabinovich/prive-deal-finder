@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint -w @prive/api
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run prisma:generate -w @prive/api
+      - run: npm run test:unit -w @prive/api
+
+  test-e2e:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: prive_test
+          POSTGRES_USER: prive
+          POSTGRES_PASSWORD: prive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://prive:prive@localhost:5432/prive_test
+      JWT_SECRET: ci-test-secret-at-least-16-chars
+      JWT_REFRESH_SECRET: ci-refresh-secret-at-least-16-chars
+      WEB_APP_URL: http://localhost:3000
+      GOOGLE_OAUTH_CLIENT_ID: test-client-id
+      GOOGLE_OAUTH_CLIENT_SECRET: test-client-secret-different
+      GOOGLE_OAUTH_REDIRECT_URI: http://localhost:4000/api/auth/google/callback
+      MDPA_BULK_FILE_PATH: /tmp/mdpa.csv
+      MIAMI_DADE_PARCELS_URL: http://localhost/parcels
+      BROWARD_PARCELS_URL: http://localhost/broward
+      PALM_BEACH_PARCELS_URL: http://localhost/palmbeach
+      AUTH_ADMIN_EMAILS: admin@privegroup.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run prisma:generate -w @prive/api
+      - run: npm run db:migrate:deploy -w @prive/api
+      - run: npm run test:e2e -w @prive/api
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run prisma:generate -w @prive/api
+      - run: npm run build -w @prive/api
+      - run: npm run build -w @prive/web

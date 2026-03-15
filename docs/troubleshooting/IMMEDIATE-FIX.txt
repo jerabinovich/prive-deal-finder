@@ -1,0 +1,39 @@
+IMMEDIATE FIX FOR REMOTE CONNECTION
+====================================
+
+The problem is NETWORK CONNECTIVITY, not your Mac or NVIDIA system.
+
+TO FIX RIGHT NOW:
+
+1. CONNECT TO VPN
+   - If Spark-15b9 is on a remote network, connect to VPN
+   - VPN must have access to 10.1.10.x network
+   - After connecting, run: ./test-and-connect.sh
+
+2. OR CHECK NETWORK SETTINGS
+   - Verify you're on the correct network
+   - Check if Spark-15b9 has a different IP/hostname
+   - Contact network administrator if needed
+
+3. TEST CONNECTION
+   Run: ./test-and-connect.sh
+   
+   This will:
+   - Test if 10.1.10.181 is reachable
+   - Connect NVIDIA Sync if available
+   - Show connection status
+
+4. AUTO-CONNECT WHEN READY
+   Run: ./auto-connect-when-ready.sh
+   
+   This will monitor and auto-connect when network becomes available
+
+WHAT'S WORKING:
+✓ Your Mac - NVIDIA Sync daemon is running
+✓ Configuration - Everything is set up correctly
+✓ Software - Ready to connect
+
+WHAT'S NOT WORKING:
+✗ Network - Cannot reach 10.1.10.181
+
+Once network is fixed, NVIDIA Sync will connect automatically!

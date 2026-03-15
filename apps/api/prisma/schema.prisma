@@ -1,0 +1,630 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  PARTNER
+}
+
+enum DealLane {
+  DISTRESS_OWNER
+  AUCTION_MONITOR
+  GOV_LAND_P3
+  OFF_MARKET_STANDARD
+  NON_ACQUIRABLE_NOISE
+  RESEARCH_REQUIRED
+}
+
+enum RecommendedAction {
+  CONTACT_NOW
+  MONITOR
+  AUCTION_PREP
+  GOV_PURSUE
+  RESEARCH
+  ARCHIVE
+}
+
+enum DistressStage {
+  NONE
+  SIGNALS_ONLY
+  PRE_FORECLOSURE
+  AUCTION_SCHEDULED
+  AUCTION_POSTPONED_OR_CANCELLED
+  REO_BANK_OWNED
+  SHORT_SALE_ACTIVE
+  TAX_SALE_PROCESS
+  PROBATE_ESTATE
+  CODE_ENFORCEMENT
+  BANKRUPTCY
+  GOVERNMENT_LAND
+  UNKNOWN
+}
+
+enum NoiseReason {
+  COMMON_AREA
+  ROADWAY
+  RAILROAD
+  CENTRALLY_ASSESSED
+  UTILITY
+  UNKNOWN
+}
+
+enum DealMediaKind {
+  PHOTO
+  VIDEO
+}
+
+enum DealDocumentKind {
+  OM
+  FLYER
+  BROCHURE
+  RENT_ROLL
+  OTHER
+}
+
+enum RollStage {
+  PR
+  FC
+  FN
+}
+
+enum ChatMessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+enum RevenueSplitBasis {
+  NET_PROFIT
+}
+
+enum WorkflowTaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELED
+}
+
+enum WorkflowTaskSource {
+  AGENT
+  SYSTEM
+  USER
+}
+
+enum AlertDelivery {
+  IN_APP
+  DIGEST_DAILY
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AgentRunStatus {
+  SUCCESS
+  ERROR
+  FALLBACK
+}
+
+model Deal {
+  id         String          @id @default(uuid())
+  name       String
+  parcelId   String?         @unique
+  address    String?
+  mailingAddress String?
+  city       String?
+  municipality String?
+  state      String?
+  zip        String?
+  assetType  String?
+  propertyUseCode String?
+  market     String?
+  submarket  String?
+  source     String?
+  score      Int?
+  dataCompletenessScore Float @default(0)
+  lane       DealLane?   @default(RESEARCH_REQUIRED)
+  recommendedAction RecommendedAction? @default(RESEARCH)
+  distressStage DistressStage? @default(UNKNOWN)
+  nextEventDate DateTime?
+  contactabilityScore Float?
+  isNoise    Boolean     @default(false)
+  noiseReason NoiseReason?
+  laneUpdatedAt DateTime?
+  latitude   Float?
+  longitude  Float?
+  lotSizeSqft      Float?
+  buildingSizeSqft Float?
+  yearBuilt        Int?
+  zoning           String?
+  askingPrice      Float?
+  pricePerSqft     Float?
+  status     String          @default("NEW")
+  metrics    DealMetric?
+  painPoints DealPainPoint[]
+  owners     DealOwner[]
+  outreach   OutreachLog[]
+  media      DealMedia[]
+  documents  DealDocument[]
+  comparables DealComparable[]
+  sales      MdpaSale[]
+  assessments MdpaAssessment[]
+  rollEvents MdpaRollEvent[]
+  distressSignals DealDistressSignal[]
+  events     DealEvent[]
+  decisionAudits DealDecisionAudit[]
+  revenueSplitConfig DealRevenueSplitConfig?
+  workflowTasks DealWorkflowTask[]
+  alertEvents AlertEvent[]
+  agentRuns AgentRun[]
+  insight    DealInsight?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([market])
+  @@index([assetType, market])
+  @@index([status])
+  @@index([score])
+  @@index([updatedAt])
+  @@index([latitude, longitude])
+  @@index([market, status, score, updatedAt])
+  @@index([lane, recommendedAction, market, updatedAt])
+  @@index([isNoise, updatedAt])
+  @@index([nextEventDate])
+}
+
+model DealMetric {
+  id        String @id @default(uuid())
+  dealId    String @unique
+  noi       Float?
+  capRate   Float?
+  price     Float?
+  debt      Float?
+  occupancy Float?
+  deal      Deal   @relation(fields: [dealId], references: [id])
+}
+
+model DealMedia {
+  id        String        @id @default(uuid())
+  dealId    String
+  kind      DealMediaKind @default(PHOTO)
+  url       String
+  caption   String?
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  deal      Deal          @relation(fields: [dealId], references: [id])
+
+  @@index([dealId])
+  @@index([dealId, sortOrder])
+}
+
+model DealDocument {
+  id        String           @id @default(uuid())
+  dealId    String
+  kind      DealDocumentKind @default(OTHER)
+  title     String
+  url       String
+  createdAt DateTime         @default(now())
+  deal      Deal             @relation(fields: [dealId], references: [id])
+
+  @@index([dealId])
+}
+
+model DealComparable {
+  id            String   @id @default(uuid())
+  dealId         String
+  comparableDealId String?
+  address        String
+  resolvedAddressConfidence Float?
+  distanceMiles  Float?
+  salePrice      Float?
+  pricePerSqft   Float?
+  capRate        Float?
+  source         String
+  createdAt      DateTime @default(now())
+  deal           Deal     @relation(fields: [dealId], references: [id])
+
+  @@index([dealId])
+  @@index([dealId, distanceMiles])
+  @@index([comparableDealId])
+}
+
+model DealInsight {
+  id             String   @id @default(uuid())
+  dealId         String   @unique
+  demographicJson String?
+  climateRiskJson String?
+  valuationJson   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deal           Deal     @relation(fields: [dealId], references: [id])
+
+  @@index([updatedAt])
+}
+
+model DealPainPoint {
+  id          String  @id @default(uuid())
+  dealId      String
+  type        String
+  description String?
+  deal        Deal    @relation(fields: [dealId], references: [id])
+}
+
+model Owner {
+  id         String      @id @default(uuid())
+  name       String
+  entityType String?
+  email      String?
+  phone      String?
+  deals      DealOwner[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model DealOwner {
+  id      String  @id @default(uuid())
+  dealId  String
+  ownerId String
+  role    String?
+  deal    Deal    @relation(fields: [dealId], references: [id])
+  owner   Owner   @relation(fields: [ownerId], references: [id])
+
+  @@unique([dealId, ownerId])
+  @@index([dealId])
+  @@index([ownerId])
+}
+
+model OutreachLog {
+  id        String    @id @default(uuid())
+  dealId    String
+  channel   String
+  recipient String?
+  subject   String?
+  body      String?
+  status    String?
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+  deal      Deal      @relation(fields: [dealId], references: [id])
+}
+
+model Integration {
+  id         String    @id @default(uuid())
+  source     String    @unique
+  status     String    @default("NEEDS_CONFIG")
+  lastSyncAt DateTime?
+  lastError  String?
+  meta       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model IntegrationRun {
+  id        String    @id @default(uuid())
+  source    String
+  status    String
+  message   String?
+  metrics   String?
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([source])
+  @@index([startedAt])
+  @@index([source, startedAt])
+}
+
+model StagingRecord {
+  id             String    @id @default(uuid())
+  source         String
+  sourceRecordId String?
+  payload        String
+  receivedAt     DateTime  @default(now())
+  processedAt    DateTime?
+  status         String?
+
+  @@index([source])
+  @@index([sourceRecordId])
+  @@index([receivedAt])
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  role          Role           @default(ANALYST)
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  refreshTokens RefreshToken[]
+  chatSessions  ChatSession[]
+  alertRules    AlertRule[]
+  alertInboxItems AlertInboxItem[]
+  workflowTasksAssigned DealWorkflowTask[]
+  agentRuns AgentRun[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model MdpaDatasetSnapshot {
+  id          String    @id @default(uuid())
+  library     String
+  fileName    String
+  snapshotDate DateTime
+  sourceUrl   String?
+  sha256      String?
+  recordCount Int?
+  createdAt   DateTime  @default(now())
+  sales       MdpaSale[]
+  assessments MdpaAssessment[]
+  rollEvents  MdpaRollEvent[]
+
+  @@index([library, snapshotDate])
+  @@index([fileName, snapshotDate])
+}
+
+model MdpaSale {
+  id               String    @id @default(uuid())
+  dealId           String
+  saleDate         DateTime?
+  salePrice        Float?
+  saleType         String?
+  sourceSnapshotId String?
+  createdAt        DateTime  @default(now())
+  deal             Deal      @relation(fields: [dealId], references: [id])
+  sourceSnapshot   MdpaDatasetSnapshot? @relation(fields: [sourceSnapshotId], references: [id])
+
+  @@index([dealId, saleDate])
+  @@index([saleDate])
+  @@index([sourceSnapshotId])
+}
+
+model MdpaAssessment {
+  id               String    @id @default(uuid())
+  dealId           String
+  taxYear          Int
+  justValue        Float?
+  assessedValue    Float?
+  taxableValue     Float?
+  rollStage        RollStage?
+  sourceSnapshotId String?
+  createdAt        DateTime  @default(now())
+  deal             Deal      @relation(fields: [dealId], references: [id])
+  sourceSnapshot   MdpaDatasetSnapshot? @relation(fields: [sourceSnapshotId], references: [id])
+
+  @@unique([dealId, taxYear, rollStage], map: "MdpaAssessment_dealId_taxYear_rollStage_key")
+  @@index([dealId, taxYear])
+  @@index([sourceSnapshotId])
+}
+
+model MdpaRollEvent {
+  id               String    @id @default(uuid())
+  dealId           String
+  eventDate        DateTime?
+  stage            RollStage
+  justValue        Float?
+  assessedValue    Float?
+  taxableValue     Float?
+  sourceSnapshotId String?
+  createdAt        DateTime  @default(now())
+  deal             Deal      @relation(fields: [dealId], references: [id])
+  sourceSnapshot   MdpaDatasetSnapshot? @relation(fields: [sourceSnapshotId], references: [id])
+
+  @@index([dealId, eventDate, stage])
+  @@index([sourceSnapshotId])
+}
+
+model DealDistressSignal {
+  id         String   @id @default(uuid())
+  dealId     String
+  status     String
+  source     String
+  observedAt DateTime
+  confidence String
+  metadata   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, source, observedAt], map: "DealDistressSignal_dealId_source_observedAt_key")
+  @@index([dealId, observedAt])
+  @@index([status, observedAt])
+}
+
+model DealEvent {
+  id         String   @id @default(uuid())
+  dealId     String
+  eventType  String
+  eventDate  DateTime
+  source     String?
+  reference  String?
+  confidence String?
+  createdAt  DateTime @default(now())
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, eventDate])
+  @@index([eventType, eventDate])
+}
+
+model DealDecisionAudit {
+  id                String            @id @default(uuid())
+  dealId            String
+  classification    String
+  lane              DealLane
+  recommendedAction RecommendedAction
+  reasoningJson     String
+  engineVersion     String
+  createdAt         DateTime          @default(now())
+  deal              Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, createdAt])
+}
+
+model DealRevenueSplitConfig {
+  id               String           @id @default(uuid())
+  dealId            String           @unique
+  operatorPct       Float
+  investorPct       Float
+  basis             RevenueSplitBasis @default(NET_PROFIT)
+  minNetMarginPct   Float?
+  minCloseProbPct   Float?
+  metadata          String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deal              Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+}
+
+model DealWorkflowTask {
+  id          String           @id @default(uuid())
+  dealId      String
+  lane        DealLane?
+  taskType    String
+  title       String
+  description String?
+  priority    Int              @default(3)
+  status      WorkflowTaskStatus @default(TODO)
+  dueAt       DateTime?
+  ownerUserId String?
+  source      WorkflowTaskSource @default(AGENT)
+  metadata    String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deal        Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  ownerUser   User?            @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([dealId, status, priority])
+  @@index([ownerUserId, status])
+  @@index([createdAt])
+}
+
+model AlertRule {
+  id          String         @id @default(uuid())
+  userId      String
+  triggerType String
+  market      String?
+  lane        DealLane?
+  active      Boolean        @default(true)
+  delivery    AlertDelivery  @default(IN_APP)
+  configJson  String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active, createdAt])
+}
+
+model AlertEvent {
+  id          String        @id @default(uuid())
+  dealId      String?
+  triggerType String
+  severity    AlertSeverity @default(MEDIUM)
+  eventAt     DateTime
+  payloadJson String?
+  dedupeKey   String        @unique
+  createdAt   DateTime      @default(now())
+  deal        Deal?         @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  inboxItems  AlertInboxItem[]
+
+  @@index([dealId, eventAt])
+  @@index([triggerType, eventAt])
+}
+
+model AlertInboxItem {
+  id           String       @id @default(uuid())
+  userId       String
+  alertEventId String
+  readAt       DateTime?
+  deliveredAt  DateTime?
+  channel      AlertDelivery @default(IN_APP)
+  createdAt    DateTime      @default(now())
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alertEvent   AlertEvent    @relation(fields: [alertEventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, alertEventId], map: "AlertInboxItem_userId_alertEventId_key")
+  @@index([userId, readAt, createdAt])
+}
+
+model AgentRun {
+  id            String         @id @default(uuid())
+  userId        String
+  sessionId     String?
+  dealId        String?
+  taskType      String
+  model         String
+  status        AgentRunStatus
+  latencyMs     Int?
+  tokenUsage    Int?
+  inputHash     String?
+  outputJson    String?
+  guardrailsJson String?
+  toolCallsJson String?
+  createdAt     DateTime       @default(now())
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session       ChatSession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  deal          Deal?          @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([userId, taskType, createdAt])
+  @@index([dealId, createdAt])
+}
+
+model ChatSession {
+  id          String        @id @default(uuid())
+  userId      String
+  title       String?
+  metadata    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id])
+  messages    ChatMessage[]
+  agentRuns   AgentRun[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id          String          @id @default(uuid())
+  sessionId   String
+  role        ChatMessageRole
+  content     String
+  model       String?
+  tokenUsage  Int?
+  metadata    String?
+  createdAt   DateTime        @default(now())
+  session     ChatSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  citations   ChatCitationLog[]
+
+  @@index([sessionId, createdAt])
+}
+
+model ChatCitationLog {
+  id         String      @id @default(uuid())
+  messageId  String
+  sourceType String
+  sourceId   String?
+  label      String
+  value      String?
+  createdAt  DateTime    @default(now())
+  message    ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([sourceType, sourceId])
+}

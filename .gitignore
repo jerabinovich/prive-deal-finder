@@ -1,0 +1,23 @@
+node_modules
+.env
+.env.local
+.env.*
+!.env.example
+dist
+.next
+coverage
+.DS_Store
+*.log
+data/
+.tooling/
+apps/api/prisma/*.db
+apps/api/prisma/*.db-*
+apps/api/*.db
+apps/api/*.db-*
+docs/PALM_BEACH_DEVELOPMENT_REPORT.md
+docs/PALM_BEACH_DEVELOPMENT_REPORT.pdf
+scripts/generate_palm_beach_pipeline.py
+scripts/__pycache__/
+
+# OpenClaw config (contains secrets)
+openclaw.json

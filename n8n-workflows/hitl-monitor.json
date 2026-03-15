@@ -1,0 +1,81 @@
+{
+  "_comment": "OpenClaw — HITL Timeout Monitor",
+  "_description": "Checks for tasks in PROCESSING state that have exceeded their HITL timeout. Sends Telegram escalation alerts.",
+  "_version": "1.0",
+  "name": "OpenClaw: HITL Timeout Monitor",
+  "nodes": [
+    {
+      "name": "Schedule (Every 30 min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 30 }]
+        }
+      },
+      "notes": "Runs every 30 minutes to check for HITL timeouts."
+    },
+    {
+      "name": "Get Processing Threads",
+      "type": "n8n-nodes-base.gmail",
+      "position": [440, 300],
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "q": "label:AMANDA-STATE-PROCESSING -label:AMANDA-ALERT-TIMEOUT-SENT",
+          "includeSpamTrash": false
+        },
+        "limit": 20,
+        "returnAll": false
+      },
+      "notes": "Get all tasks in PROCESSING state that haven't been alerted yet."
+    },
+    {
+      "name": "Check Timeouts",
+      "type": "n8n-nodes-base.code",
+      "position": [640, 300],
+      "parameters": {
+        "jsCode": "const TIMEOUT_MAP = {\n  'LEGAL_REVIEW': 120,\n  'DRAFT_REPLY': 60,\n  'FOLLOW_UP': 240,\n  'SCHEDULING': 60,\n  'ESCALATE_TO_JR': 30,\n};\n\nconst now = Date.now();\nconst timedOut = [];\n\nfor (const item of $input.all()) {\n  const subject = item.json.subject || '';\n  const date = new Date(item.json.date || item.json.internalDate);\n  const elapsedMin = (now - date.getTime()) / (1000 * 60);\n\n  // Determine task type from subject\n  let taskType = 'UNKNOWN';\n  for (const [type, _] of Object.entries(TIMEOUT_MAP)) {\n    if (subject.toUpperCase().includes(type)) {\n      taskType = type;\n      break;\n    }\n  }\n\n  const timeout = TIMEOUT_MAP[taskType];\n  if (timeout && elapsedMin > timeout) {\n    timedOut.push({\n      json: {\n        ...item.json,\n        taskType,\n        elapsedMin: Math.round(elapsedMin),\n        timeoutMin: timeout,\n        isTimedOut: true,\n      }\n    });\n  }\n}\n\nif (timedOut.length === 0) {\n  return [{ json: { isTimedOut: false, message: 'No timeouts detected.' } }];\n}\n\nreturn timedOut;"
+      },
+      "notes": "Checks each processing thread against its task type's timeout threshold."
+    },
+    {
+      "name": "Has Timeouts?",
+      "type": "n8n-nodes-base.if",
+      "position": [840, 300],
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json.isTimedOut }}", "operation": "true" }]
+        }
+      }
+    },
+    {
+      "name": "Send Timeout Alert",
+      "type": "n8n-nodes-base.telegram",
+      "position": [1040, 240],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '⏰ HITL TIMEOUT\\n\\nTask: ' + $json.taskType + '\\nSubject: ' + ($json.subject || '').substring(0, 80) + '\\nWaiting: ' + $json.elapsedMin + ' min (limit: ' + $json.timeoutMin + ' min)\\n\\n⚡ Action needed: Review draft in Gmail.' }}",
+        "additionalFields": { "parse_mode": "HTML" }
+      }
+    },
+    {
+      "name": "Mark as Alerted",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1240, 240],
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["AMANDA/ALERT/TIMEOUT_SENT"]
+      }
+    }
+  ],
+  "connections": {
+    "Schedule (Every 30 min)": { "main": [[{ "node": "Get Processing Threads" }]] },
+    "Get Processing Threads": { "main": [[{ "node": "Check Timeouts" }]] },
+    "Check Timeouts": { "main": [[{ "node": "Has Timeouts?" }]] },
+    "Has Timeouts?": { "main": [[{ "node": "Send Timeout Alert" }], []] },
+    "Send Timeout Alert": { "main": [[{ "node": "Mark as Alerted" }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/New_York" }
+}

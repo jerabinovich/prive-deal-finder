@@ -1,0 +1,14 @@
+.git
+.gitignore
+.DS_Store
+.tooling
+node_modules
+apps/*/node_modules
+apps/web/.next
+apps/api/dist
+apps/api/*.db
+apps/api/*.db-*
+apps/api/prisma/*.db
+apps/api/prisma/*.db-*
+coverage
+data

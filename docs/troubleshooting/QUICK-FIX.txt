@@ -1,0 +1,24 @@
+QUICK FIX FOR NETWORK CONNECTIVITY
+===================================
+
+Problem: Cannot reach 10.1.10.181 (DGX Spark)
+
+TRY THESE IN ORDER:
+
+1. ACCESS ROUTER (10.0.1.1)
+   - Open browser: http://10.0.1.1
+   - Add static route: 10.1.10.0/24 -> [gateway IP]
+   - Save and test
+
+2. CHANGE NETWORK
+   - Connect Mac to same network as DGX Spark
+   - Or configure DGX Spark to use 10.0.1.x network
+
+3. USE VPN
+   - Connect to VPN with access to 10.1.10.x network
+
+4. TEST CONNECTION
+   ping 10.1.10.181
+   ssh privegroup@10.1.10.181
+
+Once network works, NVIDIA Sync will connect automatically!

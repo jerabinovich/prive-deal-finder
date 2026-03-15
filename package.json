@@ -1,0 +1,32 @@
+{
+  "name": "prive-deal-finder",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "setup": "npm run db:up && npm run db:prepare -w @prive/api",
+    "dev": "concurrently --kill-others --names web,api --prefix-colors cyan,green \"npm run dev -w @prive/web\" \"npm run dev -w @prive/api\"",
+    "build": "npm run build -w @prive/web && npm run build -w @prive/api",
+    "deploy:staging": "bash ./scripts/deploy_staging.sh",
+    "staging:status": "bash ./scripts/staging_status.sh",
+    "deploy:cloudrun": "bash ./scripts/cloudrun_deploy.sh",
+    "cloudrun:status": "bash ./scripts/cloudrun_status.sh",
+    "go-live:check": "bash ./scripts/go_live_check.sh",
+    "morning:refresh": "node ./scripts/morning_refresh.js",
+    "verify:local": "bash ./scripts/verify_local.sh",
+    "lint": "npm run lint -w @prive/web && npm run lint -w @prive/api",
+    "test": "npm run test -w @prive/api",
+    "test:e2e": "npm run test:e2e -w @prive/api",
+    "test:ux": "playwright test scripts/ux.prod.spec.js --reporter=line --workers=1",
+    "smoke": "bash ./scripts/smoke.sh",
+    "verify": "npm run lint && npm run build && npm run test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "concurrently": "^8.2.2"
+  }
+}

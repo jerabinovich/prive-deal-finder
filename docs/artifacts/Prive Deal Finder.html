@@ -1,0 +1,3713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prive Deal Finder - JV Origination Intelligence</title>
+    <style>
+        :root {
+            --color-bg-base: #0f172a;
+            --color-bg-elevated: #1e293b;
+            --color-bg-surface: #334155;
+            --color-text-primary: #f1f5f9;
+            --color-text-secondary: #cbd5e1;
+            --color-text-muted: #94a3b8;
+            --color-accent: #38bdf8;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-border: rgba(148, 163, 184, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--color-bg-base);
+            color: var(--color-text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: var(--color-bg-elevated);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--color-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .logo-text h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-accent);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .filters-section {
+            background: var(--color-bg-elevated);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-primary);
+            padding: 0.625rem 0.875rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--color-accent);
+            color: var(--color-bg-base);
+        }
+
+        .btn-primary:hover {
+            background: #0ea5e9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--color-bg-surface);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-bg-base);
+        }
+
+        .deals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .deal-card {
+            background: var(--color-bg-elevated);
+            border-radius: 12px;
+            border: 1px solid var(--color-border);
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .deal-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+            border-color: var(--color-accent);
+        }
+
+        .deal-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .deal-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .deal-address {
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+        }
+
+        .deal-score {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--color-accent);
+            color: var(--color-bg-base);
+            padding: 0.5rem 0.875rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .deal-body {
+            padding: 1.25rem;
+        }
+
+        .pain-points {
+            margin-bottom: 1rem;
+        }
+
+        .pain-point {
+            display: flex;
+            align-items: start;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--color-danger);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-size: 0.8125rem;
+        }
+
+        .pain-icon {
+            color: var(--color-danger);
+            flex-shrink: 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .metric {
+            background: var(--color-bg-surface);
+            padding: 0.75rem;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            padding: 0.375rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tag-opportunity {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--color-success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tag-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--color-warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .tag-info {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--color-accent);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .owner-info {
+            background: var(--color-bg-surface);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .owner-info h4 {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .owner-info p {
+            font-size: 0.8125rem;
+            color: var(--color-text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .deal-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 1.25rem;
+            background: var(--color-bg-surface);
+            border-top: 1px solid var(--color-border);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--color-bg-elevated);
+            border-radius: 16px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--color-border);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+            color: var(--color-text-primary);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .close-modal:hover {
+            background: var(--color-bg-surface);
+            color: var(--color-text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .outreach-template {
+            background: var(--color-bg-surface);
+            padding: 1.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            margin-bottom: 1rem;
+        }
+
+        .template-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .template-text {
+            background: var(--color-bg-base);
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-border);
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+        }
+
+        .copy-btn {
+            margin-top: 0.75rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--color-text-muted);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .api-panel {
+            background: var(--color-bg-elevated);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .api-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .api-source {
+            background: var(--color-bg-surface);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--color-accent);
+        }
+
+        .api-source.inactive {
+            border-left-color: var(--color-text-muted);
+            opacity: 0.6;
+        }
+
+        .api-source h4 {
+            font-size: 0.875rem;
+            color: var(--color-text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .api-source p {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--color-success);
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--color-warning);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            color: var(--color-text-primary);
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.8125rem;
+        }
+
+        @media (max-width: 768px) {
+            .header-stats {
+                display: none;
+            }
+
+            .deals-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .api-status {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">P</div>
+                <div class="logo-text">
+                    <h1>Prive Deal Finder</h1>
+                    <p>JV Origination Intelligence</p>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalDeals">23</div>
+                    <div class="stat-label">Active Deals</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="highPriority">8</div>
+                    <div class="stat-label">High Priority</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="contacted">5</div>
+                    <div class="stat-label">Contacted</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="api-panel">
+            <div class="section-header">
+                <h2>📡 Data Pipeline Status</h2>
+                <button class="btn btn-secondary btn-small" onclick="toggleApiPanel()">
+                    <span id="apiToggleIcon">▼</span> Details
+                </button>
+            </div>
+            <div id="apiStatusContainer" class="api-status" style="display: none;">
+                <div class="api-source">
+                    <h4>🏛️ Miami-Dade Property Appraiser <span class="status-badge status-active">Active</span></h4>
+                    <p>Last sync: 2 hours ago</p>
+                    <p>Records: 12,847 properties tracked</p>
+                </div>
+                <div class="api-source">
+                    <h4>📊 CoStar API <span class="status-badge status-active">Active</span></h4>
+                    <p>Last sync: 45 minutes ago</p>
+                    <p>Market data: Current</p>
+                </div>
+                <div class="api-source">
+                    <h4>🗂️ Public Records <span class="status-badge status-active">Active</span></h4>
+                    <p>Last sync: 1 hour ago</p>
+                    <p>Ownership changes: Monitoring</p>
+                </div>
+                <div class="api-source inactive">
+                    <h4>💰 Lender Database <span class="status-badge status-pending">Pending</span></h4>
+                    <p>Integration in progress</p>
+                    <p>Expected: Q2 2026</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <div class="section-header">
+                <h3 style="font-size: 1.125rem; color: var(--color-text-primary);">🔍 Deal Filters</h3>
+                <button class="btn btn-secondary btn-small" onclick="resetFilters()">Reset All</button>
+            </div>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="filterMarket">Market</label>
+                    <select id="filterMarket" onchange="applyFilters()">
+                        <option value="">All Markets</option>
+                        <option value="miami-beach">Miami Beach</option>
+                        <option value="sunny-isles">Sunny Isles Beach</option>
+                        <option value="brickell">Brickell</option>
+                        <option value="wynwood">Wynwood</option>
+                        <option value="edgewater">Edgewater</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterAssetType">Asset Type</label>
+                    <select id="filterAssetType" onchange="applyFilters()">
+                        <option value="">All Types</option>
+                        <option value="multifamily">Multifamily</option>
+                        <option value="mixed-use">Mixed-Use</option>
+                        <option value="retail">Retail</option>
+                        <option value="office">Office</option>
+                        <option value="land">Development Land</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterMinScore">Min Deal Score</label>
+                    <select id="filterMinScore" onchange="applyFilters()">
+                        <option value="0">Any Score</option>
+                        <option value="70">70+</option>
+                        <option value="80">80+</option>
+                        <option value="90">90+</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterPainPoint">Pain Point</label>
+                    <select id="filterPainPoint" onchange="applyFilters()">
+                        <option value="">Any</option>
+                        <option value="distressed">Distressed Debt</option>
+                        <option value="vacancy">High Vacancy</option>
+                        <option value="old">Aging Asset</option>
+                        <option value="zoning">Zoning Opportunity</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterMinSize">Min Size (SF)</label>
+                    <input type="number" id="filterMinSize" placeholder="e.g., 50000" onchange="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMaxCap">Max Cap Rate %</label>
+                    <input type="number" id="filterMaxCap" step="0.1" placeholder="e.g., 5.5" onchange="applyFilters()">
+                </div>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h2>💎 Qualified Opportunities</h2>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary btn-small" onclick="exportDeals()">📥 Export List</button>
+                <button class="btn btn-primary btn-small" onclick="generateReport()">📊 Generate Report</button>
+            </div>
+        </div>
+
+        <div id="dealsContainer" class="deals-grid">
+            <!-- Deals will be rendered here -->
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3>No deals match your filters</h3>
+            <p>Try adjusting your search criteria</p>
+        </div>
+    </div>
+
+    <!-- Deal Detail Modal -->
+    <div id="dealModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Deal Details</h2>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Deal database with realistic Miami market data
+        const allDeals = [
+            {
+                id: 1,
+                title: "Collins Avenue Retail Center",
+                address: "6701 Collins Avenue, Miami Beach, FL 33141",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 92,
+                size: 78500,
+                capRate: 4.8,
+                painPoints: [
+                    { icon: "⚠️", text: "75% tenant rollover in next 18 months - repositioning opportunity", type: "vacancy" },
+                    { icon: "💰", text: "Owner carrying $12M bridge loan at 8.5% - refinancing pressure", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$24.5M",
+                    "Current NOI": "$1.18M",
+                    "Sq Ft": "78,500",
+                    "Year Built": "1987"
+                },
+                tags: [
+                    { label: "Value-Add", type: "opportunity" },
+                    { label: "Strong Location", type: "info" },
+                    { label: "Immediate Action", type: "warning" }
+                ],
+                owner: {
+                    name: "Coastline Holdings LLC",
+                    contact: "Michael Brennan (Principal)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Family office, 3rd generation. Open to partnerships per broker intel."
+                },
+                opportunity: "Tenant mix upgrade potential. Current avg rent $28/SF, market at $42/SF for A-tenants. 30%+ IRR on $6M renovation budget.",
+                risks: "Hurricane exposure, parking constraints, retail headwinds"
+            },
+            {
+                id: 2,
+                title: "Sunny Isles Mixed-Use Development Site",
+                address: "163rd Street & Collins Avenue, Sunny Isles Beach, FL",
+                market: "sunny-isles",
+                assetType: "land",
+                score: 95,
+                size: 52000,
+                capRate: null,
+                painPoints: [
+                    { icon: "📋", text: "Zoning approved for 32-story mixed-use (retail + 280 units)", type: "zoning" },
+                    { icon: "⏰", text: "Owner needs liquidity event within 6 months - estate settlement", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$18.2M",
+                    "Zoning": "RM-3",
+                    "Land SF": "52,000",
+                    "Buildable SF": "~420,000"
+                },
+                tags: [
+                    { label: "Shovel-Ready", type: "opportunity" },
+                    { label: "Motivated Seller", type: "warning" },
+                    { label: "Premium Location", type: "info" }
+                ],
+                owner: {
+                    name: "Beachfront Properties Trust",
+                    contact: "Estate Attorney: Robert Chen",
+                    phone: "305-xxx-xxxx",
+                    notes: "Trustee managing late founder's holdings. Fiduciary duty to liquidate efficiently."
+                },
+                opportunity: "Pre-approved entitlements save 18-24 months. Market comps at $850/SF sellout. Pro forma shows 28% ROI.",
+                risks: "Construction costs, market timing, infrastructure assessments pending"
+            },
+            {
+                id: 3,
+                title: "Brickell Office Tower - Class B+",
+                address: "1401 Brickell Avenue, Miami, FL 33131",
+                market: "brickell",
+                assetType: "office",
+                score: 78,
+                size: 185000,
+                capRate: 6.2,
+                painPoints: [
+                    { icon: "📉", text: "68% occupied - below market avg of 87%", type: "vacancy" },
+                    { icon: "🏗️", text: "HVAC and elevators need $4.5M in CapEx within 24 months", type: "old" }
+                ],
+                metrics: {
+                    "Property Value": "$52M",
+                    "Current NOI": "$3.2M",
+                    "Sq Ft": "185,000",
+                    "Year Built": "1992"
+                },
+                tags: [
+                    { label: "Lease-Up Play", type: "opportunity" },
+                    { label: "CapEx Heavy", type: "warning" },
+                    { label: "Core Location", type: "info" }
+                ],
+                owner: {
+                    name: "Metro Property Group",
+                    contact: "David Alvarez (Asset Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Fund facing redemptions. Board approved asset sales to meet liquidity needs."
+                },
+                opportunity: "Stabilized at 90%+ with Class A amenities, asset trades at $75M+ (45% upside). Tech tenant demand strong in Brickell.",
+                risks: "Office market volatility, WFH trends, significant capital requirements"
+            },
+            {
+                id: 4,
+                title: "Wynwood Creative Warehouse Complex",
+                address: "2801 NW 2nd Avenue, Miami, FL 33127",
+                market: "wynwood",
+                assetType: "mixed-use",
+                score: 88,
+                size: 64000,
+                capRate: 5.1,
+                painPoints: [
+                    { icon: "🎨", text: "Artist tenants on month-to-month - conversion opportunity to creative office", type: "vacancy" },
+                    { icon: "📈", text: "Neighborhood appreciation 140% in 5 years - current rents 60% below market", type: "zoning" }
+                ],
+                metrics: {
+                    "Property Value": "$15.8M",
+                    "Current NOI": "$805K",
+                    "Sq Ft": "64,000",
+                    "Year Built": "1978"
+                },
+                tags: [
+                    { label: "Creative District", type: "opportunity" },
+                    { label: "Rent Upside", type: "info" },
+                    { label: "Gentrification Play", type: "warning" }
+                ],
+                owner: {
+                    name: "Old Guard Investments",
+                    contact: "Patricia Gomez (Managing Partner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Original developer from 1978. Considering retirement sale. No debt on property."
+                },
+                opportunity: "Current avg rent $18/SF, creative office market at $38-45/SF. Adaptive reuse to boutique office/retail mix. 35%+ IRR potential.",
+                risks: "Tenant displacement sensitivities, construction complexity, parking constraints"
+            },
+            {
+                id: 5,
+                title: "Edgewater Bayfront Multifamily",
+                address: "1750 N Bayshore Drive, Miami, FL 33132",
+                market: "edgewater",
+                assetType: "multifamily",
+                score: 85,
+                size: 142000,
+                capRate: 4.3,
+                painPoints: [
+                    { icon: "🏖️", text: "Deferred maintenance estimated at $8M - interiors from 1995 untouched", type: "old" },
+                    { icon: "💵", text: "Rents 35% below new construction across street - immediate upside", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$68M",
+                    "Current NOI": "$2.9M",
+                    "Units": "186",
+                    "Year Built": "1995"
+                },
+                tags: [
+                    { label: "Value-Add", type: "opportunity" },
+                    { label: "Waterfront", type: "info" },
+                    { label: "Renovation Heavy", type: "warning" }
+                ],
+                owner: {
+                    name: "Bay Properties Fund III",
+                    contact: "James Mitchell (Fund Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Fund reaching end of life (acquired 2015). LP pressure to distribute capital."
+                },
+                opportunity: "Unit renovation $45K/unit budget. Post-reno rents $2,800/mo vs current $1,950/mo. Stabilized value $95M+.",
+                risks: "Renovation logistics with occupied units, construction costs, resident relocation"
+            }
+        ];
+
+        // State management
+        let dealsDatabase = [...allDeals];
+            {
+                id: 6,
+                title: "Design District Adaptive Reuse Opportunity",
+                address: "3841 NE 2nd Avenue, Miami, FL 33137",
+                market: "wynwood",
+                assetType: "mixed-use",
+                score: 91,
+                size: 48000,
+                capRate: 5.4,
+                painPoints: [
+                    { icon: "🏭", text: "Former printing facility - raw space perfect for creative office conversion", type: "old" },
+                    { icon: "🎯", text: "Owner relocating operations - motivated to sell before Q2", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$11.2M",
+                    "Current NOI": "$605K",
+                    "Sq Ft": "48,000",
+                    "Year Built": "1982"
+                },
+                tags: [
+                    { label: "Adaptive Reuse", type: "opportunity" },
+                    { label: "Design District", type: "info" },
+                    { label: "Motivated Seller", type: "warning" }
+                ],
+                owner: {
+                    name: "Legacy Print Holdings",
+                    contact: "Thomas Rodriguez (Owner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Family business consolidating to single location in Doral. Clean title, no encumbrances."
+                },
+                opportunity: "High ceilings (18ft), natural light, parking included. Design District creative office rents $52/SF. Conversion budget $4.8M yields 32% IRR.",
+                risks: "Environmental assessment needed, adaptive reuse permitting timeline"
+            },
+            {
+                id: 7,
+                title: "Coral Gables Retail Strip Center",
+                address: "4201 Ponce de Leon Boulevard, Coral Gables, FL 33146",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 73,
+                size: 32000,
+                capRate: 5.8,
+                painPoints: [
+                    { icon: "🏪", text: "Anchor tenant (grocery) lease expiring in 8 months - no renewal signed", type: "vacancy" },
+                    { icon: "🅿️", text: "Parking configuration non-compliant with current code - limits re-tenanting", type: "old" }
+                ],
+                metrics: {
+                    "Property Value": "$16.8M",
+                    "Current NOI": "$975K",
+                    "Sq Ft": "32,000",
+                    "Year Built": "1988"
+                },
+                tags: [
+                    { label: "Re-tenanting Risk", type: "warning" },
+                    { label: "Prime Submarket", type: "info" },
+                    { label: "Code Issues", type: "warning" }
+                ],
+                owner: {
+                    name: "Gables Retail Partners",
+                    contact: "Maria Castillo (GP)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Small regional operator, first institutional deal. Underestimated anchor tenant complexity."
+                },
+                opportunity: "Parking variance obtainable. Medical/wellness tenant pipeline strong (3 LOIs in hand). Stabilized trades at $22M.",
+                risks: "Anchor backfill risk, parking resolution costs, tenant mix disruption"
+            },
+            {
+                id: 8,
+                title: "Aventura Medical Office Building",
+                address: "19495 Biscayne Boulevard, Aventura, FL 33180",
+                market: "sunny-isles",
+                assetType: "office",
+                score: 82,
+                size: 54000,
+                capRate: 6.8,
+                painPoints: [
+                    { icon: "🏥", text: "93% occupied but owned by retiring physician group - succession unclear", type: "distressed" },
+                    { icon: "📜", text: "Master lease structure expires 2027 - repositioning window opening", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$21.5M",
+                    "Current NOI": "$1.46M",
+                    "Sq Ft": "54,000",
+                    "Year Built": "2008"
+                },
+                tags: [
+                    { label: "Medical Office", type: "info" },
+                    { label: "High Occupancy", type: "opportunity" },
+                    { label: "Ownership Transition", type: "warning" }
+                ],
+                owner: {
+                    name: "North Florida Medical Properties",
+                    contact: "Dr. Richard Chen (Managing Partner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "4 partners, 3 retiring. Need institutional buyer to provide exit liquidity."
+                },
+                opportunity: "Medical office cap rates compressing. Stabilized institutional asset. Post-master lease, mark-to-market rents add 18% NOI.",
+                risks: "Tenant concentration, physician practice acquisitions could impact occupancy"
+            }score: 91,
+                size: 48000,
+                capRate: null,
+                painPoints: [
+                    { icon: "🏭", text: "Former industrial building - historic designation approved for conversion", type: "zoning" },
+                    { icon: "⚡", text: "Owner overleveraged on other projects - needs immediate exit", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$11.2M",
+                    "Zoning": "T6-8-O",
+                    "Sq Ft": "48,000",
+                    "Year Built": "1962"
+                },
+                tags: [
+                    { label: "Historic Tax Credits", type: "opportunity" },
+                    { label: "Distressed Seller", type: "warning" },
+                    { label: "Design District", type: "info" }
+                ],
+                owner: {
+                    name: "Urban Revival Partners",
+                    contact: "Carlos Mendez (Principal)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Developer facing margin call on separate project. Motivated to close within 60 days."
+                },
+                opportunity: "Historic tax credits cover 20% of renovation. Luxury retail + gallery space. Comps at $95/SF retail, $55/SF gallery.",
+                risks: "Historic preservation requirements, entitlement timing, luxury retail market saturation"
+            },
+            {
+                id: 7,
+                title: "Miami Beach Art Deco Hotel Portfolio",
+                address: "Ocean Drive Historic District, Miami Beach, FL",
+                market: "miami-beach",
+                assetType: "mixed-use",
+                score: 82,
+                size: 95000,
+                capRate: 5.8,
+                painPoints: [
+                    { icon: "🏨", text: "3 adjacent hotels operating at 58% avg occupancy - management issues", type: "vacancy" },
+                    { icon: "🔧", text: "Sea wall repairs required - $3.2M unfunded CapEx", type: "old" }
+                ],
+                metrics: {
+                    "Portfolio Value": "$42M",
+                    "Combined NOI": "$2.44M",
+                    "Total Rooms": "87",
+                    "Year Built": "1937-1941"
+                },
+                tags: [
+                    { label: "Portfolio Play", type: "opportunity" },
+                    { label: "Historic", type: "info" },
+                    { label: "Operational Fix", type: "warning" }
+                ],
+                owner: {
+                    name: "Beachside Hospitality Group",
+                    contact: "Richard Goldstein (CEO)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Second generation owner. Partnership dispute among siblings driving sale."
+                },
+                opportunity: "Professional management can drive occupancy to 82%+ (market avg). Boutique hospitality group acquisition target. $55M exit.",
+                risks: "Hurricane exposure, historic preservation limits, competitive South Beach market"
+            },
+            {
+                id: 8,
+                title: "Brickell Retail Strip Center",
+                address: "901 South Miami Avenue, Miami, FL 33130",
+                market: "brickell",
+                assetType: "retail",
+                score: 76,
+                size: 34500,
+                capRate: 5.9,
+                painPoints: [
+                    { icon: "🏪", text: "Anchor tenant (CVS) lease expiring in 9 months - no renewal yet", type: "vacancy" },
+                    { icon: "💸", text: "Asking $14.8M but appraised at $12.5M - pricing gap creating opportunity", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$14.8M",
+                    "Current NOI": "$873K",
+                    "Sq Ft": "34,500",
+                    "Year Built": "2008"
+                },
+                tags: [
+                    { label: "Re-tenanting Play", type: "opportunity" },
+                    { label: "Walkable Urban", type: "info" },
+                    { label: "Anchor Risk", type: "warning" }
+                ],
+                owner: {
+                    name: "Brickell Retail Investors LLC",
+                    contact: "Steven Park (Managing Member)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Out-of-state investor group. Purchased at peak in 2021. Facing capital call on other project."
+                },
+                opportunity: "Replace CVS with residential amenity concept (fitness + coworking + grocer). Target residential density supports $48/SF rents vs current $32/SF.",
+                risks: "Anchor vacancy impact, residential conversion entitlements, execution timeline"
+            },
+            {
+                id: 9,
+                title: "Coconut Grove Village Center",
+                address: "3390 Mary Street, Coconut Grove, FL 33133",
+                market: "miami-beach",
+                assetType: "mixed-use",
+                score: 89,
+                size: 52000,
+                capRate: 4.6,
+                painPoints: [
+                    { icon: "🌳", text: "Zoning allows vertical expansion to 5 stories - currently only 2", type: "zoning" },
+                    { icon: "👨‍👩‍👧", text: "Family ownership dispute in probate - court-ordered sale imminent", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$19.5M",
+                    "Current NOI": "$897K",
+                    "Sq Ft": "52,000",
+                    "Year Built": "1984"
+                },
+                tags: [
+                    { label: "Air Rights", type: "opportunity" },
+                    { label: "Village Location", type: "info" },
+                    { label: "Probate Sale", type: "warning" }
+                ],
+                owner: {
+                    name: "Grove Street Properties (Estate)",
+                    contact: "Probate Attorney: Linda Fernandez",
+                    phone: "305-xxx-xxxx",
+                    notes: "Original owner passed 2024. Three heirs disagreeing on hold vs sell. Judge mandating sale."
+                },
+                opportunity: "Add 3 stories (residential or boutique hotel). Ground floor retail stays. Air rights worth $8-12M. Total stabilized value $35M+.",
+                risks: "Neighborhood opposition to height, construction with occupied retail, probate timeline"
+            },
+            {
+                id: 10,
+                title: "Midtown Miami Office-to-Residential",
+                address: "3301 NE 1st Avenue, Miami, FL 33137",
+                market: "wynwood",
+                assetType: "office",
+                score: 84,
+                size: 118000,
+                capRate: 6.8,
+                painPoints: [
+                    { icon: "🏢", text: "54% occupied office building - post-pandemic challenges", type: "vacancy" },
+                    { icon: "🏠", text: "City fast-tracking office-to-residential conversions - incentive program active", type: "zoning" }
+                ],
+                metrics: {
+                    "Property Value": "$28M",
+                    "Current NOI": "$1.9M",
+                    "Sq Ft": "118,000",
+                    "Year Built": "1999"
+                },
+                tags: [
+                    { label: "Conversion Play", type: "opportunity" },
+                    { label: "Midtown Location", type: "info" },
+                    { label: "Complex Execution", type: "warning" }
+                ],
+                owner: {
+                    name: "Midtown Office Fund LLC",
+                    contact: "Rachel Torres (Asset Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "REIT considering portfolio restructuring. Office assets underperforming vs multifamily holdings."
+                },
+                opportunity: "Convert to 95 residential units. City offering tax abatements + expedited permits. Market rent $2,600/unit. Stabilized value $48M.",
+                risks: "Conversion costs ($320/SF estimated), parking requirements, unit size constraints"
+            },
+            {
+                id: 11,
+                title: "Aventura Medical Office Building",
+                address: "21055 Biscayne Boulevard, Aventura, FL 33180",
+                market: "sunny-isles",
+                assetType: "office",
+                score: 73,
+                size: 67000,
+                capRate: 6.5,
+                painPoints: [
+                    { icon: "🏥", text: "100% medical tenants but outdated imaging equipment infrastructure", type: "old" },
+                    { icon: "📄", text: "Major tenant (cardiology group) acquired by hospital system - lease renegotiation", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$22M",
+                    "Current NOI": "$1.43M",
+                    "Sq Ft": "67,000",
+                    "Year Built": "1997"
+                },
+                tags: [
+                    { label: "Medical Stable", type: "info" },
+                    { label: "Infrastructure Upgrade", type: "warning" },
+                    { label: "Aging Demo", type: "opportunity" }
+                ],
+                owner: {
+                    name: "Healthcare Properties Trust",
+                    contact: "Mark Davidson (Portfolio Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "National healthcare REIT. Non-core asset in Florida. Prefer larger medical campuses."
+                },
+                opportunity: "Aventura demographics (median age 54) support medical. Upgrade for ASC-quality tenants. Post-upgrade stabilized at $26M.",
+                risks: "Tenant concentration, CapEx budget, hospital system negotiating leverage"
+            },
+            {
+                id: 12,
+                title: "Little Havana Mixed-Use Development",
+                address: "1440 SW 8th Street (Calle Ocho), Miami, FL 33135",
+                market: "brickell",
+                assetType: "mixed-use",
+                score: 87,
+                size: 41000,
+                capRate: null,
+                painPoints: [
+                    { icon: "🎯", text: "Opportunity Zone designation - significant tax advantages", type: "zoning" },
+                    { icon: "🔨", text: "Current owner ran out of capital mid-renovation - 65% complete", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$9.8M",
+                    "Zoning": "T5-O",
+                    "Sq Ft": "41,000",
+                    "Construction": "65% Complete"
+                },
+                tags: [
+                    { label: "Opportunity Zone", type: "opportunity" },
+                    { label: "Distressed Asset", type: "warning" },
+                    { label: "Cultural District", type: "info" }
+                ],
+                owner: {
+                    name: "Calle Ocho Development Corp",
+                    contact: "Fernando Diaz (Principal)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Undercapitalized developer. Lender threatening foreclosure. Needs rescue capital within 45 days."
+                },
+                opportunity: "$3.2M to complete. Retail + 32 residential units. Opportunity Zone deferral + 15% step-up. Stabilized value $18M. IRR 40%+.",
+                risks: "Construction quality issues, neighborhood gentrification sensitivities, contractor liens"
+            },
+            {
+                id: 13,
+                title: "Key Biscayne Shopping Plaza",
+                address: "328 Crandon Boulevard, Key Biscayne, FL 33149",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 79,
+                size: 58000,
+                capRate: 5.2,
+                painPoints: [
+                    { icon: "🏝️", text: "Island location limits competition - captive market of 13K residents", type: "vacancy" },
+                    { icon: "🌊", text: "Hurricane Irma damage repairs completed but insurance costs spiked 180%", type: "old" }
+                ],
+                metrics: {
+                    "Property Value": "$26M",
+                    "Current NOI": "$1.35M",
+                    "Sq Ft": "58,000",
+                    "Year Built": "1979"
+                },
+                tags: [
+                    { label: "Captive Market", type: "opportunity" },
+                    { label: "Affluent Demo", type: "info" },
+                    { label: "Hurricane Risk", type: "warning" }
+                ],
+                owner: {
+                    name: "Island Retail Holdings",
+                    contact: "Gregory Hamilton (Owner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Original developer, age 78. Children not interested in business. Considering legacy planning."
+                },
+                opportunity: "HH income $175K median. Grocery-anchored necessity retail. Rent growth 4% annual. Institutional buyer target at $30M+.",
+                risks: "Climate change/sea level rise, bridge access dependency, insurance cost trajectory"
+            },
+            {
+                id: 14,
+                title: "Doral Logistics Last-Mile Facility",
+                address: "7800 NW 46th Street, Doral, FL 33166",
+                market: "brickell",
+                assetType: "office",
+                score: 81,
+                size: 125000,
+                capRate: 6.1,
+                painPoints: [
+                    { icon: "📦", text: "Former office converted to warehouse - Amazon-quality last-mile specs", type: "zoning" },
+                    { icon: "⚖️", text: "Owner in litigation with contractor - motivated to close and move on", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$32M",
+                    "Current NOI": "$1.95M",
+                    "Sq Ft": "125,000",
+                    "Year Renovated": "2023"
+                },
+                tags: [
+                    { label: "E-Commerce Demand", type: "opportunity" },
+                    { label: "Last-Mile", type: "info" },
+                    { label: "Legal Issues", type: "warning" }
+                ],
+                owner: {
+                    name: "Doral Industrial Partners",
+                    contact: "Antonio Reyes (Managing Partner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Litigation fatigue. Willing to discount for clean close. Already in contact with 3PL tenants."
+                },
+                opportunity: "32' clear height, 50+ dock doors. Amazon/FedEx/UPS target specs. Logistics REIT acquisition candidate. Upside to $38M.",
+                risks: "Litigation overhang, Doral industrial supply increasing, tenant credit concentration"
+            },
+            {
+                id: 15,
+                title: "Coral Gables Professional Campus",
+                address: "301 Almeria Avenue, Coral Gables, FL 33134",
+                market: "brickell",
+                assetType: "office",
+                score: 77,
+                size: 92000,
+                capRate: 5.8,
+                painPoints: [
+                    { icon: "🏛️", text: "Mediterranean Revival architecture - historic preservation restrictions", type: "old" },
+                    { icon: "💼", text: "Law firm consolidation leaving 28K SF vacant starting Q3 2026", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$38M",
+                    "Current NOI": "$2.2M",
+                    "Sq Ft": "92,000",
+                    "Year Built": "1959"
+                },
+                tags: [
+                    { label: "Historic Character", type: "info" },
+                    { label: "Lease-Up Need", type: "warning" },
+                    { label: "Gables Premium", type: "opportunity" }
+                ],
+                owner: {
+                    name: "Gables Office Properties Inc",
+                    contact: "Elizabeth Morgan (President)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Family-owned since 1965. Third generation exploring sale vs. recapitalization."
+                },
+                opportunity: "Coral Gables office premium 22% over Miami average. Medical/professional tenant demand strong. Stabilized at $44M.",
+                risks: "Historic limitations on renovation, parking constraints, law firm vacancy absorption"
+            },
+            {
+                id: 16,
+                title: "Miami River Industrial Redevelopment",
+                address: "2100 NW South River Drive, Miami, FL 33125",
+                market: "wynwood",
+                assetType: "land",
+                score: 93,
+                size: 87000,
+                capRate: null,
+                painPoints: [
+                    { icon: "🚢", text: "River-facing land with deep-water access - rare Miami commodity", type: "zoning" },
+                    { icon: "🏭", text: "Environmental Phase II cleanup required - $1.8M estimated cost", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$15.5M",
+                    "Zoning": "D2 (Liberal mixed-use)",
+                    "Land SF": "87,000",
+                    "Water Frontage": "210 feet"
+                },
+                tags: [
+                    { label: "Waterfront", type: "opportunity" },
+                    { label: "Environmental", type: "warning" },
+                    { label: "Miami River", type: "info" }
+                ],
+                owner: {
+                    name: "River Industrial Holdings",
+                    contact: "Walter Schmidt (Owner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Former marine repair facility operator. Retired, age 82. No heirs in business."
+                },
+                opportunity: "Riverwalk access. Zoning allows residential/hotel/office/retail. Marina component possible. Comps at $450/land SF post-cleanup.",
+                risks: "Environmental remediation complexity, Miami River deed restrictions, flood zone considerations"
+            },
+            {
+                id: 17,
+                title: "South Beach Lincoln Road Restaurant Space",
+                address: "940 Lincoln Road, Miami Beach, FL 33139",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 86,
+                size: 12500,
+                capRate: 4.9,
+                painPoints: [
+                    { icon: "🍽️", text: "Celebrity chef tenant bankrupt - prime corner space available now", type: "vacancy" },
+                    { icon: "👥", text: "Lincoln Road foot traffic recovered to 94% of pre-COVID levels", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$9.2M",
+                    "Potential NOI": "$450K",
+                    "Sq Ft": "12,500",
+                    "Year Built": "1995"
+                },
+                tags: [
+                    { label: "Trophy Retail", type: "opportunity" },
+                    { label: "Tourism Recovery", type: "info" },
+                    { label: "Tenant Risk", type: "warning" }
+                ],
+                owner: {
+                    name: "Lincoln Retail Investors",
+                    contact: "Sarah Lieberman (Asset Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Private equity fund. Tenant bankruptcy leaves opportunity to reset to market rents."
+                },
+                opportunity: "Previous lease at $220/SF. Market now at $325/SF for corner spaces. Hospitality concepts bidding. Value-add to $11.5M.",
+                risks: "Retail market volatility, high tenant improvement costs, pedestrian mall competition"
+            },
+            {
+                id: 18,
+                title: "Biscayne Boulevard Auto Dealership Site",
+                address: "7200 Biscayne Boulevard, Miami, FL 33138",
+                market: "wynwood",
+                assetType: "land",
+                score: 90,
+                size: 96000,
+                capRate: null,
+                painPoints: [
+                    { icon: "🚗", text: "Car dealership relocating to Broward - long-term ground lease expiring 2027", type: "zoning" },
+                    { icon: "🏗️", text: "Zoning allows 12-story mixed-use - MiamiCentral proximity premium", type: "zoning" }
+                ],
+                metrics: {
+                    "Asking Price": "$28M",
+                    "Zoning": "T6-8",
+                    "Land SF": "96,000",
+                    "Frontage": "Biscayne Blvd"
+                },
+                tags: [
+                    { label: "Transit-Oriented", type: "opportunity" },
+                    { label: "Major Corridor", type: "info" },
+                    { label: "Ground Lease", type: "warning" }
+                ],
+                owner: {
+                    name: "Miami Auto Land LLC",
+                    contact: "Thomas Keller (Principal)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Ground lessor. Dealership tenant not renewing. Prefer sale to development partner vs. self-develop."
+                },
+                opportunity: "Brightline/MiamiCentral 0.4 miles. Zoning allows 350+ units. Market rent $2,900/unit. Residual land value $42M. 50% upside.",
+                risks: "Ground lease termination coordination, environmental assessment needed, entitlement timeline"
+            },
+            {
+                id: 19,
+                title: "Flagler Street Historic Building",
+                address: "36 W Flagler Street, Downtown Miami, FL 33130",
+                market: "brickell",
+                assetType: "mixed-use",
+                score: 75,
+                size: 68000,
+                capRate: 6.4,
+                painPoints: [
+                    { icon: "🏛️", text: "1920s landmark building - tax credit eligible renovation", type: "old" },
+                    { icon: "🛍️", text: "Street-level retail 40% vacant - wrong tenant mix for current market", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$16.5M",
+                    "Current NOI": "$1.06M",
+                    "Sq Ft": "68,000",
+                    "Year Built": "1926"
+                },
+                tags: [
+                    { label: "Historic Tax Credits", type: "opportunity" },
+                    { label: "Downtown Core", type: "info" },
+                    { label: "Retail Challenged", type: "warning" }
+                ],
+                owner: {
+                    name: "Flagler Historic Properties",
+                    contact: "Miguel Santos (Owner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Second-generation owner. Building held since 1975. Considering monetization for retirement."
+                },
+                opportunity: "Historic tax credits offset 20% of renovation. Upper floors to creative office. Ground floor to service retail. $24M stabilized.",
+                risks: "Preservation restrictions, downtown retail weakness, office market headwinds"
+            },
+            {
+                id: 20,
+                title: "Sunny Isles Beachfront Hotel",
+                address: "18801 Collins Avenue, Sunny Isles Beach, FL 33160",
+                market: "sunny-isles",
+                assetType: "mixed-use",
+                score: 83,
+                size: 178000,
+                capRate: 5.5,
+                painPoints: [
+                    { icon: "🏨", text: "Independent hotel struggling vs branded competition - 61% avg occupancy", type: "vacancy" },
+                    { icon: "🔄", text: "Owner open to JV with hospitality operator vs. outright sale", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$82M",
+                    "Current NOI": "$4.5M",
+                    "Rooms": "240",
+                    "Year Built": "2003"
+                },
+                tags: [
+                    { label: "Beachfront", type: "info" },
+                    { label: "Flag Opportunity", type: "opportunity" },
+                    { label: "CapEx Needs", type: "warning" }
+                ],
+                owner: {
+                    name: "Beachside Hotel Group",
+                    contact: "Daniel Rosen (Managing Principal)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Family office. Hospitality not core competency. Seeking operational partner or buyer."
+                },
+                opportunity: "Flag with Marriott/Hilton drives occupancy to 82%+. PIP requirement $8M. Post-renovation value $105M. JV structure available.",
+                risks: "Brand PIP costs, hotel market cyclicality, hurricane exposure, franchise fee structure"
+            },
+            {
+                id: 21,
+                title: "Allapattah Opportunity Zone Industrial",
+                address: "1450 NW 20th Street, Miami, FL 33142",
+                market: "wynwood",
+                assetType: "office",
+                score: 88,
+                size: 145000,
+                capRate: 7.2,
+                painPoints: [
+                    { icon: "🎯", text: "Qualified Opportunity Zone - capital gains tax deferral benefits", type: "zoning" },
+                    { icon: "📍", text: "2 miles from Miami Worldcenter - path of growth evident", type: "zoning" }
+                ],
+                metrics: {
+                    "Property Value": "$24M",
+                    "Current NOI": "$1.73M",
+                    "Sq Ft": "145,000",
+                    "Year Built": "1988"
+                },
+                tags: [
+                    { label: "Opportunity Zone", type: "opportunity" },
+                    { label: "Industrial", type: "info" },
+                    { label: "Gentrification Path", type: "opportunity" }
+                ],
+                owner: {
+                    name: "Allapattah Industrial Corp",
+                    contact: "Victor Nunez (President)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Long-term holder. Sees residential development pressures coming. Willing to sell now vs wait."
+                },
+                opportunity: "Current use: light industrial/warehouse. Future potential: residential conversion as neighborhood evolves. OZ benefits maximize returns.",
+                risks: "Neighborhood transition timeline uncertain, current tenant mix may resist change, infrastructure constraints"
+            },
+            {
+                id: 22,
+                title: "Pinecrest Village Retail Anchor",
+                address: "12645 South Dixie Highway, Pinecrest, FL 33156",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 80,
+                size: 48000,
+                capRate: 5.6,
+                painPoints: [
+                    { icon: "🛒", text: "Grocery-anchored center - Whole Foods interest expressed", type: "vacancy" },
+                    { icon: "👨‍👩‍👧‍👦", text: "Owner's children in healthcare/tech - no succession plan", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$21M",
+                    "Current NOI": "$1.18M",
+                    "Sq Ft": "48,000",
+                    "Year Built": "1992"
+                },
+                tags: [
+                    { label: "Grocery-Anchored", type: "info" },
+                    { label: "Affluent Trade Area", type: "opportunity" },
+                    { label: "Succession Sale", type: "warning" }
+                ],
+                owner: {
+                    name: "Pinecrest Retail Holdings",
+                    contact: "Harold Weinstein (Owner)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Original developer, age 74. Kids pursuing other careers. Considering sale to simplify estate."
+                },
+                opportunity: "HH income $142K median. Whole Foods LOI would reset anchor rent +35%. Shadow-anchored shops follow. Revaluation to $25M+.",
+                risks: "Whole Foods negotiations, small shop tenant mix, South Dixie traffic patterns"
+            },
+            {
+                id: 23,
+                title: "North Miami Beach Medical Plaza",
+                address: "16800 NE 15th Avenue, North Miami Beach, FL 33162",
+                market: "sunny-isles",
+                assetType: "office",
+                score: 74,
+                size: 82000,
+                capRate: 6.7,
+                painPoints: [
+                    { icon: "🏥", text: "Adjacent to hospital campus - captive medical professional demand", type: "vacancy" },
+                    { icon: "🔧", text: "Deferred maintenance - HVAC, elevators, parking lot need $3.8M", type: "old" }
+                ],
+                metrics: {
+                    "Property Value": "$19.5M",
+                    "Current NOI": "$1.31M",
+                    "Sq Ft": "82,000",
+                    "Year Built": "1993"
+                },
+                tags: [
+                    { label: "Medical Anchored", type: "info" },
+                    { label: "CapEx Heavy", type: "warning" },
+                    { label: "Hospital Adjacent", type: "opportunity" }
+                ],
+                owner: {
+                    name: "Medical Properties Fund II",
+                    contact: "Alan Berkowitz (Fund Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Fund liquidation mode. LP distributions prioritized. Pricing for quick close."
+                },
+                opportunity: "Post-renovation, stabilized occupancy 95%+ (currently 79%). Medical tenants sticky. Exit value $24M after $3.8M CapEx.",
+                risks: "Significant capital investment required, hospital relationship dependency, aging building systems"
+            }",
+                score: 76,
+                size: 32000,
+                capRate: 6.8,
+                painPoints: [
+                    { icon: "🏪", text: "Anchor tenant (grocery) lease expires in 6 months - no renewal signed", type: "vacancy" },
+                    { icon: "🅿️", text: "Parking lot represents 40% of site - development rights available", type: "zoning" }
+                ],
+                metrics: {
+                    "Property Value": "$18.5M",
+                    "Current NOI": "$1.26M",
+                    "Sq Ft": "32,000",
+                    "Year Built": "1984"
+                },
+                tags: [
+                    { label: "Redevelopment Site", type: "opportunity" },
+                    { label: "Lease Risk", type: "warning" },
+                    { label: "Urban Core", type: "info" }
+                ],
+                owner: {
+                    name: "Legacy Retail REIT",
+                    contact: "Asset Management: Sarah Thompson",
+                    phone: "305-xxx-xxxx",
+                    notes: "Non-core asset for REIT. Board authorized disposition to focus on larger properties."
+                },
+                opportunity: "Land value $12M, air rights for 25-story tower worth $8M+. Residential conversion play or JV with residential developer.",
+                risks: "Retail tenant rollover, entitlement process, demolition costs" refi at 4.8% cap = $67M value. $15M equity gain.",
+                risks: "WFH trends, tenant creditworthiness, competitive supply"
+            },
+            {
+                id: 4,
+                title: "Wynwood Warehouse Conversion",
+                address: "2550 NW 2nd Avenue, Miami, FL 33127",
+                market: "wynwood",
+                assetType: "mixed-use",
+                score: 88,
+                size: 42000,
+                capRate: 5.1,
+                painPoints: [
+                    { icon: "🎨", text: "Single-tenant artist collective at 60% of market rent", type: "vacancy" },
+                    { icon: "📐", text: "Adaptive reuse potential - residential conversion approved", type: "zoning" }
+                ],
+                metrics: {
+                    "Asking Price": "$9.8M",
+                    "Current Rent": "$18/SF",
+                    "Land SF": "18,500",
+                    "Building SF": "42,000"
+                },
+                tags: [
+                    { label: "Adaptive Reuse", type: "opportunity" },
+                    { label: "Emerging Market", type: "info" },
+                    { label: "Creative Capital", type: "warning" }
+                ],
+                owner: {
+                    name: "Wynwood Legacy LLC",
+                    contact: "Antonio Rivera",
+                    phone: "305-xxx-xxxx",
+                    notes: "Original developer looking to retire. Sentimental but practical - wants right buyer."
+                },
+                opportunity: "Convert to 38-unit micro-lofts + ground retail. $550/SF sellout = $23M gross. 22% IRR on $14M all-in.",
+                risks: "Neighborhood gentrification pace, construction complexity, permitting timeline"
+            },
+            {
+                id: 5,
+                title: "Edgewater Bayfront Apartments",
+                address: "1850 N Bayshore Drive, Miami, FL 33132",
+                market: "edgewater",
+                assetType: "multifamily",
+                score: 85,
+                size: 94000,
+                capRate: 4.5,
+                painPoints: [
+                    { icon: "⏳", text: "Deferred maintenance estimated at $8M - original finishes from 2008", type: "old" },
+                    { icon: "💵", text: "30% below market rents - opportunity to push $400/unit", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$68M",
+                    "Units": "142",
+                    "Avg Rent": "$2,100",
+                    "Occupancy": "91%"
+                },
+                tags: [
+                    { label: "Value-Add", type: "opportunity" },
+                    { label: "Waterfront", type: "info" },
+                    { label: "Renovation Play", type: "warning" }
+                ],
+                owner: {
+                    name: "Bayshore Residential Partners",
+                    contact: "Jennifer Kim (GP)",
+                    phone: "305-xxx-xxxx",
+                    notes: "LP investors want to exit. 7-year hold completed. Will consider creative structures."
+                },
+                opportunity: "Renovate units at $65K each = $9.2M. Push rents to $2,500 avg. Refi at $92M = $24M profit to LPs.",
+                risks: "Rent control proposals, displacement concerns, construction logistics with occupancy"
+            },
+            {
+                id: 6,
+                title: "Miami Beach Art Deco Hotel",
+                address: "1220 Ocean Drive, Miami Beach, FL 33139",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 91,
+                size: 28000,
+                capRate: 5.8,
+                painPoints: [
+                    { icon: "🏨", text: "Operating as boutique hotel - zoning allows condo conversion", type: "zoning" },
+                    { icon: "⚖️", text: "Estate sale - heirs disagree on strategy, forcing liquidation", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$32M",
+                    "Rooms": "48",
+                    "ADR": "$385",
+                    "RevPAR": "$312"
+                },
+                tags: [
+                    { label: "Iconic Asset", type: "info" },
+                    { label: "Conversion Play", type: "opportunity" },
+                    { label: "Historic District", type: "warning" }
+                ],
+                owner: {
+                    name: "Ocean Drive Properties Estate",
+                    contact: "Probate Attorney: Sarah Goldstein",
+                    phone: "305-xxx-xxxx",
+                    notes: "Court-ordered sale. Multiple family factions. Clean transaction preferred."
+                },
+                opportunity: "Convert to 24 luxury condos. $2.8M avg sellout = $67M gross. Art Deco premium commands 40% above market.",
+                risks: "Historic preservation restrictions, family litigation risk, condo market saturation"
+            }
+        ];
+
+        let filteredDeals = [...dealsDatabase];
+        let currentDeal = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            renderDeals(dealsDatabase);
+            updateStats();
+        });
+
+        function renderDeals(deals) {
+            const container = document.getElementById('dealsContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (deals.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'grid';
+            emptyState.style.display = 'none';
+            
+            container.innerHTML = deals.map(deal => `
+                <div class="deal-card" onclick="openDealModal(${deal.id})">
+                    <div class="deal-header" style="position: relative;">
+                        <div class="deal-score">${deal.score}</div>
+                        <h3 class="deal-title">${deal.title}</h3>
+                        <p class="deal-address">${deal.address}</p>
+                    </div>
+                    <div class="deal-body">
+                        <div class="pain-points">
+                            ${deal.painPoints.map(p => `
+                                <div class="pain-point">
+                                    <span class="pain-icon">${p.icon}</span>
+                                    <span>${p.text}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="metrics-grid">
+                            ${Object.entries(deal.metrics).map(([key, value]) => `
+                                <div class="metric">
+                                    <div class="metric-label">${key}</div>
+                                    <div class="metric-value">${value}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="tags">
+                            ${deal.tags.map(tag => `
+                                <span class="tag tag-${tag.type}">${tag.label}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="deal-actions">
+                        <button class="btn btn-primary" style="flex: 1;" onclick="event.stopPropagation(); openDealModal(${deal.id})">
+                            View Details
+                        </button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); generateOutreach(${deal.id})">
+                            📧 Outreach
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function resetFilters() {
+            document.getElementById('filterMarket').value = '';
+            document.getElementById('filterAssetType').value = '';
+            document.getElementById('filterMinScore').value = '0';
+            document.getElementById('filterPainPoint').value = '';
+            document.getElementById('filterMinSize').value = '';
+            document.getElementById('filterMaxCap').value = '';
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const market = document.getElementById('filterMarket').value;
+            const assetType = document.getElementById('filterAssetType').value;
+            const minScore = parseInt(document.getElementById('filterMinScore').value) || 0;
+            const painPoint = document.getElementById('filterPainPoint').value;
+            const minSize = parseInt(document.getElementById('filterMinSize').value) || 0;
+            const maxCap = parseFloat(document.getElementById('filterMaxCap').value) || 999;
+            const painPoint = document.getElementById('filterPainPoint').value;
+            const minSize = parseInt(document.getElementById('filterMinSize').value) || 0;
+            const maxCap = parseFloat(document.getElementById('filterMaxCap').value) || 999;
+
+            filteredDeals = dealsDatabase.filter(deal => {
+                if (market && deal.market !== market) return false;
+                if (assetType && deal.assetType !== assetType) return false;
+                if (deal.score < minScore) return false;
+                if (minSize && deal.size < minSize) return false;
+                if (deal.capRate && deal.capRate > maxCap) return false;
+                if (painPoint && !deal.painPoints.some(p => p.type === painPoint)) return false;
+                return true;
+            });
+
+            renderDeals(filteredDeals);
+            updateStats();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterMarket').value = '';
+            document.getElementById('filterAssetType').value = '';
+            document.getElementById('filterMinScore').value = '0';
+            document.getElementById('filterPainPoint').value = '';
+            document.getElementById('filterMinSize').value = '';
+            document.getElementById('filterMaxCap').value = '';
+            
+            filteredDeals = [...dealsDatabase];
+            renderDeals(filteredDeals);
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('totalDeals').textContent = filteredDeals.length;
+            document.getElementById('highPriority').textContent = filteredDeals.filter(d => d.score >= 85).length;
+            document.getElementById('contacted').textContent = Math.floor(filteredDeals.length * 0.22);
+        }
+
+        function openDealModal(dealId) {
+            currentDeal = dealsDatabase.find(d => d.id === dealId);
+            if (!currentDeal) return;
+
+            document.getElementById('modalTitle').textContent = currentDeal.title;
+            document.getElementById('modalBody').innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--color-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">PROPERTY OVERVIEW</h3>
+                    <p style="font-size: 0.9375rem; line-height: 1.6;">${currentDeal.opportunity}</p>
+                </div>
+
+                <div class="owner-info">
+                    <h4>Owner Information</h4>
+                    <p><strong>Entity:</strong> ${currentDeal.owner.name}</p>
+                    <p><strong>Contact:</strong> ${currentDeal.owner.contact}</p>
+                    <p><strong>Phone:</strong> ${currentDeal.owner.phone}</p>
+                    <p><strong>Intel:</strong> ${currentDeal.owner.notes}</p>
+                </div>
+
+                <div style="margin: 1.5rem 0;">
+                    <h3 style="color: var(--color-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">RISK FACTORS</h3>
+                    <p style="font-size: 0.875rem; color: var(--color-text-muted);">${currentDeal.risks}</p>
+                </div>
+
+                <div style="margin: 1.5rem 0;">
+                    <h3 style="color: var(--color-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">PAIN POINTS</h3>
+                    ${currentDeal.painPoints.map(p => `
+                        <div class="pain-point">
+                            <span class="pain-icon">${p.icon}</span>
+                            <span>${p.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="generateOutreach(${currentDeal.id})">
+                        Generate Outreach Email
+                    </button>
+                    <button class="btn btn-secondary" onclick="addToWatchlist(${currentDeal.id})">
+                        ⭐ Watch
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('dealModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('dealModal').classList.remove('active');
+        }
+
+        function generateOutreach(dealId) {
+            const deal = dealsDatabase.find(d => d.id === dealId);
+            if (!deal) return;
+
+            const template = `Subject: Strategic Partnership Opportunity - ${deal.title}
+
+Dear ${deal.owner.contact.split('(')[0].trim()},
+
+I hope this message finds you well. My name is Javier Rabinovich, CEO of Prive Group Corporation, a Miami-based real estate investment and development firm specializing in high-design, high-return projects.
+
+I'm reaching out regarding ${deal.title} at ${deal.address}. Our market intelligence indicates this asset presents a compelling value-creation opportunity that aligns with our investment thesis and operational capabilities.
+
+**Why This Matters:**
+${deal.opportunity}
+
+**Our Approach:**
+Prive Group operates as a vertically integrated platform - we don't just acquire assets, we transform them through capital precision and design excellence. Our track record includes successful repositioning of similar assets in Miami's core markets.
+
+**What We Bring:**
+• Immediate capital deployment capability
+• In-house development and asset management
+• Track record with institutional and family office capital
+• Speed and certainty of execution
+
+I'd welcome the opportunity to discuss how we might structure a partnership that creates value for all stakeholders. I'm available for a brief call at your convenience this week.
+
+Best regards,
+
+Javier Rabinovich
+CEO, Prive Group Corporation
+Miami, FL
+[Contact Information]
+
+---
+This outreach was generated using Prive Deal Finder - proprietary JV origination intelligence platform.
+`;
+
+            document.getElementById('modalBody').innerHTML = `
+                <div class="outreach-template">
+                    <span class="template-label">📧 Personalized Outreach Email</span>
+                    <div class="template-text">${template}</div>
+                    <button class="btn btn-primary copy-btn" onclick="copyToClipboard(\`${template.replace(/`/g, '\\`')}\`)">
+                        📋 Copy to Clipboard
+                    </button>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="openDealModal(${dealId})">
+                        ← Back to Deal Details
+                    </button>
+                </div>
+            `;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Email template copied to clipboard!');
+            });
+        }
+
+        function toggleApiPanel() {
+            const container = document.getElementById('apiStatusContainer');
+            const icon = document.getElementById('apiToggleIcon');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'grid';
+                icon.textContent = '▲';
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function exportDeals() {
+            const csvContent = [
+                ['Title', 'Address', 'Score', 'Asset Type', 'Size SF', 'Cap Rate', 'Owner', 'Contact'].join(','),
+                ...filteredDeals.map(d => [
+                    `"${d.title}"`,
+                    `"${d.address}"`,
+                    d.score,
+                    d.assetType,
+                    d.size,
+                    d.capRate || 'N/A',
+                    `"${d.owner.name}"`,
+                    `"${d.owner.contact}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `prive-deals-export-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateReport() {
+            alert('📊 Generating executive summary report...\n\nReport will include:\n• Deal pipeline analysis\n• Market intelligence summary\n• Recommended prioritization\n• Outreach tracking dashboard\n\nFeature coming in next update!');
+        }
+
+        function addToWatchlist(dealId) {
+            alert(`⭐ Deal added to watchlist!\n\nYou'll receive notifications for:\n• Owner activity changes\n• Market comp updates\n• Competitive intelligence alerts`);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('dealModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+            <div id="apiStatusContainer" class="api-status" style="display: none;">
+                <div class="api-source">
+                    <h4>🏛️ Miami-Dade Property Appraiser <span class="status-badge status-active">Active</span></h4>
+                    <p>Last sync: 2 hours ago</p>
+                    <p>Records: 12,847 properties tracked</p>
+                </div>
+                <div class="api-source">
+                    <h4>📊 CoStar API <span class="status-badge status-active">Active</span></h4>
+                    <p>Last sync: 45 minutes ago</p>
+                    <p>Market data: Current</p>
+                </div>
+                <div class="api-source">
+                    <h4>🗂️ Public Records <span class="status-badge status-active">Active</span></h4>
+                    <p>Last sync: 1 hour ago</p>
+                    <p>Ownership changes: Monitoring</p>
+                </div>
+                <div class="api-source inactive">
+                    <h4>💰 Lender Database <span class="status-badge status-pending">Pending</span></h4>
+                    <p>Integration in progress</p>
+                    <p>Expected: Q2 2026</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <div class="section-header">
+                <h3 style="font-size: 1.125rem; color: var(--color-text-primary);">🔍 Deal Filters</h3>
+                <button class="btn btn-secondary btn-small" onclick="resetFilters()">Reset All</button>
+            </div>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="filterMarket">Market</label>
+                    <select id="filterMarket" onchange="applyFilters()">
+                        <option value="">All Markets</option>
+                        <option value="miami-beach">Miami Beach</option>
+                        <option value="sunny-isles">Sunny Isles Beach</option>
+                        <option value="brickell">Brickell</option>
+                        <option value="wynwood">Wynwood</option>
+                        <option value="edgewater">Edgewater</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterAssetType">Asset Type</label>
+                    <select id="filterAssetType" onchange="applyFilters()">
+                        <option value="">All Types</option>
+                        <option value="multifamily">Multifamily</option>
+                        <option value="mixed-use">Mixed-Use</option>
+                        <option value="retail">Retail</option>
+                        <option value="office">Office</option>
+                        <option value="land">Development Land</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterMinScore">Min Deal Score</label>
+                    <select id="filterMinScore" onchange="applyFilters()">
+                        <option value="0">Any Score</option>
+                        <option value="70">70+</option>
+                        <option value="80">80+</option>
+                        <option value="90">90+</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterPainPoint">Pain Point</label>
+                    <select id="filterPainPoint" onchange="applyFilters()">
+                        <option value="">Any</option>
+                        <option value="distressed">Distressed Debt</option>
+                        <option value="vacancy">High Vacancy</option>
+                        <option value="old">Aging Asset</option>
+                        <option value="zoning">Zoning Opportunity</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterMinSize">Min Size (SF)</label>
+                    <input type="number" id="filterMinSize" placeholder="e.g., 50000" onchange="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMaxCap">Max Cap Rate %</label>
+                    <input type="number" id="filterMaxCap" step="0.1" placeholder="e.g., 5.5" onchange="applyFilters()">
+                </div>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h2>💎 Qualified Opportunities</h2>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary btn-small" onclick="exportDeals()">📥 Export List</button>
+                <button class="btn btn-primary btn-small" onclick="generateReport()">📊 Generate Report</button>
+            </div>
+        </div>
+
+        <div id="dealsContainer" class="deals-grid">
+            <!-- Deals will be rendered here -->
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3>No deals match your filters</h3>
+            <p>Try adjusting your search criteria</p>
+        </div>
+    </div>
+
+    <!-- Deal Detail Modal -->
+    <div id="dealModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Deal Details</h2>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Deal database with realistic Miami market data
+        const dealsDatabase = [
+            {
+                id: 1,
+                title: "Collins Avenue Retail Center",
+                address: "6701 Collins Avenue, Miami Beach, FL 33141",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 92,
+                size: 78500,
+                capRate: 4.8,
+                painPoints: [
+                    { icon: "⚠️", text: "75% tenant rollover in next 18 months - repositioning opportunity", type: "vacancy" },
+                    { icon: "💰", text: "Owner carrying $12M bridge loan at 8.5% - refinancing pressure", type: "distressed" }
+                ],
+                metrics: {
+                    "Property Value": "$24.5M",
+                    "Current NOI": "$1.18M",
+                    "Sq Ft": "78,500",
+                    "Year Built": "1987"
+                },
+                tags: [
+                    { label: "Value-Add", type: "opportunity" },
+                    { label: "Strong Location", type: "info" },
+                    { label: "Immediate Action", type: "warning" }
+                ],
+                owner: {
+                    name: "Coastline Holdings LLC",
+                    contact: "Michael Brennan (Principal)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Family office, 3rd generation. Open to partnerships per broker intel."
+                },
+                opportunity: "Tenant mix upgrade potential. Current avg rent $28/SF, market at $42/SF for A-tenants. 30%+ IRR on $6M renovation budget.",
+                risks: "Hurricane exposure, parking constraints, retail headwinds"
+            },
+            {
+                id: 2,
+                title: "Sunny Isles Mixed-Use Development Site",
+                address: "163rd Street & Collins Avenue, Sunny Isles Beach, FL",
+                market: "sunny-isles",
+                assetType: "land",
+                score: 95,
+                size: 52000,
+                capRate: null,
+                painPoints: [
+                    { icon: "📋", text: "Zoning approved for 32-story mixed-use (retail + 280 units)", type: "zoning" },
+                    { icon: "⏰", text: "Owner needs liquidity event within 6 months - estate settlement", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$18.2M",
+                    "Zoning": "RM-3",
+                    "Land SF": "52,000",
+                    "Buildable SF": "~420,000"
+                },
+                tags: [
+                    { label: "Shovel-Ready", type: "opportunity" },
+                    { label: "Motivated Seller", type: "warning" },
+                    { label: "Premium Location", type: "info" }
+                ],
+                owner: {
+                    name: "Beachfront Properties Trust",
+                    contact: "Estate Attorney: Robert Chen",
+                    phone: "305-xxx-xxxx",
+                    notes: "Trustee managing late founder's holdings. Fiduciary duty to liquidate efficiently."
+                },
+                opportunity: "Pre-approved entitlements save 18-24 months. Market comps at $850/SF sellout. Pro forma shows 28% ROI.",
+                risks: "Construction costs, market timing, infrastructure assessments pending"
+            },
+            {
+                id: 3,
+                title: "Brickell Office Tower - Class B+",
+                address: "1401 Brickell Avenue, Miami, FL 33131",
+                market: "brickell",
+                assetType: "office",
+                score: 78,
+                size: 185000,
+                capRate: 6.2,
+                painPoints: [
+                    { icon: "📉", text: "68% occupied - below market avg of 87%", type: "vacancy" },
+                    { icon: "🏗️", text: "HVAC and elevators need $4.5M in CapEx within 24 months", type: "old" }
+                ],
+                metrics: {
+                    "Property Value": "$52M",
+                    "Current NOI": "$3.2M",
+                    "Sq Ft": "185,000",
+                    "Year Built": "1992"
+                },
+                tags: [
+                    { label: "Lease-Up Play", type: "opportunity" },
+                    { label: "CapEx Heavy", type: "warning" },
+                    { label: "Core Location", type: "info" }
+                ],
+                owner: {
+                    name: "Metro Property Group",
+                    contact: "David Alvarez (Asset Manager)",
+                    phone: "305-xxx-xxxx",
+                    notes: "Fund facing redemptions. Board approved asset sales to meet liquidity needs."
+                },
+                opportunity: "Stabilized at 90%+ with Class A amenities, refi at 4.8% cap = $67M value. $15M equity gain.",
+                risks: "WFH trends, tenant creditworthiness, competitive supply"
+            },
+            {
+                id: 4,
+                title: "Wynwood Warehouse Conversion",
+                address: "2550 NW 2nd Avenue, Miami, FL 33127",
+                market: "wynwood",
+                assetType: "mixed-use",
+                score: 88,
+                size: 42000,
+                capRate: 5.1,
+                painPoints: [
+                    { icon: "🎨", text: "Single-tenant artist collective at 60% of market rent", type: "vacancy" },
+                    { icon: "📐", text: "Adaptive reuse potential - residential conversion approved", type: "zoning" }
+                ],
+                metrics: {
+                    "Asking Price": "$9.8M",
+                    "Current Rent": "$18/SF",
+                    "Land SF": "18,500",
+                    "Building SF": "42,000"
+                },
+                tags: [
+                    { label: "Adaptive Reuse", type: "opportunity" },
+                    { label: "Emerging Market", type: "info" },
+                    { label: "Creative Capital", type: "warning" }
+                ],
+                owner: {
+                    name: "Wynwood Legacy LLC",
+                    contact: "Antonio Rivera",
+                    phone: "305-xxx-xxxx",
+                    notes: "Original developer looking to retire. Sentimental but practical - wants right buyer."
+                },
+                opportunity: "Convert to 38-unit micro-lofts + ground retail. $550/SF sellout = $23M gross. 22% IRR on $14M all-in.",
+                risks: "Neighborhood gentrification pace, construction complexity, permitting timeline"
+            },
+            {
+                id: 5,
+                title: "Edgewater Bayfront Apartments",
+                address: "1850 N Bayshore Drive, Miami, FL 33132",
+                market: "edgewater",
+                assetType: "multifamily",
+                score: 85,
+                size: 94000,
+                capRate: 4.5,
+                painPoints: [
+                    { icon: "⏳", text: "Deferred maintenance estimated at $8M - original finishes from 2008", type: "old" },
+                    { icon: "💵", text: "30% below market rents - opportunity to push $400/unit", type: "vacancy" }
+                ],
+                metrics: {
+                    "Property Value": "$68M",
+                    "Units": "142",
+                    "Avg Rent": "$2,100",
+                    "Occupancy": "91%"
+                },
+                tags: [
+                    { label: "Value-Add", type: "opportunity" },
+                    { label: "Waterfront", type: "info" },
+                    { label: "Renovation Play", type: "warning" }
+                ],
+                owner: {
+                    name: "Bayshore Residential Partners",
+                    contact: "Jennifer Kim (GP)",
+                    phone: "305-xxx-xxxx",
+                    notes: "LP investors want to exit. 7-year hold completed. Will consider creative structures."
+                },
+                opportunity: "Renovate units at $65K each = $9.2M. Push rents to $2,500 avg. Refi at $92M = $24M profit to LPs.",
+                risks: "Rent control proposals, displacement concerns, construction logistics with occupancy"
+            },
+            {
+                id: 6,
+                title: "Miami Beach Art Deco Hotel",
+                address: "1220 Ocean Drive, Miami Beach, FL 33139",
+                market: "miami-beach",
+                assetType: "retail",
+                score: 91,
+                size: 28000,
+                capRate: 5.8,
+                painPoints: [
+                    { icon: "🏨", text: "Operating as boutique hotel - zoning allows condo conversion", type: "zoning" },
+                    { icon: "⚖️", text: "Estate sale - heirs disagree on strategy, forcing liquidation", type: "distressed" }
+                ],
+                metrics: {
+                    "Asking Price": "$32M",
+                    "Rooms": "48",
+                    "ADR": "$385",
+                    "RevPAR": "$312"
+                },
+                tags: [
+                    { label: "Iconic Asset", type: "info" },
+                    { label: "Conversion Play", type: "opportunity" },
+                    { label: "Historic District", type: "warning" }
+                ],
+                owner: {
+                    name: "Ocean Drive Properties Estate",
+                    contact: "Probate Attorney: Sarah Goldstein",
+                    phone: "305-xxx-xxxx",
+                    notes: "Court-ordered sale. Multiple family factions. Clean transaction preferred."
+                },
+                opportunity: "Convert to 24 luxury condos. $2.8M avg sellout = $67M gross. Art Deco premium commands 40% above market.",
+                risks: "Historic preservation restrictions, family litigation risk, condo market saturation"
+            }
+        ];
+
+        let filteredDeals = [...dealsDatabase];
+        let currentDeal = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            renderDeals(dealsDatabase);
+            updateStats();
+        });
+
+        function renderDeals(deals) {
+            const container = document.getElementById('dealsContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (deals.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'grid';
+            emptyState.style.display = 'none';
+            
+            container.innerHTML = deals.map(deal => `
+                <div class="deal-card" onclick="openDealModal(${deal.id})">
+                    <div class="deal-header" style="position: relative;">
+                        <div class="deal-score">${deal.score}</div>
+                        <h3 class="deal-title">${deal.title}</h3>
+                        <p class="deal-address">${deal.address}</p>
+                    </div>
+                    <div class="deal-body">
+                        <div class="pain-points">
+                            ${deal.painPoints.map(p => `
+                                <div class="pain-point">
+                                    <span class="pain-icon">${p.icon}</span>
+                                    <span>${p.text}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="metrics-grid">
+                            ${Object.entries(deal.metrics).map(([key, value]) => `
+                                <div class="metric">
+                                    <div class="metric-label">${key}</div>
+                                    <div class="metric-value">${value}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="tags">
+                            ${deal.tags.map(tag => `
+                                <span class="tag tag-${tag.type}">${tag.label}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="deal-actions">
+                        <button class="btn btn-primary" style="flex: 1;" onclick="event.stopPropagation(); openDealModal(${deal.id})">
+                            View Details
+                        </button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); generateOutreach(${deal.id})">
+                            📧 Outreach
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function applyFilters() {
+            const market = document.getElementById('filterMarket').value;
+            const assetType = document.getElementById('filterAssetType').value;
+            const minScore = parseInt(document.getElementById('filterMinScore').value) || 0;
+            const painPoint = document.getElementById('filterPainPoint').value;
+            const minSize = parseInt(document.getElementById('filterMinSize').value) || 0;
+            const maxCap = parseFloat(document.getElementById('filterMaxCap').value) || 999;
+
+            filteredDeals = dealsDatabase.filter(deal => {
+                if (market && deal.market !== market) return false;
+                if (assetType && deal.assetType !== assetType) return false;
+                if (deal.score < minScore) return false;
+                if (minSize && deal.size < minSize) return false;
+                if (deal.capRate && deal.capRate > maxCap) return false;
+                if (painPoint && !deal.painPoints.some(p => p.type === painPoint)) return false;
+                return true;
+            });
+
+            renderDeals(filteredDeals);
+            updateStats();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterMarket').value = '';
+            document.getElementById('filterAssetType').value = '';
+            document.getElementById('filterMinScore').value = '0';
+            document.getElementById('filterPainPoint').value = '';
+            document.getElementById('filterMinSize').value = '';
+            document.getElementById('filterMaxCap').value = '';
+            
+            filteredDeals = [...dealsDatabase];
+            renderDeals(filteredDeals);
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('totalDeals').textContent = filteredDeals.length;
+            document.getElementById('highPriority').textContent = filteredDeals.filter(d => d.score >= 85).length;
+            document.getElementById('contacted').textContent = Math.floor(filteredDeals.length * 0.22);
+        }
+
+        function openDealModal(dealId) {
+            currentDeal = dealsDatabase.find(d => d.id === dealId);
+            if (!currentDeal) return;
+
+            document.getElementById('modalTitle').textContent = currentDeal.title;
+            document.getElementById('modalBody').innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--color-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">PROPERTY OVERVIEW</h3>
+                    <p style="font-size: 0.9375rem; line-height: 1.6;">${currentDeal.opportunity}</p>
+                </div>
+
+                <div class="owner-info">
+                    <h4>Owner Information</h4>
+                    <p><strong>Entity:</strong> ${currentDeal.owner.name}</p>
+                    <p><strong>Contact:</strong> ${currentDeal.owner.contact}</p>
+                    <p><strong>Phone:</strong> ${currentDeal.owner.phone}</p>
+                    <p><strong>Intel:</strong> ${currentDeal.owner.notes}</p>
+                </div>
+
+                <div style="margin: 1.5rem 0;">
+                    <h3 style="color: var(--color-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">RISK FACTORS</h3>
+                    <p style="font-size: 0.875rem; color: var(--color-text-muted);">${currentDeal.risks}</p>
+                </div>
+
+                <div style="margin: 1.5rem 0;">
+                    <h3 style="color: var(--color-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">PAIN POINTS</h3>
+                    ${currentDeal.painPoints.map(p => `
+                        <div class="pain-point">
+                            <span class="pain-icon">${p.icon}</span>
+                            <span>${p.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="generateOutreach(${currentDeal.id})">
+                        Generate Outreach Email
+                    </button>
+                    <button class="btn btn-secondary" onclick="addToWatchlist(${currentDeal.id})">
+                        ⭐ Watch
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('dealModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('dealModal').classList.remove('active');
+        }
+
+        function generateOutreach(dealId) {
+            const deal = dealsDatabase.find(d => d.id === dealId);
+            if (!deal) return;
+
+            const template = `Subject: Strategic Partnership Opportunity - ${deal.title}
+
+Dear ${deal.owner.contact.split('(')[0].trim()},
+
+I hope this message finds you well. My name is Javier Rabinovich, CEO of Prive Group Corporation, a Miami-based real estate investment and development firm specializing in high-design, high-return projects.
+
+I'm reaching out regarding ${deal.title} at ${deal.address}. Our market intelligence indicates this asset presents a compelling value-creation opportunity that aligns with our investment thesis and operational capabilities.
+
+**Why This Matters:**
+${deal.opportunity}
+
+**Our Approach:**
+Prive Group operates as a vertically integrated platform - we don't just acquire assets, we transform them through capital precision and design excellence. Our track record includes successful repositioning of similar assets in Miami's core markets.
+
+**What We Bring:**
+• Immediate capital deployment capability
+• In-house development and asset management
+• Track record with institutional and family office capital
+• Speed and certainty of execution
+
+I'd welcome the opportunity to discuss how we might structure a partnership that creates value for all stakeholders. I'm available for a brief call at your convenience this week.
+
+Best regards,
+
+Javier Rabinovich
+CEO, Prive Group Corporation
+Miami, FL
+[Contact Information]
+
+---
+This outreach was generated using Prive Deal Finder - proprietary JV origination intelligence platform.
+`;
+
+            document.getElementById('modalBody').innerHTML = `
+                <div class="outreach-template">
+                    <span class="template-label">📧 Personalized Outreach Email</span>
+                    <div class="template-text">${template}</div>
+                    <button class="btn btn-primary copy-btn" onclick="copyToClipboard(\`${template.replace(/`/g, '\\`')}\`)">
+                        📋 Copy to Clipboard
+                    </button>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="openDealModal(${dealId})">
+                        ← Back to Deal Details
+                    </button>
+                </div>
+            `;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Email template copied to clipboard!');
+            });
+        }
+
+        function toggleApiPanel() {
+            const container = document.getElementById('apiStatusContainer');
+            const icon = document.getElementById('apiToggleIcon');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'grid';
+                icon.textContent = '▲';
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function exportDeals() {
+            const csvContent = [
+                ['Title', 'Address', 'Score', 'Asset Type', 'Size SF', 'Cap Rate', 'Owner', 'Contact'].join(','),
+                ...filteredDeals.map(d => [
+                    `"${d.title}"`,
+                    `"${d.address}"`,
+                    d.score,
+                    d.assetType,
+                    d.size,
+                    d.capRate || 'N/A',
+                    `"${d.owner.name}"`,
+                    `"${d.owner.contact}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `prive-deals-export-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateReport() {
+            alert('📊 Generating executive summary report...\n\nReport will include:\n• Deal pipeline analysis\n• Market intelligence summary\n• Recommended prioritization\n• Outreach tracking dashboard\n\nFeature coming in next update!');
+        }
+
+        function addToWatchlist(dealId) {
+            alert(`⭐ Deal added to watchlist!\n\nYou'll receive notifications for:\n• Owner activity changes\n• Market comp updates\n• Competitive intelligence alerts`);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('dealModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html> style="cursor: pointer;">
+                    <h4>
+                        <span>🏢</span> Property Appraiser
+                        <span class="status-badge status-active">Active</span>
+                        <span id="property-appraiser-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>Miami-Dade PA Database</p>
+                    <p>Owner info, FAR, year built, sales history</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ 824K+ properties indexed</p>
+                    <div id="property-appraiser-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Feb 2, 2026 6:30 AM</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> Daily at 6:00 AM EST</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Endpoint:</strong> https://www.miamidade.gov/pa/api/v2</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Coverage:</strong> All 34 municipalities + unincorporated areas</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-success); font-weight: 600; font-size: 0.875rem;">824,392</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Properties Indexed</div>
+                            </div>
+                            <div style="background: rgba(56, 189, 248, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-accent); font-weight: 600; font-size: 0.875rem;">99.8%</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Data Quality</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('regulation-cases')" style="cursor: pointer;">
+                    <h4>
+                        <span>⚠️</span> Regulation Cases
+                        <span class="status-badge status-active">Active</span>
+                        <span id="regulation-cases-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>Miami-Dade Neighborhood Compliance</p>
+                    <p>Unsafe structures, violations, enforcement</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ Real-time case tracking</p>
+                    <div id="regulation-cases-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Feb 2, 2026 8:15 PM</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> Every 2 hours</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Endpoint:</strong> https://www8.miamidade.gov/Apps/RER/api</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Active Cases:</strong> 3,247 violations tracked</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-danger); font-weight: 600; font-size: 0.875rem;">187</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Unsafe Structures</div>
+                            </div>
+                            <div style="background: rgba(245, 158, 11, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-warning); font-weight: 600; font-size: 0.875rem;">1,024</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Open Violations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('recertification')" style="cursor: pointer;">
+                    <h4>
+                        <span>📋</span> Recertification Portal
+                        <span class="status-badge status-active">Active</span>
+                        <span id="recertification-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>Building Recert Database (1996-present)</p>
+                    <p>30/40/50 year recert status & deadlines</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ Overdue cases flagged</p>
+                    <div id="recertification-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Feb 2, 2026 7:00 PM</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> Weekly (Sundays 11:00 PM)</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Endpoint:</strong> https://www.miamidade.gov/building/recertification</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Database Range:</strong> 1996-present (28 years)</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-danger); font-weight: 600; font-size: 0.875rem;">342</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Overdue Recerts</div>
+                            </div>
+                            <div style="background: rgba(245, 158, 11, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-warning); font-weight: 600; font-size: 0.875rem;">1,289</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Due Within 12mo</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('miami-beach')" style="cursor: pointer;">
+                    <h4>
+                        <span>🏖️</span> Miami Beach Violations
+                        <span class="status-badge status-active">Active</span>
+                        <span id="miami-beach-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>City of Miami Beach CSS Portal</p>
+                    <p>Stop work orders, violations, expired permits</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ Weekly sync enabled</p>
+                    <div id="miami-beach-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Jan 31, 2026 11:45 PM</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> Weekly (Wednesdays)</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Endpoint:</strong> https://miamibeach.violations.gov/api</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Jurisdiction:</strong> Miami Beach city limits only</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-danger); font-weight: 600; font-size: 0.875rem;">89</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Stop Work Orders</div>
+                            </div>
+                            <div style="background: rgba(245, 158, 11, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-warning); font-weight: 600; font-size: 0.875rem;">412</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Active Violations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('land-program')" style="cursor: pointer;">
+                    <h4>
+                        <span>🏗️</span> LAND Program
+                        <span class="status-badge status-active">Active</span>
+                        <span id="land-program-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>University of Miami - Vacant Land Database</p>
+                    <p>~500M sq ft vacant/underutilized land</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ Institutional parcels mapped</p>
+                    <div id="land-program-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Jan 28, 2026 3:00 PM</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> Quarterly</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Partner:</strong> University of Miami School of Architecture</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Dataset:</strong> GIS + aerial imagery analysis</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-success); font-weight: 600; font-size: 0.875rem;">2,847</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Vacant Parcels</div>
+                            </div>
+                            <div style="background: rgba(56, 189, 248, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-accent); font-weight: 600; font-size: 0.875rem;">487M</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Total Sq Ft</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('opportunity-zones')" style="cursor: pointer;">
+                    <h4>
+                        <span>📍</span> Opportunity Zones
+                        <span class="status-badge status-active">Active</span>
+                        <span id="opportunity-zones-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>Miami-Dade OZ Map (67 zones)</p>
+                    <p>Tax incentive eligibility filtering</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ All 67 zones indexed</p>
+                    <div id="opportunity-zones-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Jan 15, 2026 (Static dataset)</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> As legislated (rare updates)</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Source:</strong> IRS / U.S. Treasury Dept</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Program:</strong> 2017 Tax Cuts and Jobs Act</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-success); font-weight: 600; font-size: 0.875rem;">67</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Total OZ Tracts</div>
+                            </div>
+                            <div style="background: rgba(56, 189, 248, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-accent); font-weight: 600; font-size: 0.875rem;">18</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">High-Activity Zones</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('cdmp-zoning')" style="cursor: pointer;">
+                    <h4>
+                        <span>🗺️</span> CDMP / Zoning
+                        <span class="status-badge status-active">Active</span>
+                        <span id="cdmp-zoning-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>Comprehensive Development Master Plan</p>
+                    <p>FAR allowances, density limits, land use</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ GIS layers integrated</p>
+                    <div id="cdmp-zoning-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Last Sync:</strong> Feb 1, 2026 2:30 AM</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Update Frequency:</strong> Monthly (1st of month)</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Endpoint:</strong> Miami-Dade GIS Open Data Portal</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Layers:</strong> Zoning, FLUM, overlays, special districts</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-success); font-weight: 600; font-size: 0.875rem;">142</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Zoning Districts</div>
+                            </div>
+                            <div style="background: rgba(56, 189, 248, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-accent); font-weight: 600; font-size: 0.875rem;">8</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">GIS Layers Active</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source" onclick="toggleApiSourceDetail('repliers')" style="cursor: pointer;">
+                    <h4>
+                        <span>🤖</span> Repliers.io Integration
+                        <span class="status-badge status-active">Active</span>
+                        <span id="repliers-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>AI-Powered Outreach Automation</p>
+                    <p>Personalized email campaigns & follow-ups</p>
+                    <p style="color: var(--color-success); margin-top: 0.5rem;">✓ Smart reply tracking enabled</p>
+                    <div id="repliers-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Integration:</strong> Active via API</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Capabilities:</strong> Automated email sequences, response detection, lead scoring</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Platform:</strong> <a href="https://repliers.com/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">repliers.com</a></p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Use Case:</strong> Automated owner outreach with bilingual support (EN/ES)</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-success); font-weight: 600; font-size: 0.875rem;">847</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Emails Sent (30d)</div>
+                            </div>
+                            <div style="background: rgba(56, 189, 248, 0.1); padding: 0.5rem; border-radius: 4px; text-align: center;">
+                                <div style="color: var(--color-accent); font-weight: 600; font-size: 0.875rem;">24%</div>
+                                <div style="color: var(--color-text-muted); font-size: 0.6875rem;">Response Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-source inactive" onclick="toggleApiSourceDetail('mesocore')" style="cursor: pointer;">
+                    <h4>
+                        <span>🏠</span> Mesocore Integration
+                        <span class="status-badge status-pending">Pending</span>
+                        <span id="mesocore-icon" style="margin-left: auto; color: var(--color-text-muted); font-size: 0.875rem;">▼</span>
+                    </h4>
+                    <p>Expandable Cores Viability Check</p>
+                    <p>ADU opportunity detection algorithm</p>
+                    <p style="color: var(--color-warning); margin-top: 0.5rem;">⏳ Coming in Phase 2</p>
+                    <div id="mesocore-detail" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div style="background: var(--color-bg-base); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Status:</strong> Development in progress</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Expected Launch:</strong> Q2 2026</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; margin-bottom: 0.25rem;"><strong>Technology:</strong> Proprietary ADU viability algorithm</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem;"><strong>Integration:</strong> Parcel geometry + zoning analysis</p>
+                        </div>
+                        <div style="background: rgba(245, 158, 11, 0.1); padding: 0.75rem; border-radius: 6px; border-left: 3px solid var(--color-warning);">
+                            <p style="color: var(--color-text-secondary); font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--color-warning);">Roadmap:</strong> Will automatically detect properties with rear/side setbacks suitable for Mesocore expandable core placement, calculating unit upside and construction feasibility.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="municipalityFilter">Municipality</label>
+                    <select id="municipalityFilter">
+                        <option value="">All</option>
+                        <option value="miami">Miami</option>
+                        <option value="miami-beach">Miami Beach</option>
+                        <option value="miami-dade">Unincorp. Miami-Dade</option>
+                        <option value="sunny-isles">Sunny Isles Beach</option>
+                        <option value="aventura">Aventura</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="scoreFilter">Min JV Score</label>
+                    <select id="scoreFilter">
+                        <option value="0">All</option>
+                        <option value="70">70+</option>
+                        <option value="80">80+</option>
+                        <option value="90">90+</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="problemFilter">Problem Type</label>
+                    <select id="problemFilter">
+                        <option value="">All</option>
+                        <option value="unsafe">Unsafe Structure</option>
+                        <option value="recert">Recertification</option>
+                        <option value="violations">Violations</option>
+                        <option value="vacant">Vacant Land</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="zoneFilter">Opportunity Zone</label>
+                    <select id="zoneFilter">
+                        <option value="">All</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="applyFilters()">
+                    <span>🔍</span> Apply Filters
+                </button>
+                <button class="btn btn-secondary" onclick="resetFilters()">
+                    Reset
+                </button>
+                <button class="btn btn-secondary" onclick="exportDeals()">
+                    <span>📥</span> Export CSV
+                </button>
+                <button class="btn btn-secondary" onclick="showScoringLogic()">
+                    <span>🧮</span> Scoring Logic
+                </button>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h2>🎯 High-Priority Deals</h2>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label for="sortBy" style="font-size: 0.875rem; color: var(--color-text-muted);">Sort by:</label>
+                    <select id="sortBy" onchange="applySorting()" style="background: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.5rem; border-radius: 6px; font-size: 0.875rem;">
+                        <option value="score-desc">JV Score (High to Low)</option>
+                        <option value="score-asc">JV Score (Low to High)</option>
+                        <option value="units-desc">Unit Potential (High to Low)</option>
+                        <option value="municipality">Municipality (A-Z)</option>
+                        <option value="type">Property Type</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary btn-small" onclick="toggleMapView()" id="mapToggleBtn">
+                    <span>🗺️</span> Show Map
+                </button>
+                <div style="font-size: 0.875rem; color: var(--color-text-muted);">
+                    Last updated: <span id="lastUpdated">Feb 2, 2026 7:48 PM</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="mapContainer" style="display: none; background: var(--color-bg-elevated); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid var(--color-border);">
+            <div style="background: var(--color-bg-surface); border-radius: 8px; padding: 2rem; text-align: center; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="width: 100%; max-width: 800px; height: 400px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(14, 165, 233, 0.05)); border-radius: 8px; border: 2px dashed var(--color-border); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">🗺️</div>
+                    <h3 style="color: var(--color-text-primary); margin-bottom: 0.5rem;">Interactive Map View</h3>
+                    <p style="color: var(--color-text-muted); font-size: 0.875rem; max-width: 500px; line-height: 1.6;">
+                        Geographic visualization of all deals across Miami-Dade. Markers sized by JV score, color-coded by municipality, with cluster support for dense areas.
+                    </p>
+                    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 16px; height: 16px; background: var(--color-danger); border-radius: 50%;"></div>
+                            <span style="color: var(--color-text-muted); font-size: 0.8125rem;">High Priority (90+)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 16px; height: 16px; background: var(--color-warning); border-radius: 50%;"></div>
+                            <span style="color: var(--color-text-muted); font-size: 0.8125rem;">Medium (75-89)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 16px; height: 16px; background: var(--color-accent); border-radius: 50%;"></div>
+                            <span style="color: var(--color-text-muted); font-size: 0.8125rem;">Standard (&lt;75)</span>
+                        </div>
+                    </div>
+                    <p style="color: var(--color-text-muted); font-size: 0.75rem; margin-top: 1.5rem; font-style: italic;">
+                        Integration with Google Maps API or Mapbox ready • Click markers to view deal details
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div id="dealsContainer" class="deals-grid"></div>
+    </div>
+
+    <div id="dealDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Deal Details</h2>
+                <button class="close-modal" onclick="closeDealDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="dealDetailBody"></div>
+        </div>
+    </div>
+
+    <div id="outreachModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Outreach Templates</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="scoringModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🧮 JV Score Calculation Logic</h2>
+                <button class="close-modal" onclick="closeScoringModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: var(--color-bg-surface); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--color-accent); margin-bottom: 1rem; font-size: 1.125rem;">Score = Urgency + Density + Owner + Location</h3>
+                    <p style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.6;">
+                        Each deal receives a score from 0-100 based on weighted factors that predict JV partnership viability.
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--color-danger); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">40%</span>
+                        Regulatory Urgency
+                    </h4>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-danger);">
+                        <ul style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.8; margin-left: 1.5rem;">
+                            <li>Unsafe structure posting: <strong style="color: var(--color-text-primary);">+20 points</strong></li>
+                            <li>Recert overdue >12 months: <strong style="color: var(--color-text-primary);">+15 points</strong></li>
+                            <li>Recert overdue 0-12 months: <strong style="color: var(--color-text-primary);">+10 points</strong></li>
+                            <li>3+ violations: <strong style="color: var(--color-text-primary);">+10 points</strong></li>
+                            <li>1-2 violations: <strong style="color: var(--color-text-primary);">+5 points</strong></li>
+                            <li>Fines >$50K: <strong style="color: var(--color-text-primary);">+5 points</strong></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">30%</span>
+                        Densification Gap
+                    </h4>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-warning);">
+                        <ul style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.8; margin-left: 1.5rem;">
+                            <li>FAR utilization &lt;50%: <strong style="color: var(--color-text-primary);">+30 points</strong></li>
+                            <li>FAR utilization 50-70%: <strong style="color: var(--color-text-primary);">+20 points</strong></li>
+                            <li>FAR utilization 70-90%: <strong style="color: var(--color-text-primary);">+10 points</strong></li>
+                            <li>Unit upside >100%: <strong style="color: var(--color-text-primary);">+5 bonus</strong></li>
+                        </ul>
+                        <p style="color: var(--color-text-muted); font-size: 0.8125rem; margin-top: 0.75rem; font-style: italic;">
+                            FAR = Floor Area Ratio (actual built area ÷ allowable built area)
+                        </p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">20%</span>
+                        Owner Profile
+                    </h4>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-success);">
+                        <ul style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.8; margin-left: 1.5rem;">
+                            <li>Individual owner: <strong style="color: var(--color-text-primary);">+15 points</strong></li>
+                            <li>Small LLC (1-3 properties): <strong style="color: var(--color-text-primary);">+12 points</strong></li>
+                            <li>Family trust/estate: <strong style="color: var(--color-text-primary);">+10 points</strong></li>
+                            <li>Out-of-state owner: <strong style="color: var(--color-text-primary);">+5 points</strong></li>
+                            <li>Held >20 years: <strong style="color: var(--color-text-primary);">+3 bonus</strong></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--color-accent); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">10%</span>
+                        Location Multipliers
+                    </h4>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-accent);">
+                        <ul style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.8; margin-left: 1.5rem;">
+                            <li>Opportunity Zone: <strong style="color: var(--color-text-primary);">+10 points</strong></li>
+                            <li>Waterfront parcel: <strong style="color: var(--color-text-primary);">+5 points</strong></li>
+                            <li>Transit proximity (&lt;0.5mi): <strong style="color: var(--color-text-primary);">+3 points</strong></li>
+                            <li>High-growth corridor: <strong style="color: var(--color-text-primary);">+2 points</strong></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(14, 165, 233, 0.1)); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--color-accent);">
+                    <h4 style="color: var(--color-accent); margin-bottom: 0.75rem; font-size: 1rem;">💡 Interpretation Guide</h4>
+                    <ul style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.8; margin-left: 1.5rem;">
+                        <li><strong style="color: var(--color-text-primary);">90-100:</strong> Immediate outreach - high pain, strong fit</li>
+                        <li><strong style="color: var(--color-text-primary);">75-89:</strong> Strong prospect - monitor and contact</li>
+                        <li><strong style="color: var(--color-text-primary);">60-74:</strong> Moderate opportunity - secondary priority</li>
+                        <li><strong style="color: var(--color-text-primary);">&lt;60:</strong> Low priority - revisit if conditions change</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dealsDatabase = [
+            {
+                id: 1,
+                address: "1425 Collins Avenue",
+                municipality: "Miami Beach",
+                type: "Multifamily",
+                year: 1972,
+                score: 94,
+                painPoints: [
+                    "40-year recertification overdue (2 years)",
+                    "3 structural violations - load-bearing walls",
+                    "$85K in accumulated fines",
+                    "Unsafe Structures Board order pending"
+                ],
+                metrics: {
+                    currentUnits: 24,
+                    potentialUnits: 42,
+                    farCurrent: "1.2",
+                    farAllowed: "2.5"
+                },
+                tags: ["Opportunity Zone", "Waterfront", "High Demand"],
+                owner: {
+                    name: "Collins Property LLC",
+                    type: "Small LLC",
+                    yearPurchased: 1998,
+                    address: "Local - Miami Beach"
+                },
+                strategy: "JV recapitalization + ground-up repositioning. Strong case for modular expansion using Mesocore ADU cores in rear setback.",
+                opportunityZone: true
+            },
+            {
+                id: 2,
+                address: "8420 NW 7th Avenue",
+                municipality: "Miami",
+                type: "Mixed-Use",
+                year: 1978,
+                score: 88,
+                painPoints: [
+                    "30-year recertification deadline in 60 days",
+                    "Electrical violations - panel replacement required",
+                    "Roof structural assessment overdue",
+                    "2 commercial vacancies - 40% of retail space"
+                ],
+                metrics: {
+                    currentUnits: 12,
+                    potentialUnits: 28,
+                    farCurrent: "0.9",
+                    farAllowed: "3.0"
+                },
+                tags: ["Opportunity Zone", "Transit Corridor", "Underutilized"],
+                owner: {
+                    name: "Maria Rodriguez",
+                    type: "Individual",
+                    yearPurchased: 1992,
+                    address: "Out of state - New York"
+                },
+                strategy: "Phased redevelopment. Phase 1: Recert + rehab existing. Phase 2: Vertical expansion to maximize FAR.",
+                opportunityZone: true
+            },
+            {
+                id: 3,
+                address: "3700 NE 2nd Avenue",
+                municipality: "Miami",
+                type: "Multifamily",
+                year: 1965,
+                score: 91,
+                painPoints: [
+                    "Posted as unsafe structure - 6 months ago",
+                    "Foundation settlement issues documented",
+                    "50-year recertification failed inspection",
+                    "Tenant evacuation order imminent"
+                ],
+                metrics: {
+                    currentUnits: 16,
+                    potentialUnits: 34,
+                    farCurrent: "1.0",
+                    farAllowed: "2.8"
+                },
+                tags: ["Design District", "High Urgency", "Redevelopment Ready"],
+                owner: {
+                    name: "Brickell Holdings Inc",
+                    type: "Small Institutional",
+                    yearPurchased: 2005,
+                    address: "Local - Miami"
+                },
+                strategy: "Immediate acquisition opportunity. Demolish + ground-up multifamily. Strong IRR potential given location premium.",
+                opportunityZone: false
+            },
+            {
+                id: 4,
+                address: "Vacant Lot - 2100 Block Biscayne Blvd",
+                municipality: "Miami",
+                type: "Vacant Land",
+                year: null,
+                score: 82,
+                painPoints: [
+                    "City-owned vacant parcel - 8,400 SF",
+                    "LAND program eligible site",
+                    "Zoned T6-8 (up to 8 stories permitted)",
+                    "No development activity in 15+ years"
+                ],
+                metrics: {
+                    currentUnits: 0,
+                    potentialUnits: 48,
+                    farCurrent: "0.0",
+                    farAllowed: "4.5"
+                },
+                tags: ["Edgewater", "Workforce Housing Eligible", "Transit Adjacent"],
+                owner: {
+                    name: "City of Miami",
+                    type: "Institutional",
+                    yearPurchased: 1987,
+                    address: "Government entity"
+                },
+                strategy: "Pursue ground lease or acquisition via LAND program. Ideal for workforce housing with Mesocore expandable cores - phased delivery model.",
+                opportunityZone: false
+            },
+            {
+                id: 5,
+                address: "1850 SW 8th Street",
+                municipality: "Miami",
+                type: "Retail Strip",
+                year: 1981,
+                score: 79,
+                painPoints: [
+                    "30-year recertification in progress",
+                    "3 code violations - ADA compliance gaps",
+                    "50% tenant vacancy for 2+ years",
+                    "Parking lot deterioration - repaving required"
+                ],
+                metrics: {
+                    currentUnits: 0,
+                    potentialUnits: 22,
+                    farCurrent: "0.4",
+                    farAllowed: "2.0"
+                },
+                tags: ["Little Havana", "Mixed-Use Potential", "Opportunity Zone"],
+                owner: {
+                    name: "Calle Ocho Properties LLC",
+                    type: "Small LLC",
+                    yearPurchased: 2001,
+                    address: "Local - Coral Gables"
+                },
+                strategy: "Convert to mixed-use. Ground floor retail + 3 floors residential. Could integrate ADU model for rapid lease-up in Phase 1.",
+                opportunityZone: true
+            },
+            {
+                id: 6,
+                address: "4500 Collins Avenue",
+                municipality: "Miami Beach",
+                type: "Condo Building",
+                year: 1970,
+                score: 86,
+                painPoints: [
+                    "45-year coastal recertification overdue",
+                    "Special assessment passed - $12M capex",
+                    "Spalling concrete on ocean-facing facade",
+                    "Waterproofing failures throughout"
+                ],
+                metrics: {
+                    currentUnits: 68,
+                    potentialUnits: 68,
+                    farCurrent: "2.1",
+                    farAllowed: "2.5"
+                },
+                tags: ["Oceanfront", "Mid-Beach", "Association Distress"],
+                owner: {
+                    name: "4500 Collins Condo Association",
+                    type: "HOA",
+                    yearPurchased: 1970,
+                    address: "On-site"
+                },
+                strategy: "JV with association for full building rehab. Alternative: buyout distressed units for rental conversion + property management takeover.",
+                opportunityZone: false
+            }
+        ];
+
+        let filteredDeals = [...dealsDatabase];
+
+        function renderDeals(deals) {
+            const container = document.getElementById('dealsContainer');
+            
+            if (deals.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h3>No deals match your filters</h3>
+                        <p>Try adjusting your search criteria</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = deals.map(deal => `
+                <div class="deal-card" onclick="openDealDetail(${deal.id})">
+                    <div class="deal-header" style="position: relative;">
+                        <div class="deal-score">${deal.score}</div>
+                        <div class="deal-title">${deal.type}${deal.year ? ` (${deal.year})` : ''}</div>
+                        <div class="deal-address">${deal.address}, ${deal.municipality}</div>
+                    </div>
+                    <div class="deal-body">
+                        <div class="pain-points">
+                            ${deal.painPoints.slice(0, 3).map(point => `
+                                <div class="pain-point">
+                                    <span class="pain-icon">⚠️</span>
+                                    <span>${point}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <div class="metric-label">Current / Potential</div>
+                                <div class="metric-value">${deal.metrics.currentUnits} → ${deal.metrics.potentialUnits} units</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">FAR Utilization</div>
+                                <div class="metric-value">${deal.metrics.farCurrent} / ${deal.metrics.farAllowed}</div>
+                            </div>
+                        </div>
+                        <div class="tags">
+                            ${deal.tags.map(tag => {
+                                const tagClass = tag.includes('Opportunity') ? 'tag-opportunity' : 
+                                               tag.includes('Urgency') ? 'tag-warning' : 'tag-info';
+                                return `<span class="tag ${tagClass}">${tag}</span>`;
+                            }).join('')}
+                        </div>
+                        <div class="owner-info">
+                            <h4>Owner Profile</h4>
+                            <p><strong>${deal.owner.name}</strong></p>
+                            <p>${deal.owner.type} • Owned since ${deal.owner.yearPurchased}</p>
+                            <p>${deal.owner.address}</p>
+                        </div>
+                    </div>
+                    <div class="deal-actions">
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); openDealDetail(${deal.id})">
+                            👁️ View Details
+                        </button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); openOutreachModal(${deal.id})">
+                            📧 Outreach
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            updateStats(deals);
+        }
+
+        function toggleApiPanel() {
+            const container = document.getElementById('apiStatusContainer');
+            const icon = document.getElementById('apiToggleIcon');
+            if (container.style.display === 'none') {
+                container.style.display = 'grid';
+                icon.textContent = '▲';
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function exportDeals() {
+            const csvContent = generateCSV(dealsDatabase);
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `prive-deals-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function generateCSV(deals) {
+            const headers = ['Title', 'Address', 'Market', 'Asset Type', 'Score', 'Size SF', 'Cap Rate', 'Owner', 'Contact'];
+            const rows = deals.map(d => [
+                d.title,
+                d.address,
+                d.market,
+                d.assetType,
+                d.score,
+                d.size,
+                d.capRate || 'N/A',
+                d.owner.name,
+                d.owner.contact
+            ]);
+            return [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+        }
+
+        function generateReport() {
+            alert('📊 Comprehensive deal report generation coming soon!\n\nThis will include:\n• Executive summary\n• Market analysis\n• Deal comparison matrix\n• Risk/opportunity scoring\n• Outreach recommendations');
+        }
+
+        function updateStats(deals) {
+            document.getElementById('totalDeals').textContent = allDeals.length;
+            document.getElementById('highPriority').textContent = allDeals.filter(d => d.score >= 85).length;
+            document.getElementById('contacted').textContent = Math.floor(deals.length * 0.2);
+        }
+
+        function applyFilters() {
+            const municipality = document.getElementById('municipalityFilter').value.toLowerCase();
+            const minScore = parseInt(document.getElementById('scoreFilter').value);
+            const problemType = document.getElementById('problemFilter').value;
+            const oppZone = document.getElementById('zoneFilter').value;
+
+            filteredDeals = dealsDatabase.filter(deal => {
+                if (municipality && !deal.municipality.toLowerCase().includes(municipality.replace('-', ' '))) return false;
+                if (minScore && deal.score < minScore) return false;
+                if (oppZone === 'yes' && !deal.opportunityZone) return false;
+                if (oppZone === 'no' && deal.opportunityZone) return false;
+                if (problemType) {
+                    const painText = deal.painPoints.join(' ').toLowerCase();
+                    if (problemType === 'unsafe' && !painText.includes('unsafe')) return false;
+                    if (problemType === 'recert' && !painText.includes('recert')) return false;
+                    if (problemType === 'violations' && !painText.includes('violation')) return false;
+                    if (problemType === 'vacant' && deal.type !== 'Vacant Land') return false;
+                }
+                return true;
+            });
+
+            renderDeals(filteredDeals);
+            applySorting();
+        }
+
+        function resetFilters() {
+            document.getElementById('municipalityFilter').value = '';
+            document.getElementById('scoreFilter').value = '0';
+            document.getElementById('problemFilter').value = '';
+            document.getElementById('zoneFilter').value = '';
+            filteredDeals = [...dealsDatabase];
+            renderDeals(filteredDeals);
+        }
+
+        function openOutreachModal(dealId) {
+            const deal = dealsDatabase.find(d => d.id === dealId);
+            if (!deal) return;
+
+            const isSpanish = deal.owner.name.match(/Rodriguez|Martinez|Garcia/) || deal.owner.address.toLowerCase().includes('miami');
+
+            const englishTemplate = `Subject: Partnership proposal for upgrading your property at ${deal.address}
+
+Hi ${deal.owner.name.split(' ')[0] || deal.owner.name},
+
+My name is Javier Rabinovich, I lead Prive Group, a development firm focused on repositioning and value-add projects in South Florida. I've been reviewing properties in ${deal.municipality}, and your building at ${deal.address} stands out as a strong candidate for a capital and design upgrade.
+
+We specialize in:
+– Structuring JV partnerships where you keep ownership of the land/building
+– Bringing in capital, design, permitting and construction management
+– Solving issues related to recertification, code compliance and long-term value
+
+${deal.strategy}
+
+If you're open to exploring options to improve income, address upcoming capital needs, or plan a phased redevelopment, I'd be happy to share a few tailored scenarios for your property.
+
+Would you be available for a brief call next week?
+
+Best,
+Javier Rabinovich
+CEO – Prive Group
+Miami, FL
+javier@privegroup.com`;
+
+            const spanishTemplate = `Asunto: Propuesta de alianza para su propiedad en ${deal.address}
+
+Hola ${deal.owner.name.split(' ')[0] || deal.owner.name},
+
+Soy Javier Rabinovich, dirijo Prive Group, una firma de inversión y desarrollo enfocada en proyectos de valor agregado en el sur de Florida. Al analizar activos en ${deal.municipality}, su propiedad en ${deal.address} se destaca como candidata ideal para una mejora de capital y reposicionamiento.
+
+Nuestro foco es:
+– Estructurar alianzas (JV) donde usted mantiene la propiedad de la tierra/edificio
+– Aportar capital, diseño, gestión de permisos y obra
+– Resolver necesidades de recertificación, cumplimiento de código y creación de valor a largo plazo
+
+${deal.strategy}
+
+Si le interesa explorar opciones para mejorar ingresos, atender necesidades de capex o planificar un redevelopment por fases, con gusto le comparto escenarios específicos para su caso.
+
+¿Podemos coordinar una breve llamada la próxima semana?
+
+Saludos,
+Javier Rabinovich
+CEO – Prive Group
+Miami, FL
+javier@privegroup.com`;
+
+            const modalBody = document.getElementById('modalBody');
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--color-text-primary); margin-bottom: 0.5rem;">Deal Summary</h3>
+                    <p style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                        <strong>${deal.address}</strong> • Score: ${deal.score} • ${deal.type}
+                    </p>
+                    <p style="color: var(--color-text-muted); font-size: 0.8125rem; margin-top: 0.5rem;">
+                        Strategy: ${deal.strategy}
+                    </p>
+                </div>
+
+                <div class="outreach-template">
+                    <span class="template-label">📧 English Template</span>
+                    <div class="template-text" id="englishTemplate">${englishTemplate}</div>
+                    <button class="btn btn-primary copy-btn" onclick="copyTemplate('englishTemplate')">
+                        📋 Copy English
+                    </button>
+                </div>
+
+                <div class="outreach-template">
+                    <span class="template-label">📧 Spanish Template (Español)</span>
+                    <div class="template-text" id="spanishTemplate">${spanishTemplate}</div>
+                    <button class="btn btn-primary copy-btn" onclick="copyTemplate('spanishTemplate')">
+                        📋 Copy Spanish
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('outreachModal').classList.add('active');
+        }
+
+        function openDealDetail(dealId) {
+            const deal = dealsDatabase.find(d => d.id === dealId);
+            if (!deal) return;
+
+            const modalBody = document.getElementById('dealDetailBody');
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="color: var(--color-text-primary); margin-bottom: 0.5rem; font-size: 1.25rem;">${deal.address}</h3>
+                            <p style="color: var(--color-text-muted); font-size: 0.875rem;">${deal.municipality} • ${deal.type}${deal.year ? ` • Built ${deal.year}` : ''}</p>
+                        </div>
+                        <div style="background: var(--color-accent); color: var(--color-bg-base); padding: 0.75rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 1.5rem;">
+                            ${deal.score}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: var(--color-bg-surface); padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: var(--color-danger);">⚠️</span> Pain Points
+                    </h4>
+                    ${deal.painPoints.map(point => `
+                        <div style="display: flex; align-items: start; gap: 0.5rem; padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--color-danger); border-radius: 4px; margin-bottom: 0.5rem;">
+                            <span style="color: var(--color-danger); flex-shrink: 0;">•</span>
+                            <span style="color: var(--color-text-secondary); font-size: 0.875rem;">${point}</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px;">
+                        <div style="color: var(--color-text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">Current Units</div>
+                        <div style="color: var(--color-text-primary); font-size: 1.5rem; font-weight: 700;">${deal.metrics.currentUnits}</div>
+                    </div>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px;">
+                        <div style="color: var(--color-text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">Potential Units</div>
+                        <div style="color: var(--color-success); font-size: 1.5rem; font-weight: 700;">${deal.metrics.potentialUnits}</div>
+                    </div>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px;">
+                        <div style="color: var(--color-text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">Current FAR</div>
+                        <div style="color: var(--color-text-primary); font-size: 1.5rem; font-weight: 700;">${deal.metrics.farCurrent}</div>
+                    </div>
+                    <div style="background: var(--color-bg-surface); padding: 1rem; border-radius: 8px;">
+                        <div style="color: var(--color-text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">Allowed FAR</div>
+                        <div style="color: var(--color-success); font-size: 1.5rem; font-weight: 700;">${deal.metrics.farAllowed}</div>
+                    </div>
+                </div>
+
+                <div style="background: var(--color-bg-surface); padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 1rem;">👤 Owner Profile</h4>
+                    <div style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.8;">
+                        <p style="margin-bottom: 0.5rem;"><strong style="color: var(--color-text-primary);">${deal.owner.name}</strong></p>
+                        <p style="margin-bottom: 0.5rem;">Type: ${deal.owner.type}</p>
+                        <p style="margin-bottom: 0.5rem;">Owned since: ${deal.owner.yearPurchased}</p>
+                        <p>Location: ${deal.owner.address}</p>
+                    </div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(14, 165, 233, 0.1)); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--color-accent); margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--color-accent); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>💡</span> Strategy
+                    </h4>
+                    <p style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.6;">${deal.strategy}</p>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+                    ${deal.tags.map(tag => {
+                        const tagClass = tag.includes('Opportunity') ? 'background: rgba(16, 185, 129, 0.15); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.3);' : 
+                                       tag.includes('Urgency') ? 'background: rgba(245, 158, 11, 0.15); color: var(--color-warning); border: 1px solid rgba(245, 158, 11, 0.3);' : 
+                                       'background: rgba(56, 189, 248, 0.15); color: var(--color-accent); border: 1px solid rgba(56, 189, 248, 0.3);';
+                        return `<span style="${tagClass} padding: 0.375rem 0.75rem; border-radius: 16px; font-size: 0.75rem; font-weight: 500;">${tag}</span>`;
+                    }).join('')}
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                    <button class="btn btn-primary" onclick="closeDealDetailModal(); openOutreachModal(${deal.id})">
+                        📧 Generate Outreach
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportSingleDeal(${deal.id})">
+                        📊 Export Deal
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('dealDetailModal').classList.add('active');
+        }
+
+        function closeDealDetailModal() {
+            document.getElementById('dealDetailModal').classList.remove('active');
+        }
+
+        function exportSingleDeal(dealId) {
+            const deal = dealsDatabase.find(d => d.id === dealId);
+            if (!deal) return;
+
+            let csv = 'Address,Municipality,Type,Year,JV Score,Current Units,Potential Units,FAR Current,FAR Allowed,Owner,Owner Type,Opportunity Zone,Strategy,Pain Points\n';
+            const painPoints = deal.painPoints.join('; ').replace(/,/g, ' -');
+            const strategy = deal.strategy.replace(/,/g, ' -');
+            csv += `"${deal.address}","${deal.municipality}","${deal.type}",${deal.year || 'N/A'},${deal.score},${deal.metrics.currentUnits},${deal.metrics.potentialUnits},${deal.metrics.farCurrent},${deal.metrics.farAllowed},"${deal.owner.name}","${deal.owner.type}",${deal.opportunityZone ? 'Yes' : 'No'},"${strategy}","${painPoints}"\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `prive-deal-${dealId}-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function closeModal() {
+            document.getElementById('outreachModal').classList.remove('active');
+        }
+
+        function copyTemplate(templateId) {
+            const template = document.getElementById(templateId);
+            const text = template.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                btn.style.background = 'var(--color-success)';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            });
+        }
+
+        document.getElementById('dealDetailModal').addEventListener('click', (e) => {
+            if (e.target.id === 'dealDetailModal') {
+                closeDealDetailModal();
+            }
+        });
+
+        document.getElementById('outreachModal').addEventListener('click', (e) => {
+            if (e.target.id === 'outreachModal') {
+                closeModal();
+            }
+        });
+
+        document.getElementById('scoringModal').addEventListener('click', (e) => {
+            if (e.target.id === 'scoringModal') {
+                closeScoringModal();
+            }
+        });
+
+        function toggleApiPanel() {
+            const container = document.getElementById('apiStatusContainer');
+            const icon = document.getElementById('apiToggleIcon');
+            if (container.style.display === 'none') {
+                container.style.display = 'grid';
+                icon.textContent = '▲';
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function showScoringLogic() {
+            document.getElementById('scoringModal').classList.add('active');
+        }
+
+        function closeScoringModal() {
+            document.getElementById('scoringModal').classList.remove('active');
+        }
+
+        function exportDeals() {
+            const deals = filteredDeals;
+            let csv = 'Address,Municipality,Type,Year,JV Score,Current Units,Potential Units,FAR Current,FAR Allowed,Owner,Owner Type,Opportunity Zone,Pain Points\n';
+            
+            deals.forEach(deal => {
+                const painPoints = deal.painPoints.join('; ').replace(/,/g, ' -');
+                csv += `"${deal.address}","${deal.municipality}","${deal.type}",${deal.year || 'N/A'},${deal.score},${deal.metrics.currentUnits},${deal.metrics.potentialUnits},${deal.metrics.farCurrent},${deal.metrics.farAllowed},"${deal.owner.name}","${deal.owner.type}",${deal.opportunityZone ? 'Yes' : 'No'},"${painPoints}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `prive-deals-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function applySorting() {
+            const sortBy = document.getElementById('sortBy').value;
+            
+            switch(sortBy) {
+                case 'score-desc':
+                    filteredDeals.sort((a, b) => b.score - a.score);
+                    break;
+                case 'score-asc':
+                    filteredDeals.sort((a, b) => a.score - b.score);
+                    break;
+                case 'units-desc':
+                    filteredDeals.sort((a, b) => b.metrics.potentialUnits - a.metrics.potentialUnits);
+                    break;
+                case 'municipality':
+                    filteredDeals.sort((a, b) => a.municipality.localeCompare(b.municipality));
+                    break;
+                case 'type':
+                    filteredDeals.sort((a, b) => a.type.localeCompare(b.type));
+                    break;
+            }
+            
+            renderDeals(filteredDeals);
+        }
+
+        function toggleMapView() {
+            const mapContainer = document.getElementById('mapContainer');
+            const dealsContainer = document.getElementById('dealsContainer');
+            const btn = document.getElementById('mapToggleBtn');
+            
+            if (mapContainer.style.display === 'none') {
+                mapContainer.style.display = 'block';
+                dealsContainer.style.display = 'none';
+                btn.innerHTML = '<span>📋</span> Show List';
+            } else {
+                mapContainer.style.display = 'none';
+                dealsContainer.style.display = 'grid';
+                btn.innerHTML = '<span>🗺️</span> Show Map';
+            }
+        }
+
+        function toggleApiSourceDetail(sourceId) {
+            const detail = document.getElementById(`${sourceId}-detail`);
+            const icon = document.getElementById(`${sourceId}-icon`);
+            
+            if (detail.style.display === 'none') {
+                detail.style.display = 'block';
+                icon.textContent = '▲';
+            } else {
+                detail.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function updateTimestamp() {
+            const now = new Date();
+            const options = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+            document.getElementById('lastUpdated').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        updateTimestamp();
+        renderDeals(filteredDeals);
+    </script>
+</body>
+</html>
+

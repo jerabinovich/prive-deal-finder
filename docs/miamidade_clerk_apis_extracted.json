@@ -1,0 +1,805 @@
+{
+  "source_url": "https://www2.miamidadeclerk.gov/Developers/Help",
+  "base_url": "https://www2.miamidadeclerk.gov/Developers/",
+  "note": "Please precede your API call with the secure web URL www2.miamidadeclerk.gov/Developers/",
+  "extracted_at_utc": "2026-02-17T12:30:36.190785+00:00",
+  "endpoint_count": 12,
+  "endpoints": [
+    {
+      "category": "Civil",
+      "endpoint": "GET api/Civil?caseNumber={caseNumber}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-Civil_caseNumber_AuthKey",
+      "summary": "Get civil case information by case number. Your Developer account must be enabled and contain units. Additional Civil Information ... api/Civil?caseNumber={caseNumber}&AuthKey={AuthKey}",
+      "request_line": "GET api/Civil?caseNumber={caseNumber}&AuthKey={AuthKey}",
+      "description": "Get civil case information by case number. Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "caseNumber",
+          "description": "Alpha Numeric",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<CaseInfoResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <CaseInfo>\r\n    <caseID>1</caseID>\r\n    <caseNumber>sample string 2</caseNumber>\r\n    <filingDate>sample string 3</filingDate>\r\n    <caseStyle>sample string 4</caseStyle>\r\n    <caseTypeCode>sample string 5</caseTypeCode>\r\n    <caseType>sample string 6</caseType>\r\n    <juditialSection>sample string 7</juditialSection>\r\n    <courtLocation>sample string 8</courtLocation>\r\n    <stateCaseNumber>sample string 9</stateCaseNumber>\r\n    <consolidatedCase>sample string 10</consolidatedCase>\r\n    <dispositionCode>sample string 11</dispositionCode>\r\n    <dispositionDate>sample string 12</dispositionDate>\r\n    <filingDateSort>2026-02-17T07:30:34.3404279-05:00</filingDateSort>\r\n    <caseStatus>sample string 14</caseStatus>\r\n  </CaseInfo>\r\n</CaseInfoResponse>"
+        }
+      ]
+    },
+    {
+      "category": "Civil",
+      "endpoint": "GET api/Civil?civilCaseNumber={civilCaseNumber}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-Civil_civilCaseNumber_AuthKey",
+      "summary": "Get civil case dockets, associated with an image, by case number. Your Developer account must be enabled and contain units. Additional Civil Information ... api/Civil?civilCaseNumber={civilCaseNumber}&AuthKey={AuthKey}",
+      "request_line": "GET api/Civil?civilCaseNumber={civilCaseNumber}&AuthKey={AuthKey}",
+      "description": "Get civil case dockets, associated with an image, by case number. Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "civilCaseNumber",
+          "description": "Alpha Numeric",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<DocketResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <DocketsList>\r\n    <DocketInfo>\r\n      <eventID>1</eventID>\r\n      <eventDate>sample string 2</eventDate>\r\n      <eventBookAndPage>sample string 3</eventBookAndPage>\r\n      <docketCode>sample string 4</docketCode>\r\n      <docketDescrition>sample string 5</docketDescrition>\r\n      <comments>sample string 6</comments>\r\n      <eventType>sample string 7</eventType>\r\n      <numberOfDocuments>8</numberOfDocuments>\r\n      <docketNumber>9</docketNumber>\r\n    </DocketInfo>\r\n    <DocketInfo>\r\n      <eventID>1</eventID>\r\n      <eventDate>sample string 2</eventDate>\r\n      <eventBookAndPage>sample string 3</eventBookAndPage>\r\n      <docketCode>sample string 4</docketCode>\r\n      <docketDescrition>sample string 5</docketDescrition>\r\n      <comments>sample string 6</comments>\r\n      <eventType>sample string 7</eventType>\r\n      <numberOfDocuments>8</numberOfDocuments>\r\n      <docketNumber>9</docketNumber>\r\n    </DocketInfo>\r\n  </DocketsList>\r\n</DocketResponse>"
+        }
+      ]
+    },
+    {
+      "category": "Civil",
+      "endpoint": "GET api/Civil?caseNumber={caseNumber}&docketNumber={docketNumber}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-Civil_caseNumber_docketNumber_AuthKey",
+      "summary": "Get civil case documents (images) by case number and docket number. Your Developer account must be enabled and contain units. Additional Civil Information ... api/Civil?caseNumber={caseNumber}&docketNumber={docketNumber}&AuthKey={AuthKey}",
+      "request_line": "GET api/Civil?caseNumber={caseNumber}&docketNumber={docketNumber}&AuthKey={AuthKey}",
+      "description": "Get civil case documents (images) by case number and docket number. Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "caseNumber",
+          "description": "Alpha Numeric",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "docketNumber",
+          "description": "Numeric",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 4\",\r\n  \"Status\": \"sample string 2\",\r\n  \"StatusDesc\": \"sample string 3\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<DocketDocumentResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 2</Status>\r\n  <StatusDesc>sample string 3</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 4</IPAddress>\r\n  <DocketDocument>sample string 1</DocketDocument>\r\n</DocketDocumentResponse>"
+        }
+      ]
+    },
+    {
+      "category": "OfficialRecords",
+      "endpoint": "GET api/OfficialRecords?parameter1={parameter1}&parameter2={parameter2}&authKey={authKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-OfficialRecords_parameter1_parameter2_authKey",
+      "summary": "Your Developer account must be enabled and contain units. Additional OfficialRecords Information ... api/OfficialRecords?parameter1={parameter1}&parameter2={parameter2}&authKey={authKey}",
+      "request_line": "GET api/OfficialRecords?parameter1={parameter1}&parameter2={parameter2}&authKey={authKey}",
+      "description": "Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "parameter1",
+          "description": "Alpha Numeric [MAX 25 DIGITS] - [MIN 1 DIGIT] If using CFN parameter1 = CFN YEAR in 4 digit year format Example: 1985 If using BOOK and PAGE parameter1 = BOOK in 4 digit format Example: 2005 If using FOLIO NUMBER parameter1 = FOLIO_NUMBER in 25 or less digit format Example: 1234567891011",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "parameter2",
+          "description": "String If using CFN parameter2 = Letter \"R\" + CFN SQN Example: R123456789 If using BOOK and PAGE parameter2 = PAGE Example: 22471 If using FOLIO NUMBER parameter2 must be = \"FN\" Example: FN",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "authKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<OfficialRecordsResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <OfficialRecordList>\r\n    <OfficialRecords>\r\n      <CFN_MASTER_ID>1</CFN_MASTER_ID>\r\n      <CFN_YEAR>1</CFN_YEAR>\r\n      <CFN_SEQ>1</CFN_SEQ>\r\n      <DOC_TYPE>sample string 2</DOC_TYPE>\r\n      <REC_DATE>2026-02-17T07:30:34.8259064-05:00</REC_DATE>\r\n      <DOC_DATE>2026-02-17T07:30:34.8259064-05:00</DOC_DATE>\r\n      <REC_BOOK>1</REC_BOOK>\r\n      <REC_PAGE>sample string 3</REC_PAGE>\r\n      <BOOK_TYPE>sample string 4</BOOK_TYPE>\r\n      <FIRST_PARTY>sample string 5</FIRST_PARTY>\r\n      <SECOND_PARTY>sample string 6</SECOND_PARTY>\r\n      <PARTY_CODE>sample string 7</PARTY_CODE>\r\n      <FIRM_INDIV>sample string 8</FIRM_INDIV>\r\n      <ORIG_CFN_YEAR>1</ORIG_CFN_YEAR>\r\n      <ORIG_CFN_SEQ>1</ORIG_CFN_SEQ>\r\n      <ORIG_REC_BOOK>1</ORIG_REC_BOOK>\r\n      <ORIG_REC_PAGE>1</ORIG_REC_PAGE>\r\n      <LINK_DOCTYPE>sample string 9</LINK_DOCTYPE>\r\n      <ORIG_MISC_REF>sample string 10</ORIG_MISC_REF>\r\n      <BLOCK_NO>sample string 11</BLOCK_NO>\r\n      <PLAT_BOOK>1</PLAT_BOOK>\r\n      <PLAT_PAGE>1</PLAT_PAGE>\r\n      <SUBDIV_NAME>sample string 12</SUBDIV_NAME>\r\n      <LEGAL_DESCRIPTION>sample string 13</LEGAL_DESCRIPTION>\r\n      <TOWNSHIP>sample string 14</TOWNSHIP>\r\n      <SECTION>sample string 15</SECTION>\r\n      <RANGE>sample string 16</RANGE>\r\n      <FOLIO_NUMBER>sample string 17</FOLIO_NUMBER>\r\n      <GROUP_ID>1</GROUP_ID>\r\n      <REC_ROWID>sample string 18</REC_ROWID>\r\n      <KEY>1</KEY>\r\n      <DOC_PAGES>1</DOC_PAGES>\r\n      <APPEND_PAGES>1</APPEND_PAGES>\r\n      <CASE_NUM>sample string 19</CASE_NUM>\r\n      <STATUS>sample string 20</STATUS>\r\n      <RERECORD_FLAG>sample string 21</RERECORD_FLAG>\r\n      <CONSIDERATION_1>1</CONSIDERATION_1>\r\n      <CONSIDERATION_2>1</CONSIDERATION_2>\r\n      <DEED_DOC_TAX>1</DEED_DOC_TAX>\r\n      <SINGLE_FAMILY>sample string 22</SINGLE_FAMILY>\r\n      <SURTAX>1</SURTAX>\r\n      <INTANGIBLE>1</INTANGIBLE>\r\n      <DOCUMENTARY_STAMPS>1</DOCUMENTARY_STAMPS>\r\n      <PARTY_SEQUENCE>1</PARTY_SEQUENCE>\r\n    </OfficialRecords>\r\n    <OfficialRecords>\r\n      <CFN_MASTER_ID>1</CFN_MASTER_ID>\r\n      <CFN_YEAR>1</CFN_YEAR>\r\n      <CFN_SEQ>1</CFN_SEQ>\r\n      <DOC_TYPE>sample string 2</DOC_TYPE>\r\n      <REC_DATE>2026-02-17T07:30:34.8259064-05:00</REC_DATE>\r\n      <DOC_DATE>2026-02-17T07:30:34.8259064-05:00</DOC_DATE>\r\n      <REC_BOOK>1</REC_BOOK>\r\n      <REC_PAGE>sample string 3</REC_PAGE>\r\n      <BOOK_TYPE>sample string 4</BOOK_TYPE>\r\n      <FIRST_PARTY>sample string 5</FIRST_PARTY>\r\n      <SECOND_PARTY>sample string 6</SECOND_PARTY>\r\n      <PARTY_CODE>sample string 7</PARTY_CODE>\r\n      <FIRM_INDIV>sample string 8</FIRM_INDIV>\r\n      <ORIG_CFN_YEAR>1</ORIG_CFN_YEAR>\r\n      <ORIG_CFN_SEQ>1</ORIG_CFN_SEQ>\r\n      <ORIG_REC_BOOK>1</ORIG_REC_BOOK>\r\n      <ORIG_REC_PAGE>1</ORIG_REC_PAGE>\r\n      <LINK_DOCTYPE>sample string 9</LINK_DOCTYPE>\r\n      <ORIG_MISC_REF>sample string 10</ORIG_MISC_REF>\r\n      <BLOCK_NO>sample string 11</BLOCK_NO>\r\n      <PLAT_BOOK>1</PLAT_BOOK>\r\n      <PLAT_PAGE>1</PLAT_PAGE>\r\n      <SUBDIV_NAME>sample string 12</SUBDIV_NAME>\r\n      <LEGAL_DESCRIPTION>sample string 13</LEGAL_DESCRIPTION>\r\n      <TOWNSHIP>sample string 14</TOWNSHIP>\r\n      <SECTION>sample string 15</SECTION>\r\n      <RANGE>sample string 16</RANGE>\r\n      <FOLIO_NUMBER>sample string 17</FOLIO_NUMBER>\r\n      <GROUP_ID>1</GROUP_ID>\r\n      <REC_ROWID>sample string 18</REC_ROWID>\r\n      <KEY>1</KEY>\r\n      <DOC_PAGES>1</DOC_PAGES>\r\n      <APPEND_PAGES>1</APPEND_PAGES>\r\n      <CASE_NUM>sample string 19</CASE_NUM>\r\n      <STATUS>sample string 20</STATUS>\r\n      <RERECORD_FLAG>sample string 21</RERECORD_FLAG>\r\n      <CONSIDERATION_1>1</CONSIDERATION_1>\r\n      <CONSIDERATION_2>1</CONSIDERATION_2>\r\n      <DEED_DOC_TAX>1</DEED_DOC_TAX>\r\n      <SINGLE_FAMILY>sample string 22</SINGLE_FAMILY>\r\n      <SURTAX>1</SURTAX>\r\n      <INTANGIBLE>1</INTANGIBLE>\r\n      <DOCUMENTARY_STAMPS>1</DOCUMENTARY_STAMPS>\r\n      <PARTY_SEQUENCE>1</PARTY_SEQUENCE>\r\n    </OfficialRecords>\r\n  </OfficialRecordList>\r\n  <RecordImages>\r\n    <string>sample string 1</string>\r\n    <string>sample string 2</string>\r\n  </RecordImages>\r\n</OfficialRecordsResponse>"
+        }
+      ]
+    },
+    {
+      "category": "Criminal",
+      "endpoint": "GET api/Criminal?CaseNumber={CaseNumber}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-Criminal_CaseNumber_AuthKey",
+      "summary": "Please note that in addition to criminal charges such as felonies and misdemeanors, our system also includes civil infractions and municipal ordinances that are not considered criminal offenses. Your Developer account must be enabled and contain units. Additional Criminal Information ... api/Criminal?CaseNumber={CaseNumber}&AuthKey={AuthKey}",
+      "request_line": "GET api/Criminal?CaseNumber={CaseNumber}&AuthKey={AuthKey}",
+      "description": "Please note that in addition to criminal charges such as felonies and misdemeanors, our system also includes civil infractions and municipal ordinances that are not considered criminal offenses. Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "CaseNumber",
+          "description": "F: Felony M: Misdemeanor, Civil Infraction, Municipal Ordinance Violation B: Misdemeanor, Civil Infraction, Municipal Ordinance Violation heard in a Branch Court Example: M12345678",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "CaseData",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"CaseData\": {\r\n    \"Aisle\": \"sample string 23\",\r\n    \"Aka\": \"sample string 5\",\r\n    \"AltJudge\": \"sample string 26\",\r\n    \"AltSection\": \"sample string 25\",\r\n    \"Assessment\": \"sample string 41\",\r\n    \"BondAmount\": \"sample string 37\",\r\n    \"BondIssueDate\": \"sample string 40\",\r\n    \"BondStatus\": \"sample string 38\",\r\n    \"BondType\": \"sample string 39\",\r\n    \"Box\": \"sample string 24\",\r\n    \"CaseNumber\": \"sample string 1\",\r\n    \"ChargesList\": [\r\n      {\r\n        \"Description\": \"sample string 2\",\r\n        \"Disposition\": \"sample string 4\",\r\n        \"SentenceLength\": \"sample string 6\",\r\n        \"SentenceType\": \"sample string 5\",\r\n        \"Seq\": \"sample string 1\",\r\n        \"Type\": \"sample string 3\"\r\n      },\r\n      {\r\n        \"Description\": \"sample string 2\",\r\n        \"Disposition\": \"sample string 4\",\r\n        \"SentenceLength\": \"sample string 6\",\r\n        \"SentenceType\": \"sample string 5\",\r\n        \"Seq\": \"sample string 1\",\r\n        \"Type\": \"sample string 3\"\r\n      }\r\n    ],\r\n    \"ClosedDate\": \"sample string 7\",\r\n    \"CourtAddress\": \"sample string 16\",\r\n    \"CourtBuilding\": \"sample string 13\",\r\n    \"CourtName\": \"sample string 14\",\r\n    \"CourtRoom\": \"sample string 15\",\r\n    \"DefendantInJail\": \"sample string 35\",\r\n    \"DefendantReleaseTo\": \"sample string 36\",\r\n    \"DefenseAttorney\": \"sample string 20\",\r\n    \"DoB\": \"sample string 4\",\r\n    \"FileLocation\": \"sample string 22\",\r\n    \"FiledDate\": \"sample string 6\",\r\n    \"FiledJudge\": \"sample string 19\",\r\n    \"FiledSection\": \"sample string 21\",\r\n    \"HearingDate\": \"sample string 10\",\r\n    \"HearingTime\": \"sample string 11\",\r\n    \"HearingType\": \"sample string 12\",\r\n    \"MoreCharges\": true,\r\n    \"Name\": \"sample string 3\",\r\n    \"NextCase\": \"sample string 17\",\r\n    \"PreviousCase\": \"sample string 18\",\r\n    \"ProbationEndDate\": \"sample string 31\",\r\n    \"ProbationLengthAmount\": \"sample string 32\",\r\n    \"ProbationLengthType\": \"sample string 33\",\r\n    \"ProbationStartDate\": \"sample string 30\",\r\n    \"ProbationType\": \"sample string 34\",\r\n    \"SentenceNum\": \"sample string 28\",\r\n    \"SentencePeriod\": \"sample string 29\",\r\n    \"StateCaseNumber\": \"sample string 2\",\r\n    \"WarrantAmount\": \"sample string 9\",\r\n    \"WarrantType\": \"sample string 8\"\r\n  },\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<CriminalCaseResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <CaseData>\r\n    <CaseNumber>sample string 1</CaseNumber>\r\n    <StateCaseNumber>sample string 2</StateCaseNumber>\r\n    <Name>sample string 3</Name>\r\n    <DoB>sample string 4</DoB>\r\n    <Aka>sample string 5</Aka>\r\n    <FiledDate>sample string 6</FiledDate>\r\n    <ClosedDate>sample string 7</ClosedDate>\r\n    <WarrantType>sample string 8</WarrantType>\r\n    <WarrantAmount>sample string 9</WarrantAmount>\r\n    <HearingDate>sample string 10</HearingDate>\r\n    <HearingTime>sample string 11</HearingTime>\r\n    <HearingType>sample string 12</HearingType>\r\n    <CourtBuilding>sample string 13</CourtBuilding>\r\n    <CourtName>sample string 14</CourtName>\r\n    <CourtRoom>sample string 15</CourtRoom>\r\n    <CourtAddress>sample string 16</CourtAddress>\r\n    <NextCase>sample string 17</NextCase>\r\n    <PreviousCase>sample string 18</PreviousCase>\r\n    <FiledJudge>sample string 19</FiledJudge>\r\n    <DefenseAttorney>sample string 20</DefenseAttorney>\r\n    <FiledSection>sample string 21</FiledSection>\r\n    <FileLocation>sample string 22</FileLocation>\r\n    <Aisle>sample string 23</Aisle>\r\n    <Box>sample string 24</Box>\r\n    <AltSection>sample string 25</AltSection>\r\n    <AltJudge>sample string 26</AltJudge>\r\n    <MoreCharges>true</MoreCharges>\r\n    <SentenceNum>sample string 28</SentenceNum>\r\n    <SentencePeriod>sample string 29</SentencePeriod>\r\n    <ProbationStartDate>sample string 30</ProbationStartDate>\r\n    <ProbationEndDate>sample string 31</ProbationEndDate>\r\n    <ProbationLengthAmount>sample string 32</ProbationLengthAmount>\r\n    <ProbationLengthType>sample string 33</ProbationLengthType>\r\n    <ProbationType>sample string 34</ProbationType>\r\n    <DefendantInJail>sample string 35</DefendantInJail>\r\n    <DefendantReleaseTo>sample string 36</DefendantReleaseTo>\r\n    <BondAmount>sample string 37</BondAmount>\r\n    <BondStatus>sample string 38</BondStatus>\r\n    <BondType>sample string 39</BondType>\r\n    <BondIssueDate>sample string 40</BondIssueDate>\r\n    <Assessment>sample string 41</Assessment>\r\n    <ChargesList>\r\n      <Charges>\r\n        <Seq>sample string 1</Seq>\r\n        <Description>sample string 2</Description>\r\n        <Type>sample string 3</Type>\r\n        <Disposition>sample string 4</Disposition>\r\n        <SentenceType>sample string 5</SentenceType>\r\n        <SentenceLength>sample string 6</SentenceLength>\r\n      </Charges>\r\n      <Charges>\r\n        <Seq>sample string 1</Seq>\r\n        <Description>sample string 2</Description>\r\n        <Type>sample string 3</Type>\r\n        <Disposition>sample string 4</Disposition>\r\n        <SentenceType>sample string 5</SentenceType>\r\n        <SentenceLength>sample string 6</SentenceLength>\r\n      </Charges>\r\n    </ChargesList>\r\n  </CaseData>\r\n</CriminalCaseResponse>"
+        }
+      ]
+    },
+    {
+      "category": "FTPapi",
+      "endpoint": "GET api/FTPapi?fileName={fileName}&folderName={folderName}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-FTPapi_fileName_folderName_AuthKey",
+      "summary": "Get FTP File. A valid folder subscription is required. Additional FTPapi Information ... api/FTPapi?fileName={fileName}&folderName={folderName}&AuthKey={AuthKey}",
+      "request_line": "GET api/FTPapi?fileName={fileName}&folderName={folderName}&AuthKey={AuthKey}",
+      "description": "Get FTP File. A valid folder subscription is required.",
+      "uri_parameters": [
+        {
+          "name": "fileName",
+          "description": "File Name",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "folderName",
+          "description": "Folder Name",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Authorization key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Version",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "Content",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusCode",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "ReasonPhrase",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "Headers",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "RequestMessage",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IsSuccessStatusCode",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": []
+    },
+    {
+      "category": "FTPapi",
+      "endpoint": "GET api/FTPapi?folderName={folderName}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-FTPapi_folderName_AuthKey",
+      "summary": "Download Folder Content. A valid folder subscription is required. Additional FTPapi Information ... api/FTPapi?folderName={folderName}&AuthKey={AuthKey}",
+      "request_line": "GET api/FTPapi?folderName={folderName}&AuthKey={AuthKey}",
+      "description": "Download Folder Content. A valid folder subscription is required.",
+      "uri_parameters": [
+        {
+          "name": "folderName",
+          "description": "Folder Name",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Authorization Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Version",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "Content",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusCode",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "ReasonPhrase",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "Headers",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "RequestMessage",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IsSuccessStatusCode",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": []
+    },
+    {
+      "category": "FTPapi",
+      "endpoint": "GET api/FTPapi?folderListName={folderListName}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-FTPapi_folderListName_AuthKey",
+      "summary": "Get Folder Files List. A valid folder subscription is required. Additional FTPapi Information ... api/FTPapi?folderListName={folderListName}&AuthKey={AuthKey}",
+      "request_line": "GET api/FTPapi?folderListName={folderListName}&AuthKey={AuthKey}",
+      "description": "Get Folder Files List. A valid folder subscription is required.",
+      "uri_parameters": [
+        {
+          "name": "folderListName",
+          "description": "Folder Name",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Authorization key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<FolderFileListResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <FileList>\r\n    <FilesList>\r\n      <FileinFolder>\r\n        <Name>sample string 1</Name>\r\n        <Extension>sample string 2</Extension>\r\n        <Size>sample string 3</Size>\r\n        <DateCreated>sample string 4</DateCreated>\r\n      </FileinFolder>\r\n      <FileinFolder>\r\n        <Name>sample string 1</Name>\r\n        <Extension>sample string 2</Extension>\r\n        <Size>sample string 3</Size>\r\n        <DateCreated>sample string 4</DateCreated>\r\n      </FileinFolder>\r\n    </FilesList>\r\n    <ReturnCode>sample string 1</ReturnCode>\r\n    <ReturnDescription>sample string 2</ReturnDescription>\r\n  </FileList>\r\n</FolderFileListResponse>"
+        }
+      ]
+    },
+    {
+      "category": "TrafficWeb",
+      "endpoint": "GET api/TrafficWeb?CaseNumber={CaseNumber}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-TrafficWeb_CaseNumber_AuthKey",
+      "summary": "Your Developer account must be enabled and contain units. Additional TrafficWeb Information ... api/TrafficWeb?CaseNumber={CaseNumber}&AuthKey={AuthKey}",
+      "request_line": "GET api/TrafficWeb?CaseNumber={CaseNumber}&AuthKey={AuthKey}",
+      "description": "Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "CaseNumber",
+          "description": "Alpha Numeric",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<TrafficResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <TrafficCase>\r\n    <ActionDate>sample string 1</ActionDate>\r\n    <ActionDesc>sample string 2</ActionDesc>\r\n    <CaseNumber>sample string 3</CaseNumber>\r\n    <CaseMasterNumber>sample string 4</CaseMasterNumber>\r\n    <CaseType>sample string 5</CaseType>\r\n    <Violation>sample string 6</Violation>\r\n    <VioDesc>sample string 7</VioDesc>\r\n    <DispoDate>sample string 8</DispoDate>\r\n    <Dispo>sample string 9</Dispo>\r\n    <IssueDate>sample string 10</IssueDate>\r\n    <FileDate>sample string 11</FileDate>\r\n    <AccidentFlag>sample string 12</AccidentFlag>\r\n    <OutofStateLicense>sample string 13</OutofStateLicense>\r\n    <DriverLicense>sample string 14</DriverLicense>\r\n    <DefendantFirst>sample string 15</DefendantFirst>\r\n    <DefendantLast>sample string 16</DefendantLast>\r\n    <DefendantMiddle>sample string 17</DefendantMiddle>\r\n    <DefendantAddress>sample string 18</DefendantAddress>\r\n    <DefendantState>sample string 19</DefendantState>\r\n    <DefendantCity>sample string 20</DefendantCity>\r\n    <DefendantZip>sample string 21</DefendantZip>\r\n    <VehicleMake>sample string 22</VehicleMake>\r\n    <VehicleYear>sample string 23</VehicleYear>\r\n    <Tag>sample string 24</Tag>\r\n    <TagYear>sample string 25</TagYear>\r\n    <TagState>sample string 26</TagState>\r\n    <DOB>sample string 27</DOB>\r\n    <HearingDivision>sample string 28</HearingDivision>\r\n    <HearingDate>sample string 29</HearingDate>\r\n    <HearingTime>sample string 30</HearingTime>\r\n    <HearingType>sample string 31</HearingType>\r\n    <HearingLocation>sample string 32</HearingLocation>\r\n    <HearingLocationDesc>sample string 33</HearingLocationDesc>\r\n    <HearingFloor>sample string 34</HearingFloor>\r\n    <HearingRoom>sample string 35</HearingRoom>\r\n    <VirtualHearing>sample string 36</VirtualHearing>\r\n    <UnlawfulSpeed>sample string 37</UnlawfulSpeed>\r\n    <SpeedLimit>sample string 38</SpeedLimit>\r\n    <PaymentReceipt>sample string 39</PaymentReceipt>\r\n    <OfficerID>sample string 40</OfficerID>\r\n    <OfficerFirst>\r\n      <string>sample string 1</string>\r\n      <string>sample string 2</string>\r\n    </OfficerFirst>\r\n    <OfficerLast>\r\n      <string>sample string 1</string>\r\n      <string>sample string 2</string>\r\n    </OfficerLast>\r\n    <PenaltyDueDate>sample string 41</PenaltyDueDate>\r\n    <TrafficSchoolFlag>sample string 42</TrafficSchoolFlag>\r\n    <TrafficSchoolAmount>sample string 43</TrafficSchoolAmount>\r\n    <TrafficCropAmount>sample string 44</TrafficCropAmount>\r\n    <UniversalCaseNumber>sample string 45</UniversalCaseNumber>\r\n    <Municipality>sample string 46</Municipality>\r\n    <MunicipalityDesc>sample string 47</MunicipalityDesc>\r\n    <Zone>sample string 48</Zone>\r\n    <ZoneDesc>sample string 49</ZoneDesc>\r\n    <ComplianceFlag>sample string 50</ComplianceFlag>\r\n    <BondNumber>sample string 51</BondNumber>\r\n    <BondAmount>sample string 52</BondAmount>\r\n    <BondsmanNumber>sample string 53</BondsmanNumber>\r\n    <FailCode>sample string 54</FailCode>\r\n    <FailDesc>sample string 55</FailDesc>\r\n    <FailDate>sample string 56</FailDate>\r\n    <Plea>sample string 57</Plea>\r\n    <CloseDate>sample string 58</CloseDate>\r\n    <AssessedAmount>sample string 59</AssessedAmount>\r\n    <PaidAmount>sample string 60</PaidAmount>\r\n    <Atty1First>sample string 61</Atty1First>\r\n    <Atty1Last>sample string 62</Atty1Last>\r\n    <Atty2First>sample string 63</Atty2First>\r\n    <Atty2Last>sample string 64</Atty2Last>\r\n    <JudgeFirst>sample string 65</JudgeFirst>\r\n    <JudgeLast>sample string 66</JudgeLast>\r\n    <RptCode>sample string 67</RptCode>\r\n    <TotalCompanionCases>68</TotalCompanionCases>\r\n    <WitnessList>\r\n      <string>sample string 1</string>\r\n      <string>sample string 2</string>\r\n    </WitnessList>\r\n    <ArrayOfCaseTable>\r\n      <string>sample string 1</string>\r\n      <string>sample string 2</string>\r\n    </ArrayOfCaseTable>\r\n    <ArrayOfViolations>\r\n      <string>sample string 1</string>\r\n      <string>sample string 2</string>\r\n    </ArrayOfViolations>\r\n    <ArrayOfViolcationsDesc>\r\n      <string>sample string 1</string>\r\n      <string>sample string 2</string>\r\n    </ArrayOfViolcationsDesc>\r\n  </TrafficCase>\r\n</TrafficResponse>"
+        }
+      ]
+    },
+    {
+      "category": "TrafficWeb",
+      "endpoint": "GET api/TrafficWeb?DL={DL}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-TrafficWeb_DL_AuthKey",
+      "summary": "Your Developer account must be enabled and contain units. Additional TrafficWeb Information ... api/TrafficWeb?DL={DL}&AuthKey={AuthKey}",
+      "request_line": "GET api/TrafficWeb?DL={DL}&AuthKey={AuthKey}",
+      "description": "Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "DL",
+          "description": "[ Drivers License with Dashes]",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Authorization Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<TrafficCasesResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <CasesList>\r\n    <Cases>\r\n      <Case>\r\n        <DriverLicenseNum>sample string 1</DriverLicenseNum>\r\n        <DefendantName>sample string 2</DefendantName>\r\n        <DoB>sample string 3</DoB>\r\n        <CaseNumber>sample string 4</CaseNumber>\r\n        <CaseType>sample string 5</CaseType>\r\n        <ActionCode>sample string 6</ActionCode>\r\n        <ActionDescription>sample string 7</ActionDescription>\r\n        <AmountDue>sample string 8</AmountDue>\r\n        <IssueDate>sample string 9</IssueDate>\r\n        <ViolationCode>sample string 10</ViolationCode>\r\n        <ViolationDescription>sample string 11</ViolationDescription>\r\n        <ViolationDisplayCode>sample string 12</ViolationDisplayCode>\r\n      </Case>\r\n      <Case>\r\n        <DriverLicenseNum>sample string 1</DriverLicenseNum>\r\n        <DefendantName>sample string 2</DefendantName>\r\n        <DoB>sample string 3</DoB>\r\n        <CaseNumber>sample string 4</CaseNumber>\r\n        <CaseType>sample string 5</CaseType>\r\n        <ActionCode>sample string 6</ActionCode>\r\n        <ActionDescription>sample string 7</ActionDescription>\r\n        <AmountDue>sample string 8</AmountDue>\r\n        <IssueDate>sample string 9</IssueDate>\r\n        <ViolationCode>sample string 10</ViolationCode>\r\n        <ViolationDescription>sample string 11</ViolationDescription>\r\n        <ViolationDisplayCode>sample string 12</ViolationDisplayCode>\r\n      </Case>\r\n    </Cases>\r\n    <ReturnCode>sample string 1</ReturnCode>\r\n    <ReturnDescription>sample string 2</ReturnDescription>\r\n  </CasesList>\r\n</TrafficCasesResponse>"
+        }
+      ]
+    },
+    {
+      "category": "ParkingWeb",
+      "endpoint": "GET api/ParkingWeb?citationNumber={citationNumber}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-ParkingWeb_citationNumber_AuthKey",
+      "summary": "Your Developer account must be enabled and contain units. Additional ParkingWeb Information ... api/ParkingWeb?citationNumber={citationNumber}&AuthKey={AuthKey}",
+      "request_line": "GET api/ParkingWeb?citationNumber={citationNumber}&AuthKey={AuthKey}",
+      "description": "Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "citationNumber",
+          "description": "Alpha Numeric",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Your Developer Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "ParkingCitation",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1,\r\n  \"ParkingCitation\": {\r\n    \"citationModel\": [\r\n      {\r\n        \"cit_amt_due_after\": \"sample string 10\",\r\n        \"cit_amt_due_now\": \"sample string 8\",\r\n        \"cit_cagency_act_code\": \"sample string 40\",\r\n        \"cit_cagency_act_date\": \"sample string 41\",\r\n        \"cit_cagency_code\": \"sample string 37\",\r\n        \"cit_cagency_name\": \"sample string 38\",\r\n        \"cit_cagency_phone\": \"sample string 39\",\r\n        \"cit_cas_code\": \"sample string 29\",\r\n        \"cit_court\": \"sample string 24\",\r\n        \"cit_court_add\": \"sample string 32\",\r\n        \"cit_court_city\": \"sample string 33\",\r\n        \"cit_court_code\": \"sample string 30\",\r\n        \"cit_court_date\": \"sample string 27\",\r\n        \"cit_court_disp\": \"sample string 48\",\r\n        \"cit_court_name\": \"sample string 31\",\r\n        \"cit_court_phone\": \"sample string 36\",\r\n        \"cit_court_state\": \"sample string 34\",\r\n        \"cit_court_time\": \"sample string 28\",\r\n        \"cit_court_zip\": \"sample string 35\",\r\n        \"cit_disp_code\": \"sample string 25\",\r\n        \"cit_disp_date\": \"sample string 26\",\r\n        \"cit_due_date\": \"sample string 9\",\r\n        \"cit_issue_date\": \"sample string 2\",\r\n        \"cit_issue_time\": \"sample string 3\",\r\n        \"cit_location\": \"sample string 11\",\r\n        \"cit_meter_status\": \"sample string 4\",\r\n        \"cit_mun_code\": \"sample string 22\",\r\n        \"cit_mun_desc\": \"sample string 23\",\r\n        \"cit_muncan_status\": \"sample string 5\",\r\n        \"cit_number\": \"sample string 1\",\r\n        \"cit_orig_tag_license\": \"sample string 45\",\r\n        \"cit_orig_tag_state\": \"sample string 46\",\r\n        \"cit_public_comment\": \"sample string 44\",\r\n        \"cit_rejpay_amt\": \"sample string 42\",\r\n        \"cit_rejpay_date\": \"sample string 43\",\r\n        \"cit_status_code\": \"sample string 6\",\r\n        \"cit_status_desc\": \"sample string 7\",\r\n        \"cit_statute\": \"sample string 47\",\r\n        \"cit_veh_color1130\": \"sample string 18\",\r\n        \"cit_veh_color1135\": \"sample string 14\",\r\n        \"cit_veh_color2130\": \"sample string 19\",\r\n        \"cit_veh_color2135\": \"sample string 15\",\r\n        \"cit_veh_make130\": \"sample string 16\",\r\n        \"cit_veh_make135\": \"sample string 12\",\r\n        \"cit_veh_style130\": \"sample string 17\",\r\n        \"cit_veh_style135\": \"sample string 13\",\r\n        \"cit_vio_code\": \"sample string 20\",\r\n        \"cit_vio_desc\": \"sample string 21\"\r\n      },\r\n      {\r\n        \"cit_amt_due_after\": \"sample string 10\",\r\n        \"cit_amt_due_now\": \"sample string 8\",\r\n        \"cit_cagency_act_code\": \"sample string 40\",\r\n        \"cit_cagency_act_date\": \"sample string 41\",\r\n        \"cit_cagency_code\": \"sample string 37\",\r\n        \"cit_cagency_name\": \"sample string 38\",\r\n        \"cit_cagency_phone\": \"sample string 39\",\r\n        \"cit_cas_code\": \"sample string 29\",\r\n        \"cit_court\": \"sample string 24\",\r\n        \"cit_court_add\": \"sample string 32\",\r\n        \"cit_court_city\": \"sample string 33\",\r\n        \"cit_court_code\": \"sample string 30\",\r\n        \"cit_court_date\": \"sample string 27\",\r\n        \"cit_court_disp\": \"sample string 48\",\r\n        \"cit_court_name\": \"sample string 31\",\r\n        \"cit_court_phone\": \"sample string 36\",\r\n        \"cit_court_state\": \"sample string 34\",\r\n        \"cit_court_time\": \"sample string 28\",\r\n        \"cit_court_zip\": \"sample string 35\",\r\n        \"cit_disp_code\": \"sample string 25\",\r\n        \"cit_disp_date\": \"sample string 26\",\r\n        \"cit_due_date\": \"sample string 9\",\r\n        \"cit_issue_date\": \"sample string 2\",\r\n        \"cit_issue_time\": \"sample string 3\",\r\n        \"cit_location\": \"sample string 11\",\r\n        \"cit_meter_status\": \"sample string 4\",\r\n        \"cit_mun_code\": \"sample string 22\",\r\n        \"cit_mun_desc\": \"sample string 23\",\r\n        \"cit_muncan_status\": \"sample string 5\",\r\n        \"cit_number\": \"sample string 1\",\r\n        \"cit_orig_tag_license\": \"sample string 45\",\r\n        \"cit_orig_tag_state\": \"sample string 46\",\r\n        \"cit_public_comment\": \"sample string 44\",\r\n        \"cit_rejpay_amt\": \"sample string 42\",\r\n        \"cit_rejpay_date\": \"sample string 43\",\r\n        \"cit_status_code\": \"sample string 6\",\r\n        \"cit_status_desc\": \"sample string 7\",\r\n        \"cit_statute\": \"sample string 47\",\r\n        \"cit_veh_color1130\": \"sample string 18\",\r\n        \"cit_veh_color1135\": \"sample string 14\",\r\n        \"cit_veh_color2130\": \"sample string 19\",\r\n        \"cit_veh_color2135\": \"sample string 15\",\r\n        \"cit_veh_make130\": \"sample string 16\",\r\n        \"cit_veh_make135\": \"sample string 12\",\r\n        \"cit_veh_style130\": \"sample string 17\",\r\n        \"cit_veh_style135\": \"sample string 13\",\r\n        \"cit_vio_code\": \"sample string 20\",\r\n        \"cit_vio_desc\": \"sample string 21\"\r\n      }\r\n    ],\r\n    \"dbkeylnext\": \"sample string 7\",\r\n    \"dbkeylprev\": \"sample string 9\",\r\n    \"dbkeypnext\": \"sample string 6\",\r\n    \"dbkeypprev\": \"sample string 8\",\r\n    \"error_message\": \"sample string 2\",\r\n    \"message130\": \"sample string 10\",\r\n    \"message135\": \"sample string 1\",\r\n    \"system_date\": \"sample string 3\",\r\n    \"system_time\": \"sample string 4\",\r\n    \"taginfoModel\": {\r\n      \"dummytag\": \"sample string 22\",\r\n      \"itemListModel\": {\r\n        \"item\": [\r\n          {\r\n            \"FirstReference\": \"sample string 1\",\r\n            \"SecondReference\": \"sample string 2\",\r\n            \"ThirdReference\": \"sample string 3\",\r\n            \"item_payclass\": [\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              },\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              }\r\n            ],\r\n            \"unitPrice\": \"sample string 4\"\r\n          },\r\n          {\r\n            \"FirstReference\": \"sample string 1\",\r\n            \"SecondReference\": \"sample string 2\",\r\n            \"ThirdReference\": \"sample string 3\",\r\n            \"item_payclass\": [\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              },\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              }\r\n            ],\r\n            \"unitPrice\": \"sample string 4\"\r\n          }\r\n        ],\r\n        \"t_total\": \"sample string 1\"\r\n      },\r\n      \"tag_case_nbr\": \"sample string 3\",\r\n      \"tag_citation_ref\": \"sample string 21\",\r\n      \"tag_court_cits\": \"sample string 8\",\r\n      \"tag_court_disp\": \"sample string 9\",\r\n      \"tag_court_early_date\": \"sample string 10\",\r\n      \"tag_court_early_time\": \"sample string 11\",\r\n      \"tag_disp\": \"sample string 4\",\r\n      \"tag_immobilization\": \"sample string 15\",\r\n      \"tag_non_renewal\": \"sample string 16\",\r\n      \"tag_number\": \"sample string 1\",\r\n      \"tag_pending_ccp_upd\": \"sample string 20\",\r\n      \"tag_pymt_type\": \"sample string 12\",\r\n      \"tag_pymt_type_reason\": \"sample string 13\",\r\n      \"tag_rent_lease\": \"sample string 14\",\r\n      \"tag_sfee\": \"sample string 7\",\r\n      \"tag_state\": \"sample string 2\",\r\n      \"tag_total_balance\": \"sample string 6\",\r\n      \"tag_total_open_cits\": \"sample string 5\",\r\n      \"tag_tow\": \"sample string 18\",\r\n      \"tag_unknown\": \"sample string 17\",\r\n      \"tag_unpaid_cits\": \"sample string 23\",\r\n      \"tag_upd_allowed\": \"sample string 19\",\r\n      \"tag_warning\": \"sample string 24\"\r\n    },\r\n    \"tot_int_pymts\": \"sample string 5\",\r\n    \"tot_vru_tows\": \"sample string 11\"\r\n  }\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<ParkingResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <ParkingCitation>\r\n    <taginfoModel>\r\n      <tag_number>sample string 1</tag_number>\r\n      <tag_state>sample string 2</tag_state>\r\n      <tag_case_nbr>sample string 3</tag_case_nbr>\r\n      <tag_disp>sample string 4</tag_disp>\r\n      <tag_total_open_cits>sample string 5</tag_total_open_cits>\r\n      <tag_total_balance>sample string 6</tag_total_balance>\r\n      <tag_sfee>sample string 7</tag_sfee>\r\n      <tag_court_cits>sample string 8</tag_court_cits>\r\n      <tag_court_disp>sample string 9</tag_court_disp>\r\n      <tag_court_early_date>sample string 10</tag_court_early_date>\r\n      <tag_court_early_time>sample string 11</tag_court_early_time>\r\n      <tag_pymt_type>sample string 12</tag_pymt_type>\r\n      <tag_pymt_type_reason>sample string 13</tag_pymt_type_reason>\r\n      <tag_rent_lease>sample string 14</tag_rent_lease>\r\n      <tag_immobilization>sample string 15</tag_immobilization>\r\n      <tag_non_renewal>sample string 16</tag_non_renewal>\r\n      <tag_unknown>sample string 17</tag_unknown>\r\n      <tag_tow>sample string 18</tag_tow>\r\n      <tag_upd_allowed>sample string 19</tag_upd_allowed>\r\n      <tag_pending_ccp_upd>sample string 20</tag_pending_ccp_upd>\r\n      <tag_citation_ref>sample string 21</tag_citation_ref>\r\n      <itemListModel>\r\n        <item>\r\n          <itemModel>\r\n            <FirstReference>sample string 1</FirstReference>\r\n            <SecondReference>sample string 2</SecondReference>\r\n            <ThirdReference>sample string 3</ThirdReference>\r\n            <item_payclass>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n            </item_payclass>\r\n            <unitPrice>sample string 4</unitPrice>\r\n          </itemModel>\r\n          <itemModel>\r\n            <FirstReference>sample string 1</FirstReference>\r\n            <SecondReference>sample string 2</SecondReference>\r\n            <ThirdReference>sample string 3</ThirdReference>\r\n            <item_payclass>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n            </item_payclass>\r\n            <unitPrice>sample string 4</unitPrice>\r\n          </itemModel>\r\n        </item>\r\n        <t_total>sample string 1</t_total>\r\n      </itemListModel>\r\n      <dummytag>sample string 22</dummytag>\r\n      <tag_unpaid_cits>sample string 23</tag_unpaid_cits>\r\n      <tag_warning>sample string 24</tag_warning>\r\n    </taginfoModel>\r\n    <citationModel>\r\n      <citationModel>\r\n        <cit_number>sample string 1</cit_number>\r\n        <cit_issue_date>sample string 2</cit_issue_date>\r\n        <cit_issue_time>sample string 3</cit_issue_time>\r\n        <cit_meter_status>sample string 4</cit_meter_status>\r\n        <cit_muncan_status>sample string 5</cit_muncan_status>\r\n        <cit_status_code>sample string 6</cit_status_code>\r\n        <cit_status_desc>sample string 7</cit_status_desc>\r\n        <cit_amt_due_now>sample string 8</cit_amt_due_now>\r\n        <cit_due_date>sample string 9</cit_due_date>\r\n        <cit_amt_due_after>sample string 10</cit_amt_due_after>\r\n        <cit_location>sample string 11</cit_location>\r\n        <cit_veh_make135>sample string 12</cit_veh_make135>\r\n        <cit_veh_style135>sample string 13</cit_veh_style135>\r\n        <cit_veh_color1135>sample string 14</cit_veh_color1135>\r\n        <cit_veh_color2135>sample string 15</cit_veh_color2135>\r\n        <cit_veh_make130>sample string 16</cit_veh_make130>\r\n        <cit_veh_style130>sample string 17</cit_veh_style130>\r\n        <cit_veh_color1130>sample string 18</cit_veh_color1130>\r\n        <cit_veh_color2130>sample string 19</cit_veh_color2130>\r\n        <cit_vio_code>sample string 20</cit_vio_code>\r\n        <cit_vio_desc>sample string 21</cit_vio_desc>\r\n        <cit_mun_code>sample string 22</cit_mun_code>\r\n        <cit_mun_desc>sample string 23</cit_mun_desc>\r\n        <cit_court>sample string 24</cit_court>\r\n        <cit_disp_code>sample string 25</cit_disp_code>\r\n        <cit_disp_date>sample string 26</cit_disp_date>\r\n        <cit_court_date>sample string 27</cit_court_date>\r\n        <cit_court_time>sample string 28</cit_court_time>\r\n        <cit_cas_code>sample string 29</cit_cas_code>\r\n        <cit_court_code>sample string 30</cit_court_code>\r\n        <cit_court_name>sample string 31</cit_court_name>\r\n        <cit_court_add>sample string 32</cit_court_add>\r\n        <cit_court_city>sample string 33</cit_court_city>\r\n        <cit_court_state>sample string 34</cit_court_state>\r\n        <cit_court_zip>sample string 35</cit_court_zip>\r\n        <cit_court_phone>sample string 36</cit_court_phone>\r\n        <cit_cagency_code>sample string 37</cit_cagency_code>\r\n        <cit_cagency_name>sample string 38</cit_cagency_name>\r\n        <cit_cagency_phone>sample string 39</cit_cagency_phone>\r\n        <cit_cagency_act_code>sample string 40</cit_cagency_act_code>\r\n        <cit_cagency_act_date>sample string 41</cit_cagency_act_date>\r\n        <cit_rejpay_amt>sample string 42</cit_rejpay_amt>\r\n        <cit_rejpay_date>sample string 43</cit_rejpay_date>\r\n        <cit_public_comment>sample string 44</cit_public_comment>\r\n        <cit_orig_tag_license>sample string 45</cit_orig_tag_license>\r\n        <cit_orig_tag_state>sample string 46</cit_orig_tag_state>\r\n        <cit_statute>sample string 47</cit_statute>\r\n        <cit_court_disp>sample string 48</cit_court_disp>\r\n      </citationModel>\r\n      <citationModel>\r\n        <cit_number>sample string 1</cit_number>\r\n        <cit_issue_date>sample string 2</cit_issue_date>\r\n        <cit_issue_time>sample string 3</cit_issue_time>\r\n        <cit_meter_status>sample string 4</cit_meter_status>\r\n        <cit_muncan_status>sample string 5</cit_muncan_status>\r\n        <cit_status_code>sample string 6</cit_status_code>\r\n        <cit_status_desc>sample string 7</cit_status_desc>\r\n        <cit_amt_due_now>sample string 8</cit_amt_due_now>\r\n        <cit_due_date>sample string 9</cit_due_date>\r\n        <cit_amt_due_after>sample string 10</cit_amt_due_after>\r\n        <cit_location>sample string 11</cit_location>\r\n        <cit_veh_make135>sample string 12</cit_veh_make135>\r\n        <cit_veh_style135>sample string 13</cit_veh_style135>\r\n        <cit_veh_color1135>sample string 14</cit_veh_color1135>\r\n        <cit_veh_color2135>sample string 15</cit_veh_color2135>\r\n        <cit_veh_make130>sample string 16</cit_veh_make130>\r\n        <cit_veh_style130>sample string 17</cit_veh_style130>\r\n        <cit_veh_color1130>sample string 18</cit_veh_color1130>\r\n        <cit_veh_color2130>sample string 19</cit_veh_color2130>\r\n        <cit_vio_code>sample string 20</cit_vio_code>\r\n        <cit_vio_desc>sample string 21</cit_vio_desc>\r\n        <cit_mun_code>sample string 22</cit_mun_code>\r\n        <cit_mun_desc>sample string 23</cit_mun_desc>\r\n        <cit_court>sample string 24</cit_court>\r\n        <cit_disp_code>sample string 25</cit_disp_code>\r\n        <cit_disp_date>sample string 26</cit_disp_date>\r\n        <cit_court_date>sample string 27</cit_court_date>\r\n        <cit_court_time>sample string 28</cit_court_time>\r\n        <cit_cas_code>sample string 29</cit_cas_code>\r\n        <cit_court_code>sample string 30</cit_court_code>\r\n        <cit_court_name>sample string 31</cit_court_name>\r\n        <cit_court_add>sample string 32</cit_court_add>\r\n        <cit_court_city>sample string 33</cit_court_city>\r\n        <cit_court_state>sample string 34</cit_court_state>\r\n        <cit_court_zip>sample string 35</cit_court_zip>\r\n        <cit_court_phone>sample string 36</cit_court_phone>\r\n        <cit_cagency_code>sample string 37</cit_cagency_code>\r\n        <cit_cagency_name>sample string 38</cit_cagency_name>\r\n        <cit_cagency_phone>sample string 39</cit_cagency_phone>\r\n        <cit_cagency_act_code>sample string 40</cit_cagency_act_code>\r\n        <cit_cagency_act_date>sample string 41</cit_cagency_act_date>\r\n        <cit_rejpay_amt>sample string 42</cit_rejpay_amt>\r\n        <cit_rejpay_date>sample string 43</cit_rejpay_date>\r\n        <cit_public_comment>sample string 44</cit_public_comment>\r\n        <cit_orig_tag_license>sample string 45</cit_orig_tag_license>\r\n        <cit_orig_tag_state>sample string 46</cit_orig_tag_state>\r\n        <cit_statute>sample string 47</cit_statute>\r\n        <cit_court_disp>sample string 48</cit_court_disp>\r\n      </citationModel>\r\n    </citationModel>\r\n    <message135>sample string 1</message135>\r\n    <error_message>sample string 2</error_message>\r\n    <system_date>sample string 3</system_date>\r\n    <system_time>sample string 4</system_time>\r\n    <tot_int_pymts>sample string 5</tot_int_pymts>\r\n    <dbkeypnext>sample string 6</dbkeypnext>\r\n    <dbkeylnext>sample string 7</dbkeylnext>\r\n    <dbkeypprev>sample string 8</dbkeypprev>\r\n    <dbkeylprev>sample string 9</dbkeylprev>\r\n    <message130>sample string 10</message130>\r\n    <tot_vru_tows>sample string 11</tot_vru_tows>\r\n  </ParkingCitation>\r\n</ParkingResponse>"
+        }
+      ]
+    },
+    {
+      "category": "ParkingWeb",
+      "endpoint": "GET api/ParkingWeb?tag={tag}&state={state}&AuthKey={AuthKey}",
+      "detail_url": "https://www2.miamidadeclerk.gov/Developers/Help/Api/GET-api-ParkingWeb_tag_state_AuthKey",
+      "summary": "Your Developer account must be enabled and contain units. Additional ParkingWeb Information ... api/ParkingWeb?tag={tag}&state={state}&AuthKey={AuthKey}",
+      "request_line": "GET api/ParkingWeb?tag={tag}&state={state}&AuthKey={AuthKey}",
+      "description": "Your Developer account must be enabled and contain units.",
+      "uri_parameters": [
+        {
+          "name": "tag",
+          "description": "[Tag Number]",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "state",
+          "description": "[Tag's State]",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        },
+        {
+          "name": "AuthKey",
+          "description": "Authorization Key",
+          "type": "",
+          "required": true,
+          "additional": "Required"
+        }
+      ],
+      "body_parameters": "None.",
+      "response_fields": [
+        {
+          "name": "ParkingCitation",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "Status",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "StatusDesc",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "UnitsBalance",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        },
+        {
+          "name": "IPAddress",
+          "description": "",
+          "type": "",
+          "additional": "None."
+        }
+      ],
+      "response_formats": [
+        {
+          "content_type": "application/json, text/json",
+          "sample": "{\r\n  \"IPAddress\": \"sample string 3\",\r\n  \"Status\": \"sample string 1\",\r\n  \"StatusDesc\": \"sample string 2\",\r\n  \"UnitsBalance\": 1,\r\n  \"ParkingCitation\": {\r\n    \"citationModel\": [\r\n      {\r\n        \"cit_amt_due_after\": \"sample string 10\",\r\n        \"cit_amt_due_now\": \"sample string 8\",\r\n        \"cit_cagency_act_code\": \"sample string 40\",\r\n        \"cit_cagency_act_date\": \"sample string 41\",\r\n        \"cit_cagency_code\": \"sample string 37\",\r\n        \"cit_cagency_name\": \"sample string 38\",\r\n        \"cit_cagency_phone\": \"sample string 39\",\r\n        \"cit_cas_code\": \"sample string 29\",\r\n        \"cit_court\": \"sample string 24\",\r\n        \"cit_court_add\": \"sample string 32\",\r\n        \"cit_court_city\": \"sample string 33\",\r\n        \"cit_court_code\": \"sample string 30\",\r\n        \"cit_court_date\": \"sample string 27\",\r\n        \"cit_court_disp\": \"sample string 48\",\r\n        \"cit_court_name\": \"sample string 31\",\r\n        \"cit_court_phone\": \"sample string 36\",\r\n        \"cit_court_state\": \"sample string 34\",\r\n        \"cit_court_time\": \"sample string 28\",\r\n        \"cit_court_zip\": \"sample string 35\",\r\n        \"cit_disp_code\": \"sample string 25\",\r\n        \"cit_disp_date\": \"sample string 26\",\r\n        \"cit_due_date\": \"sample string 9\",\r\n        \"cit_issue_date\": \"sample string 2\",\r\n        \"cit_issue_time\": \"sample string 3\",\r\n        \"cit_location\": \"sample string 11\",\r\n        \"cit_meter_status\": \"sample string 4\",\r\n        \"cit_mun_code\": \"sample string 22\",\r\n        \"cit_mun_desc\": \"sample string 23\",\r\n        \"cit_muncan_status\": \"sample string 5\",\r\n        \"cit_number\": \"sample string 1\",\r\n        \"cit_orig_tag_license\": \"sample string 45\",\r\n        \"cit_orig_tag_state\": \"sample string 46\",\r\n        \"cit_public_comment\": \"sample string 44\",\r\n        \"cit_rejpay_amt\": \"sample string 42\",\r\n        \"cit_rejpay_date\": \"sample string 43\",\r\n        \"cit_status_code\": \"sample string 6\",\r\n        \"cit_status_desc\": \"sample string 7\",\r\n        \"cit_statute\": \"sample string 47\",\r\n        \"cit_veh_color1130\": \"sample string 18\",\r\n        \"cit_veh_color1135\": \"sample string 14\",\r\n        \"cit_veh_color2130\": \"sample string 19\",\r\n        \"cit_veh_color2135\": \"sample string 15\",\r\n        \"cit_veh_make130\": \"sample string 16\",\r\n        \"cit_veh_make135\": \"sample string 12\",\r\n        \"cit_veh_style130\": \"sample string 17\",\r\n        \"cit_veh_style135\": \"sample string 13\",\r\n        \"cit_vio_code\": \"sample string 20\",\r\n        \"cit_vio_desc\": \"sample string 21\"\r\n      },\r\n      {\r\n        \"cit_amt_due_after\": \"sample string 10\",\r\n        \"cit_amt_due_now\": \"sample string 8\",\r\n        \"cit_cagency_act_code\": \"sample string 40\",\r\n        \"cit_cagency_act_date\": \"sample string 41\",\r\n        \"cit_cagency_code\": \"sample string 37\",\r\n        \"cit_cagency_name\": \"sample string 38\",\r\n        \"cit_cagency_phone\": \"sample string 39\",\r\n        \"cit_cas_code\": \"sample string 29\",\r\n        \"cit_court\": \"sample string 24\",\r\n        \"cit_court_add\": \"sample string 32\",\r\n        \"cit_court_city\": \"sample string 33\",\r\n        \"cit_court_code\": \"sample string 30\",\r\n        \"cit_court_date\": \"sample string 27\",\r\n        \"cit_court_disp\": \"sample string 48\",\r\n        \"cit_court_name\": \"sample string 31\",\r\n        \"cit_court_phone\": \"sample string 36\",\r\n        \"cit_court_state\": \"sample string 34\",\r\n        \"cit_court_time\": \"sample string 28\",\r\n        \"cit_court_zip\": \"sample string 35\",\r\n        \"cit_disp_code\": \"sample string 25\",\r\n        \"cit_disp_date\": \"sample string 26\",\r\n        \"cit_due_date\": \"sample string 9\",\r\n        \"cit_issue_date\": \"sample string 2\",\r\n        \"cit_issue_time\": \"sample string 3\",\r\n        \"cit_location\": \"sample string 11\",\r\n        \"cit_meter_status\": \"sample string 4\",\r\n        \"cit_mun_code\": \"sample string 22\",\r\n        \"cit_mun_desc\": \"sample string 23\",\r\n        \"cit_muncan_status\": \"sample string 5\",\r\n        \"cit_number\": \"sample string 1\",\r\n        \"cit_orig_tag_license\": \"sample string 45\",\r\n        \"cit_orig_tag_state\": \"sample string 46\",\r\n        \"cit_public_comment\": \"sample string 44\",\r\n        \"cit_rejpay_amt\": \"sample string 42\",\r\n        \"cit_rejpay_date\": \"sample string 43\",\r\n        \"cit_status_code\": \"sample string 6\",\r\n        \"cit_status_desc\": \"sample string 7\",\r\n        \"cit_statute\": \"sample string 47\",\r\n        \"cit_veh_color1130\": \"sample string 18\",\r\n        \"cit_veh_color1135\": \"sample string 14\",\r\n        \"cit_veh_color2130\": \"sample string 19\",\r\n        \"cit_veh_color2135\": \"sample string 15\",\r\n        \"cit_veh_make130\": \"sample string 16\",\r\n        \"cit_veh_make135\": \"sample string 12\",\r\n        \"cit_veh_style130\": \"sample string 17\",\r\n        \"cit_veh_style135\": \"sample string 13\",\r\n        \"cit_vio_code\": \"sample string 20\",\r\n        \"cit_vio_desc\": \"sample string 21\"\r\n      }\r\n    ],\r\n    \"dbkeylnext\": \"sample string 7\",\r\n    \"dbkeylprev\": \"sample string 9\",\r\n    \"dbkeypnext\": \"sample string 6\",\r\n    \"dbkeypprev\": \"sample string 8\",\r\n    \"error_message\": \"sample string 2\",\r\n    \"message130\": \"sample string 10\",\r\n    \"message135\": \"sample string 1\",\r\n    \"system_date\": \"sample string 3\",\r\n    \"system_time\": \"sample string 4\",\r\n    \"taginfoModel\": {\r\n      \"dummytag\": \"sample string 22\",\r\n      \"itemListModel\": {\r\n        \"item\": [\r\n          {\r\n            \"FirstReference\": \"sample string 1\",\r\n            \"SecondReference\": \"sample string 2\",\r\n            \"ThirdReference\": \"sample string 3\",\r\n            \"item_payclass\": [\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              },\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              }\r\n            ],\r\n            \"unitPrice\": \"sample string 4\"\r\n          },\r\n          {\r\n            \"FirstReference\": \"sample string 1\",\r\n            \"SecondReference\": \"sample string 2\",\r\n            \"ThirdReference\": \"sample string 3\",\r\n            \"item_payclass\": [\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              },\r\n              {\r\n                \"amt\": \"sample string 3\",\r\n                \"cd\": \"sample string 1\",\r\n                \"payclass\": \"sample string 2\"\r\n              }\r\n            ],\r\n            \"unitPrice\": \"sample string 4\"\r\n          }\r\n        ],\r\n        \"t_total\": \"sample string 1\"\r\n      },\r\n      \"tag_case_nbr\": \"sample string 3\",\r\n      \"tag_citation_ref\": \"sample string 21\",\r\n      \"tag_court_cits\": \"sample string 8\",\r\n      \"tag_court_disp\": \"sample string 9\",\r\n      \"tag_court_early_date\": \"sample string 10\",\r\n      \"tag_court_early_time\": \"sample string 11\",\r\n      \"tag_disp\": \"sample string 4\",\r\n      \"tag_immobilization\": \"sample string 15\",\r\n      \"tag_non_renewal\": \"sample string 16\",\r\n      \"tag_number\": \"sample string 1\",\r\n      \"tag_pending_ccp_upd\": \"sample string 20\",\r\n      \"tag_pymt_type\": \"sample string 12\",\r\n      \"tag_pymt_type_reason\": \"sample string 13\",\r\n      \"tag_rent_lease\": \"sample string 14\",\r\n      \"tag_sfee\": \"sample string 7\",\r\n      \"tag_state\": \"sample string 2\",\r\n      \"tag_total_balance\": \"sample string 6\",\r\n      \"tag_total_open_cits\": \"sample string 5\",\r\n      \"tag_tow\": \"sample string 18\",\r\n      \"tag_unknown\": \"sample string 17\",\r\n      \"tag_unpaid_cits\": \"sample string 23\",\r\n      \"tag_upd_allowed\": \"sample string 19\",\r\n      \"tag_warning\": \"sample string 24\"\r\n    },\r\n    \"tot_int_pymts\": \"sample string 5\",\r\n    \"tot_vru_tows\": \"sample string 11\"\r\n  }\r\n}"
+        },
+        {
+          "content_type": "application/xml, text/xml",
+          "sample": "<ParkingResponse xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n  <Status>sample string 1</Status>\r\n  <StatusDesc>sample string 2</StatusDesc>\r\n  <UnitsBalance>1</UnitsBalance>\r\n  <IPAddress>sample string 3</IPAddress>\r\n  <ParkingCitation>\r\n    <taginfoModel>\r\n      <tag_number>sample string 1</tag_number>\r\n      <tag_state>sample string 2</tag_state>\r\n      <tag_case_nbr>sample string 3</tag_case_nbr>\r\n      <tag_disp>sample string 4</tag_disp>\r\n      <tag_total_open_cits>sample string 5</tag_total_open_cits>\r\n      <tag_total_balance>sample string 6</tag_total_balance>\r\n      <tag_sfee>sample string 7</tag_sfee>\r\n      <tag_court_cits>sample string 8</tag_court_cits>\r\n      <tag_court_disp>sample string 9</tag_court_disp>\r\n      <tag_court_early_date>sample string 10</tag_court_early_date>\r\n      <tag_court_early_time>sample string 11</tag_court_early_time>\r\n      <tag_pymt_type>sample string 12</tag_pymt_type>\r\n      <tag_pymt_type_reason>sample string 13</tag_pymt_type_reason>\r\n      <tag_rent_lease>sample string 14</tag_rent_lease>\r\n      <tag_immobilization>sample string 15</tag_immobilization>\r\n      <tag_non_renewal>sample string 16</tag_non_renewal>\r\n      <tag_unknown>sample string 17</tag_unknown>\r\n      <tag_tow>sample string 18</tag_tow>\r\n      <tag_upd_allowed>sample string 19</tag_upd_allowed>\r\n      <tag_pending_ccp_upd>sample string 20</tag_pending_ccp_upd>\r\n      <tag_citation_ref>sample string 21</tag_citation_ref>\r\n      <itemListModel>\r\n        <item>\r\n          <itemModel>\r\n            <FirstReference>sample string 1</FirstReference>\r\n            <SecondReference>sample string 2</SecondReference>\r\n            <ThirdReference>sample string 3</ThirdReference>\r\n            <item_payclass>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n            </item_payclass>\r\n            <unitPrice>sample string 4</unitPrice>\r\n          </itemModel>\r\n          <itemModel>\r\n            <FirstReference>sample string 1</FirstReference>\r\n            <SecondReference>sample string 2</SecondReference>\r\n            <ThirdReference>sample string 3</ThirdReference>\r\n            <item_payclass>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n              <item_payclassModel>\r\n                <cd>sample string 1</cd>\r\n                <payclass>sample string 2</payclass>\r\n                <amt>sample string 3</amt>\r\n              </item_payclassModel>\r\n            </item_payclass>\r\n            <unitPrice>sample string 4</unitPrice>\r\n          </itemModel>\r\n        </item>\r\n        <t_total>sample string 1</t_total>\r\n      </itemListModel>\r\n      <dummytag>sample string 22</dummytag>\r\n      <tag_unpaid_cits>sample string 23</tag_unpaid_cits>\r\n      <tag_warning>sample string 24</tag_warning>\r\n    </taginfoModel>\r\n    <citationModel>\r\n      <citationModel>\r\n        <cit_number>sample string 1</cit_number>\r\n        <cit_issue_date>sample string 2</cit_issue_date>\r\n        <cit_issue_time>sample string 3</cit_issue_time>\r\n        <cit_meter_status>sample string 4</cit_meter_status>\r\n        <cit_muncan_status>sample string 5</cit_muncan_status>\r\n        <cit_status_code>sample string 6</cit_status_code>\r\n        <cit_status_desc>sample string 7</cit_status_desc>\r\n        <cit_amt_due_now>sample string 8</cit_amt_due_now>\r\n        <cit_due_date>sample string 9</cit_due_date>\r\n        <cit_amt_due_after>sample string 10</cit_amt_due_after>\r\n        <cit_location>sample string 11</cit_location>\r\n        <cit_veh_make135>sample string 12</cit_veh_make135>\r\n        <cit_veh_style135>sample string 13</cit_veh_style135>\r\n        <cit_veh_color1135>sample string 14</cit_veh_color1135>\r\n        <cit_veh_color2135>sample string 15</cit_veh_color2135>\r\n        <cit_veh_make130>sample string 16</cit_veh_make130>\r\n        <cit_veh_style130>sample string 17</cit_veh_style130>\r\n        <cit_veh_color1130>sample string 18</cit_veh_color1130>\r\n        <cit_veh_color2130>sample string 19</cit_veh_color2130>\r\n        <cit_vio_code>sample string 20</cit_vio_code>\r\n        <cit_vio_desc>sample string 21</cit_vio_desc>\r\n        <cit_mun_code>sample string 22</cit_mun_code>\r\n        <cit_mun_desc>sample string 23</cit_mun_desc>\r\n        <cit_court>sample string 24</cit_court>\r\n        <cit_disp_code>sample string 25</cit_disp_code>\r\n        <cit_disp_date>sample string 26</cit_disp_date>\r\n        <cit_court_date>sample string 27</cit_court_date>\r\n        <cit_court_time>sample string 28</cit_court_time>\r\n        <cit_cas_code>sample string 29</cit_cas_code>\r\n        <cit_court_code>sample string 30</cit_court_code>\r\n        <cit_court_name>sample string 31</cit_court_name>\r\n        <cit_court_add>sample string 32</cit_court_add>\r\n        <cit_court_city>sample string 33</cit_court_city>\r\n        <cit_court_state>sample string 34</cit_court_state>\r\n        <cit_court_zip>sample string 35</cit_court_zip>\r\n        <cit_court_phone>sample string 36</cit_court_phone>\r\n        <cit_cagency_code>sample string 37</cit_cagency_code>\r\n        <cit_cagency_name>sample string 38</cit_cagency_name>\r\n        <cit_cagency_phone>sample string 39</cit_cagency_phone>\r\n        <cit_cagency_act_code>sample string 40</cit_cagency_act_code>\r\n        <cit_cagency_act_date>sample string 41</cit_cagency_act_date>\r\n        <cit_rejpay_amt>sample string 42</cit_rejpay_amt>\r\n        <cit_rejpay_date>sample string 43</cit_rejpay_date>\r\n        <cit_public_comment>sample string 44</cit_public_comment>\r\n        <cit_orig_tag_license>sample string 45</cit_orig_tag_license>\r\n        <cit_orig_tag_state>sample string 46</cit_orig_tag_state>\r\n        <cit_statute>sample string 47</cit_statute>\r\n        <cit_court_disp>sample string 48</cit_court_disp>\r\n      </citationModel>\r\n      <citationModel>\r\n        <cit_number>sample string 1</cit_number>\r\n        <cit_issue_date>sample string 2</cit_issue_date>\r\n        <cit_issue_time>sample string 3</cit_issue_time>\r\n        <cit_meter_status>sample string 4</cit_meter_status>\r\n        <cit_muncan_status>sample string 5</cit_muncan_status>\r\n        <cit_status_code>sample string 6</cit_status_code>\r\n        <cit_status_desc>sample string 7</cit_status_desc>\r\n        <cit_amt_due_now>sample string 8</cit_amt_due_now>\r\n        <cit_due_date>sample string 9</cit_due_date>\r\n        <cit_amt_due_after>sample string 10</cit_amt_due_after>\r\n        <cit_location>sample string 11</cit_location>\r\n        <cit_veh_make135>sample string 12</cit_veh_make135>\r\n        <cit_veh_style135>sample string 13</cit_veh_style135>\r\n        <cit_veh_color1135>sample string 14</cit_veh_color1135>\r\n        <cit_veh_color2135>sample string 15</cit_veh_color2135>\r\n        <cit_veh_make130>sample string 16</cit_veh_make130>\r\n        <cit_veh_style130>sample string 17</cit_veh_style130>\r\n        <cit_veh_color1130>sample string 18</cit_veh_color1130>\r\n        <cit_veh_color2130>sample string 19</cit_veh_color2130>\r\n        <cit_vio_code>sample string 20</cit_vio_code>\r\n        <cit_vio_desc>sample string 21</cit_vio_desc>\r\n        <cit_mun_code>sample string 22</cit_mun_code>\r\n        <cit_mun_desc>sample string 23</cit_mun_desc>\r\n        <cit_court>sample string 24</cit_court>\r\n        <cit_disp_code>sample string 25</cit_disp_code>\r\n        <cit_disp_date>sample string 26</cit_disp_date>\r\n        <cit_court_date>sample string 27</cit_court_date>\r\n        <cit_court_time>sample string 28</cit_court_time>\r\n        <cit_cas_code>sample string 29</cit_cas_code>\r\n        <cit_court_code>sample string 30</cit_court_code>\r\n        <cit_court_name>sample string 31</cit_court_name>\r\n        <cit_court_add>sample string 32</cit_court_add>\r\n        <cit_court_city>sample string 33</cit_court_city>\r\n        <cit_court_state>sample string 34</cit_court_state>\r\n        <cit_court_zip>sample string 35</cit_court_zip>\r\n        <cit_court_phone>sample string 36</cit_court_phone>\r\n        <cit_cagency_code>sample string 37</cit_cagency_code>\r\n        <cit_cagency_name>sample string 38</cit_cagency_name>\r\n        <cit_cagency_phone>sample string 39</cit_cagency_phone>\r\n        <cit_cagency_act_code>sample string 40</cit_cagency_act_code>\r\n        <cit_cagency_act_date>sample string 41</cit_cagency_act_date>\r\n        <cit_rejpay_amt>sample string 42</cit_rejpay_amt>\r\n        <cit_rejpay_date>sample string 43</cit_rejpay_date>\r\n        <cit_public_comment>sample string 44</cit_public_comment>\r\n        <cit_orig_tag_license>sample string 45</cit_orig_tag_license>\r\n        <cit_orig_tag_state>sample string 46</cit_orig_tag_state>\r\n        <cit_statute>sample string 47</cit_statute>\r\n        <cit_court_disp>sample string 48</cit_court_disp>\r\n      </citationModel>\r\n    </citationModel>\r\n    <message135>sample string 1</message135>\r\n    <error_message>sample string 2</error_message>\r\n    <system_date>sample string 3</system_date>\r\n    <system_time>sample string 4</system_time>\r\n    <tot_int_pymts>sample string 5</tot_int_pymts>\r\n    <dbkeypnext>sample string 6</dbkeypnext>\r\n    <dbkeylnext>sample string 7</dbkeylnext>\r\n    <dbkeypprev>sample string 8</dbkeypprev>\r\n    <dbkeylprev>sample string 9</dbkeylprev>\r\n    <message130>sample string 10</message130>\r\n    <tot_vru_tows>sample string 11</tot_vru_tows>\r\n  </ParkingCitation>\r\n</ParkingResponse>"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Apps Script Emergency Fix Guide - PRIVE GROUP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #2c3e50;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            margin-bottom: 15px;
+        }
+
+        .urgency-banner {
+            background: #fff3cd;
+            border-left: 5px solid #ff9800;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .urgency-banner strong {
+            color: #d97706;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #2a5298;
+        }
+
+        .account-badge {
+            display: inline-block;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #1565c0;
+        }
+
+        .step {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-left: 5px solid #666;
+            border-radius: 6px;
+            page-break-inside: avoid;
+        }
+
+        .step.priority-red {
+            border-left-color: #e74c3c;
+            background: #fdeaea;
+        }
+
+        .step.priority-yellow {
+            border-left-color: #f39c12;
+            background: #fffbf0;
+        }
+
+        .step.priority-green {
+            border-left-color: #27ae60;
+            background: #f0fdf4;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #2a5298;
+            color: white;
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: 600;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+
+        .step.priority-red .step-number {
+            background: #e74c3c;
+        }
+
+        .step.priority-yellow .step-number {
+            background: #f39c12;
+        }
+
+        .step.priority-green .step-number {
+            background: #27ae60;
+        }
+
+        .step-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 10px;
+            text-transform: uppercase;
+        }
+
+        .priority-badge.red {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .priority-badge.yellow {
+            background: #f39c12;
+            color: white;
+        }
+
+        .priority-badge.green {
+            background: #27ae60;
+            color: white;
+        }
+
+        .step-content {
+            margin-left: 44px;
+        }
+
+        .instruction {
+            margin: 12px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+
+        .instruction strong {
+            color: #2c3e50;
+        }
+
+        .url-box {
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+            margin: 10px 0;
+            color: #2c3e50;
+        }
+
+        .expected-result {
+            background: #e8f5e9;
+            border-left: 3px solid #27ae60;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .expected-result::before {
+            content: "✓ Expected Result: ";
+            font-weight: 600;
+            color: #27ae60;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 4px;
+            border-left: 3px solid #ff9800;
+        }
+
+        .warning-box strong {
+            color: #d97706;
+        }
+
+        .checkbox {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 15px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ecf0f1;
+        }
+
+        .checklist-item.completed {
+            opacity: 0.6;
+            background: #f0fdf4;
+        }
+
+        .checklist-item.completed label {
+            text-decoration: line-through;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            margin-top: 3px;
+            margin-right: 12px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checklist-content {
+            flex: 1;
+        }
+
+        .verification-section {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border: 2px solid #27ae60;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .verification-section h2 {
+            color: #27ae60;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .verification-item {
+            background: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #27ae60;
+        }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-top: 1px solid #ecf0f1;
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .script-name {
+            background: #ecf0f1;
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-weight: 500;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 0;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+
+            .step {
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🚨 Google Apps Script Emergency Fix Guide</h1>
+            <p>PRIVE GROUP | Real Estate Email Automation</p>
+            <p style="font-size: 0.95em; opacity: 0.9;">Fixing "Service invoked too many times" Gmail API Quota Error</p>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content">
+            <div class="urgency-banner">
+                <strong>⚠️ URGENT:</strong> Complete ALL steps today to restore email automation. Estimated time: 15-20 minutes.
+            </div>
+
+            <!-- OVERVIEW -->
+            <section>
+                <h2 class="section-title">📋 What's Happening & What We'll Fix</h2>
+                <p style="margin-bottom: 15px;">Your email automation scripts are failing because too many triggers are calling the Gmail API too frequently. Here's the fix plan:</p>
+
+                <div style="background: #f0f4f8; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <strong style="display: block; margin-bottom: 10px;">Root Cause:</strong>
+                    <ul style="margin-left: 20px; margin-bottom: 10px;">
+                        <li>Running <span class="script-name">jrTriageInbox_FULL</span> every 5-15 minutes = too many API calls/day</li>
+                        <li>Gmail API has daily quota limits (~500MB/day for premium accounts)</li>
+                        <li>Solution: Delete duplicate triggers, increase intervals to 30 minutes</li>
+                    </ul>
+                </div>
+
+                <strong style="display: block; margin-bottom: 10px;">Today's Tasks:</strong>
+                <ul style="margin-left: 20px;">
+                    <li><span style="color: #e74c3c; font-weight: 600;">RED:</span> Delete 1 duplicate trigger (5 minutes)</li>
+                    <li><span style="color: #f39c12; font-weight: 600;">YELLOW:</span> Update 2 trigger intervals (5 minutes)</li>
+                    <li><span style="color: #27ae60; font-weight: 600;">GREEN:</span> Verify everything works (5 minutes)</li>
+                </ul>
+            </section>
+
+            <!-- QUICK START CHECKLIST -->
+            <section>
+                <h2 class="section-title">✅ Quick Start Checklist</h2>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check1" class="checkbox">
+                    <label for="check1"><strong>Step 1-3:</strong> Fix JR's account (jr@privegroup.com)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check2" class="checkbox">
+                    <label for="check2"><strong>Step 4-5:</strong> Fix Amanda's account (amanda@privegroup.com)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check3" class="checkbox">
+                    <label for="check3"><strong>Step 6:</strong> Security fix - move Telegram token</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check4" class="checkbox">
+                    <label for="check4"><strong>Step 7:</strong> Run verification checks</label>
+                </div>
+            </section>
+
+            <!-- ACCOUNT 1: JR (jr@privegroup.com) -->
+            <section>
+                <h2 class="section-title">👤 Account 1: JR (jr@privegroup.com)</h2>
+                <div class="account-badge">📧 jr@privegroup.com (Primary Account)</div>
+
+                <!-- STEP 1: DELETE DUPLICATE -->
+                <div class="step priority-red">
+                    <div class="step-title">
+                        <span class="step-number">1</span>
+                        DELETE Duplicate Trigger: "Untitled project"
+                        <span class="priority-badge red">DO FIRST</span>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 12px;"><strong>Why:</strong> This script runs the same function every 5 minutes (288 times/day!) and is a duplicate.</p>
+
+                        <div class="instruction">
+                            <strong>Navigate here:</strong>
+                            <div class="url-box">https://script.google.com/home/my-projects</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 1a:</strong> Find the project named <span class="script-name">Untitled project</span>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 1b:</strong> Click the project name to open it
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 1c:</strong> In the left sidebar, click <strong>"Triggers"</strong> (clock icon)
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 1d:</strong> Find the trigger that says:
+                            <div style="background: white; border: 1px solid #bdc3c7; padding: 10px; margin: 8px 0; border-radius: 4px;">
+                                Function: <strong>jrTriageInbox_FULL</strong><br>
+                                Type: <strong>Time-based</strong><br>
+                                Interval: <strong>Every 5 minutes</strong>
+                            </div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 1e:</strong> Click the three-dot menu (⋮) at the end of that row → Select <strong>"Delete"</strong>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 1f:</strong> Click <strong>"Delete"</strong> in the confirmation dialog
+                        </div>
+
+                        <div class="expected-result">
+                            The trigger is completely removed. You should see a message confirming deletion.
+                        </div>
+
+                        <div class="warning-box">
+                            <strong>Note:</strong> After deleting, you may see a brief error notification. This is normal and will clear in a few seconds.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: UPDATE TRIGGER -->
+                <div class="step priority-yellow">
+                    <div class="step-title">
+                        <span class="step-number">2</span>
+                        UPDATE Trigger in "Labels gmail" Script
+                        <span class="priority-badge yellow">DO SECOND</span>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 12px;"><strong>What:</strong> Change trigger interval from every 15 minutes to every 30 minutes.</p>
+
+                        <div class="instruction">
+                            <strong>Navigate here:</strong>
+                            <div class="url-box">https://script.google.com/home/my-projects</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 2a:</strong> Find and open the project named <span class="script-name">Labels gmail</span>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 2b:</strong> Click <strong>"Triggers"</strong> in the left sidebar (clock icon)
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 2c:</strong> Find the trigger with:
+                            <div style="background: white; border: 1px solid #bdc3c7; padding: 10px; margin: 8px 0; border-radius: 4px;">
+                                Function: <strong>jrTriageInbox_FULL</strong><br>
+                                Interval: <strong>Every 15 minutes</strong>
+                            </div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 2d:</strong> Click anywhere on that trigger row to edit it
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 2e:</strong> In the dialog that opens, change the time interval:
+                            <div style="background: #fff9e6; border: 1px solid #ffc107; padding: 10px; margin: 8px 0; border-radius: 4px;">
+                                FROM: "Every 15 minutes"<br>
+                                TO: "Every 30 minutes"
+                            </div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 2f:</strong> Click <strong>"Save"</strong> button
+                        </div>
+
+                        <div class="expected-result">
+                            The trigger now shows "Every 30 minutes" instead of "Every 15 minutes". The dialog closes automatically.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: UPDATE TRIGGER -->
+                <div class="step priority-yellow">
+                    <div class="step-title">
+                        <span class="step-number">3</span>
+                        UPDATE Trigger in "Amanda - Email Router" Script
+                        <span class="priority-badge yellow">DO SECOND</span>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 12px;"><strong>What:</strong> Change trigger interval from every 15 minutes to every 30 minutes.</p>
+
+                        <div class="instruction">
+                            <strong>Navigate here:</strong>
+                            <div class="url-box">https://script.google.com/home/my-projects</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 3a:</strong> Find and open the project named <span class="script-name">Amanda - Email Router (PRIVE GROUP)</span>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 3b:</strong> Click <strong>"Triggers"</strong> in the left sidebar
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 3c:</strong> Find the trigger with:
+                            <div style="background: white; border: 1px solid #bdc3c7; padding: 10px; margin: 8px 0; border-radius: 4px;">
+                                Function: <strong>forwardToAmanda</strong><br>
+                                Interval: <strong>Every 15 minutes</strong>
+                            </div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 3d:</strong> Click the trigger row to edit it
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 3e:</strong> Change the interval from <strong>"Every 15 minutes"</strong> to <strong>"Every 30 minutes"</strong>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 3f:</strong> Click <strong>"Save"</strong>
+                        </div>
+
+                        <div class="expected-result">
+                            The trigger now runs every 30 minutes instead of every 15 minutes.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ACCOUNT 2: AMANDA (amanda@privegroup.com) -->
+            <section>
+                <h2 class="section-title">👤 Account 2: Amanda (amanda@privegroup.com)</h2>
+                <div class="account-badge">📧 amanda@privegroup.com (Secondary Account)</div>
+
+                <div class="warning-box">
+                    <strong>Important:</strong> You may need to switch Google accounts or use an incognito window for these steps. If you only have access to your own account, ask Amanda to complete steps 4-5.
+                </div>
+
+                <!-- STEP 4: DISABLE OLD TRIGGERS -->
+                <div class="step priority-green">
+                    <div class="step-title">
+                        <span class="step-number">4</span>
+                        DISABLE All Triggers in "Amanda Agent Router v2.1-FINAL"
+                        <span class="priority-badge green">VERIFY</span>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 12px;"><strong>Why:</strong> This is the old version being replaced. Disable it to prevent conflicts.</p>
+
+                        <div class="instruction">
+                            <strong>Navigate here:</strong>
+                            <div class="url-box">https://script.google.com/home/my-projects</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 4a:</strong> Make sure you're logged into <strong>amanda@privegroup.com</strong> account
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 4b:</strong> Find and open <span class="script-name">Amanda Agent Router v2.1-FINAL</span>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 4c:</strong> Click <strong>"Triggers"</strong> in the left sidebar
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 4d:</strong> For EACH trigger shown:
+                            <div style="background: white; border: 1px solid #bdc3c7; padding: 10px; margin: 8px 0; border-radius: 4px;">
+                                1. Click the three-dot menu (⋮) at the end of the row<br>
+                                2. Select <strong>"Delete"</strong><br>
+                                3. Confirm deletion
+                            </div>
+                        </div>
+
+                        <div class="expected-result">
+                            No triggers should remain in this project. The Triggers page should show "No triggers yet."
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 5: VERIFY ACTIVE TRIGGER -->
+                <div class="step priority-green">
+                    <div class="step-title">
+                        <span class="step-number">5</span>
+                        VERIFY "Amanda Draft Queue Router (FULL)" is Active
+                        <span class="priority-badge green">VERIFY</span>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 12px;"><strong>What:</strong> This is the PRIMARY router. Make sure it has active triggers.</p>
+
+                        <div class="instruction">
+                            <strong>Step 5a:</strong> Still in amanda@privegroup.com, navigate to:
+                            <div class="url-box">https://script.google.com/home/my-projects</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 5b:</strong> Find and open <span class="script-name">Amanda Draft Queue Router (FULL)</span>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 5c:</strong> Click <strong>"Triggers"</strong> in the left sidebar
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 5d:</strong> Verify you see at least ONE trigger listed (should show one or more active triggers)
+                        </div>
+
+                        <div class="expected-result">
+                            This project should have active triggers. If the Triggers page is empty, this is a problem - contact the development team.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECURITY FIX -->
+            <section>
+                <h2 class="section-title">🔒 Security Fix: Move Telegram Token to PropertiesService</h2>
+
+                <div class="step priority-green">
+                    <div class="step-title">
+                        <span class="step-number">6</span>
+                        Move Hardcoded Telegram Bot Token to PropertiesService
+                        <span class="priority-badge green">SECURITY</span>
+                    </div>
+                    <div class="step-content">
+                        <p style="margin-bottom: 12px;"><strong>Why:</strong> Hardcoded secrets in source code are a security risk. PropertiesService encrypts and stores them securely.</p>
+
+                        <div class="warning-box">
+                            <strong>⚠️ Dev Task:</strong> This step requires code editing. If you're not comfortable with code, ask your development team to complete this step.
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 6a:</strong> In any script that uses a Telegram bot token, open the script editor (double-click project → Click Editor)
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 6b:</strong> Find the line that looks like:
+                            <div class="code-block">const TELEGRAM_BOT_TOKEN = "123456:ABCdef...xyz";</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 6c:</strong> Replace that line with this code:
+                            <div class="code-block">// Get token from secure storage
+const TELEGRAM_BOT_TOKEN = PropertiesService.getUserProperties().getProperty('TELEGRAM_BOT_TOKEN');
+
+if (!TELEGRAM_BOT_TOKEN) {
+  throw new Error('Telegram bot token not set. Please contact admin.');
+}</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 6d:</strong> To set the token initially, run this code once in the Console:
+                            <div class="code-block">PropertiesService.getUserProperties().setProperty('TELEGRAM_BOT_TOKEN', 'YOUR_ACTUAL_TOKEN_HERE');</div>
+                        </div>
+
+                        <div class="instruction">
+                            <strong>Step 6e:</strong> Click <strong>"Save"</strong> (Ctrl+S or Cmd+S)
+                        </div>
+
+                        <div class="expected-result">
+                            The token is now stored securely in PropertiesService. The source code no longer contains the hardcoded secret.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VERIFICATION SECTION -->
+            <section>
+                <div class="verification-section">
+                    <h2>✅ After You're Done - Verification Checklist</h2>
+
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">Complete these checks to confirm everything is working:</p>
+
+                    <div class="verification-item">
+                        <strong>Check 1: Script Triggers Updated</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em;">
+                            Go to <strong>script.google.com/home/my-projects</strong> and verify:
+                        </p>
+                        <ul style="margin: 8px 0 0 20px; font-size: 0.9em;">
+                            <li>✓ "Untitled project" - NO triggers visible</li>
+                            <li>✓ "Labels gmail" - jrTriageInbox_FULL runs <strong>every 30 minutes</strong></li>
+                            <li>✓ "Amanda - Email Router" - forwardToAmanda runs <strong>every 30 minutes</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-item">
+                        <strong>Check 2: Amanda's Account Cleaned Up</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em;">
+                            In amanda@privegroup.com account:
+                        </p>
+                        <ul style="margin: 8px 0 0 20px; font-size: 0.9em;">
+                            <li>✓ "Amanda Agent Router v2.1-FINAL" - All triggers deleted</li>
+                            <li>✓ "Amanda Draft Queue Router (FULL)" - Active triggers present</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-item">
+                        <strong>Check 3: Trigger Executions Monitoring</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em;">
+                            Wait 5-10 minutes, then check execution logs:
+                        </p>
+                        <ul style="margin: 8px 0 0 20px; font-size: 0.9em;">
+                            <li>✓ Open any script → Click "Executions" (play icon)</li>
+                            <li>✓ Look for recent runs with status "Completed" (green checkmark)</li>
+                            <li>✓ If you see many "Failed" runs, check the error message</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-item">
+                        <strong>Check 4: Gmail API Usage</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em;">
+                            Check quota usage:
+                        </p>
+                        <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 0.9em;">
+                            <strong>Desktop:</strong> Go to <strong>console.cloud.google.com</strong> → APIs & Services → Quotas → Search "Gmail" → Check usage is within limits<br><br>
+                            <strong>Expected:</strong> Usage should be much lower now (fewer API calls per day)
+                        </div>
+                    </div>
+
+                    <div class="verification-item">
+                        <strong>Check 5: Emails Still Being Processed</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em;">
+                            Send a test email and verify automation works:
+                        </p>
+                        <ul style="margin: 8px 0 0 20px; font-size: 0.9em;">
+                            <li>✓ Send a test email to your monitored address</li>
+                            <li>✓ Wait 30+ minutes (new trigger interval)</li>
+                            <li>✓ Check email is labeled/processed correctly</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TROUBLESHOOTING -->
+            <section>
+                <h2 class="section-title">🔧 If Something Goes Wrong</h2>
+
+                <div class="step priority-red">
+                    <div class="step-title">
+                        <span class="step-number">?</span>
+                        Troubleshooting Guide
+                    </div>
+                    <div class="step-content">
+                        <strong style="display: block; margin-bottom: 12px;">Issue: Still seeing "Service invoked too many times" errors</strong>
+                        <div style="background: white; border-left: 3px solid #e74c3c; padding: 12px; margin: 10px 0; border-radius: 4px;">
+                            <strong>Solution:</strong>
+                            <ul style="margin-left: 20px; margin-top: 8px;">
+                                <li>Wait 24 hours - Google resets the quota daily</li>
+                                <li>Verify all triggers are set to 30+ minute intervals</li>
+                                <li>Check Executions log for failed runs (each failure tries again)</li>
+                                <li>Consider increasing intervals to 1 hour if issues persist</li>
+                            </ul>
+                        </div>
+
+                        <strong style="display: block; margin-bottom: 12px;">Issue: Emails not being labeled/forwarded</strong>
+                        <div style="background: white; border-left: 3px solid #e74c3c; padding: 12px; margin: 10px 0; border-radius: 4px;">
+                            <strong>Solution:</strong>
+                            <ul style="margin-left: 20px; margin-top: 8px;">
+                                <li>Check that triggers still exist (may have been accidentally deleted)</li>
+                                <li>Wait until next scheduled execution (30 minute interval)</li>
+                                <li>Check script logs for errors</li>
+                                <li>Manually run the script to test: Click ▶ button in editor</li>
+                            </ul>
+                        </div>
+
+                        <strong style="display: block; margin-bottom: 12px;">Issue: Can't access Amanda's account</strong>
+                        <div style="background: white; border-left: 3px solid #e74c3c; padding: 12px; margin: 10px 0; border-radius: 4px;">
+                            <strong>Solution:</strong>
+                            <ul style="margin-left: 20px; margin-top: 8px;">
+                                <li>Ask Amanda to complete steps 4-5 herself</li>
+                                <li>Or use an incognito window to log into her account</li>
+                                <li>Or ask Amanda to grant you temporary access via Google Admin</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SUMMARY -->
+            <section>
+                <h2 class="section-title">📊 Summary of Changes</h2>
+
+                <div style="background: #f0f7ff; border: 1px solid #2196f3; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #ccc;">
+                            <th style="text-align: left; padding: 10px; background: #e3f2fd; font-weight: 600;">Script / Account</th>
+                            <th style="text-align: left; padding: 10px; background: #e3f2fd; font-weight: 600;">Action</th>
+                            <th style="text-align: left; padding: 10px; background: #e3f2fd; font-weight: 600;">Priority</th>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; font-family: monospace; font-size: 0.85em;">Untitled project (JR)</td>
+                            <td style="padding: 10px;">Delete trigger (5-min jrTriageInbox_FULL)</td>
+                            <td style="padding: 10px;"><span style="background: #e74c3c; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.85em;">RED</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; font-family: monospace; font-size: 0.85em;">Labels gmail (JR)</td>
+                            <td style="padding: 10px;">Update: 15 min → 30 min (jrTriageInbox_FULL)</td>
+                            <td style="padding: 10px;"><span style="background: #f39c12; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.85em;">YELLOW</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; font-family: monospace; font-size: 0.85em;">Amanda - Email Router (JR)</td>
+                            <td style="padding: 10px;">Update: 15 min → 30 min (forwardToAmanda)</td>
+                            <td style="padding: 10px;"><span style="background: #f39c12; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.85em;">YELLOW</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; font-family: monospace; font-size: 0.85em;">Amanda Agent Router v2.1-FINAL</td>
+                            <td style="padding: 10px;">Delete all triggers (old version)</td>
+                            <td style="padding: 10px;"><span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.85em;">GREEN</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; font-family: monospace; font-size: 0.85em;">Amanda Draft Queue Router (FULL)</td>
+                            <td style="padding: 10px;">Verify active (primary router)</td>
+                            <td style="padding: 10px;"><span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.85em;">GREEN</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; font-family: monospace; font-size: 0.85em;">All Scripts</td>
+                            <td style="padding: 10px;">Move Telegram token to PropertiesService</td>
+                            <td style="padding: 10px;"><span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.85em;">GREEN</span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <p style="font-size: 0.95em; color: #666;">
+                    <strong>Result:</strong> Reduces API calls from ~500/day to ~50/day, staying well within Gmail API quotas and eliminating the "Service invoked too many times" errors.
+                </p>
+            </section>
+
+            <!-- SUCCESS MESSAGE -->
+            <div class="success-message">
+                ✅ <strong>All steps complete?</strong> Your email automation is now fixed and optimized!<br>
+                <span style="font-size: 0.9em; margin-top: 8px; display: block;">Complete the verification checks above to confirm everything is working properly.</span>
+            </div>
+
+            <!-- NEXT STEPS -->
+            <section>
+                <h2 class="section-title">📞 Support & Next Steps</h2>
+
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #2a5298;">
+                    <strong style="display: block; margin-bottom: 12px;">If you need further help:</strong>
+                    <ul style="margin-left: 20px;">
+                        <li><strong>Script execution errors?</strong> Check the "Executions" tab in each script for detailed error messages</li>
+                        <li><strong>Gmail quota issues?</strong> Increase trigger intervals to 1 hour, or contact Google Cloud support</li>
+                        <li><strong>Amanda's account access?</strong> Ask Amanda to complete her own account's steps (4-5)</li>
+                        <li><strong>Telegram token security?</strong> Have your development team handle the PropertiesService migration</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>🗂️ PRIVE GROUP Google Apps Script Emergency Fix Guide | Generated March 14, 2026</p>
+            <p style="font-size: 0.85em; margin-top: 8px;">For JR (jr@privegroup.com) | Estimated completion time: 15-20 minutes</p>
+        </div>
+    </div>
+</body>
+</html>

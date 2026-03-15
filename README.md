@@ -50,3 +50,17 @@ Monorepo with Next.js frontend and NestJS backend.
 - See `docs/ACCESS_CHECKLIST.md` and `docs/LAUNCH_RUNBOOK.md`.
 - User operations manual: `docs/USER_MANUAL.md`.
 - Latest UX validation: `docs/UX_TEST_REPORT.md`.
+
+## Repo independiente (push al remoto)
+
+Este proyecto está en un repo propio. Para subir a GitHub:
+
+1. Crea un repo nuevo en GitHub (ej. `prive-deal-finder` o `prive-deal-finder-app`).
+2. Añade el remoto y haz push:
+
+```bash
+git remote add origin git@github.com:TU_ORG/prive-deal-finder.git
+git push -u origin main
+```
+
+Sustituye `TU_ORG/prive-deal-finder` por la URL real del repo. Las variables y el token van en `apps/api/.env` y `apps/web/.env` (copiar desde los `.env.example`); no se suben al repo.

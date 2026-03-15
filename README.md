@@ -64,3 +64,9 @@ git push -u origin main
 ```
 
 Sustituye `TU_ORG/prive-deal-finder` por la URL real del repo. Las variables y el token van en `apps/api/.env` y `apps/web/.env` (copiar desde los `.env.example`); no se suben al repo.
+
+## Relación con PRIVE-GROUP-AI-PLATFORM
+
+Este repo contiene **solo** lo que corresponde al producto Prive Deal Finder (api, web, integraciones, deploy a Cloud Run, docs de la app). Lo que es de la plataforma más amplia (hardware/DGX, n8n-workflows, cloud-functions, gas-consolidated, troubleshooting de red, etc.) sigue en **PRIVE-GROUP-AI-PLATFORM** y no se ha tocado ahí.
+
+Si este proyecto necesita algo de esa plataforma (por ejemplo flujos n8n, scripts de GCP/hardware), se puede clonar o referenciar el repo [PRIVE-GROUP-AI-PLATFORM](https://github.com/jerabinovich/PRIVE-GROUP-AI-PLATFORM) junto a este, o copiar solo lo necesario.

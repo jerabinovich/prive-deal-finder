@@ -28,3 +28,6 @@ Este contenido se recuperó de GitHub (el commit sigue accesible por SHA) para *
 4. **Commit original en GitHub**  
    `https://github.com/jerabinovich/prive-deal-finder/commit/e7f46f9ba44adc1df8eba4172aaf9bdb05d11c30`  
    Ahí puedes ver el árbol completo y el historial anterior si hace falta.
+
+5. **UI/UX de ambas versiones**  
+   La UI/UX de la v1 y de la app actual (Next.js) están documentadas juntas en **`docs/UI-UX-REFERENCE.md`**, para usar ambas como referencia al evolucionar el producto.

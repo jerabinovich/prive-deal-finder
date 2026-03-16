@@ -1,0 +1,38 @@
+<!-- MORNING BRIEF TEMPLATE v4
+     Full template with Amanda photo + Privé Group logo + 4 secciones
+     
+     This file is the HTML template for OpenClaw Morning Brief reports.
+     Generated: 2026-03-16
+     
+     Design system: #0a0a0f bg, #111118 cards, JetBrains Mono font
+     Sections: Para JR | Operaciones | Amanda | Sistema
+     Banner: Amanda photo (left) + report title (center) + Privé logo (right)
+     
+     USAGE:
+     - OpenClaw serves this template and replaces {{PLACEHOLDERS}} with live data
+     - Set MORNING_BRIEF_TEMPLATE_PATH = "templates/morning_brief.html" in orchestration_config.py
+     - Full binary version available at: docs/artifacts/morning_brief_v4.html
+     
+     DATA PLACEHOLDERS:
+     {{DATE}}           - YYYY-MM-DD
+     {{PERIOD_START}}   - HH:MM ET YYYY-MM-DD
+     {{PERIOD_END}}     - HH:MM ET YYYY-MM-DD  
+     {{WEATHER_TEMP}}   - temperature in °F
+     {{WEATHER_COND}}   - condition label
+     {{EMAIL_COUNT}}    - unread emails
+     {{DRAFT_COUNT}}    - Amanda drafts pending
+     {{URGENT_COUNT}}   - urgent actions
+     {{MEETINGS_TODAY}} - meetings today
+     {{MEETINGS_TMW}}   - meetings tomorrow
+     {{ACCIONES_HTML}}  - rendered acciones urgentes rows
+     {{PIPELINE_HTML}}  - rendered pipeline lanes
+     {{INBOX_HTML}}     - rendered inbox items
+     {{CALLLOG_HTML}}   - rendered call log rows
+     {{BOARD_OPEN}}     - open tasks count
+     {{BOARD_FOLLOWUP}} - followups count  
+     {{BOARD_DONE}}     - done/reminders count
+     {{CONNECTORS_HTML}}- rendered connector status dots
+-->
+<!DOCTYPE html>
+<!-- See docs/MORNING-BRIEF-UI-SPEC.md for full specification -->
+<!-- Full binary template committed separately due to embedded assets (Amanda photo + Privé logo) -->

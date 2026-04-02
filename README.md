@@ -8,9 +8,10 @@ Monorepo with Next.js frontend and NestJS backend.
 - `packages/shared`: shared types
 
 ## Local development
-1. Copy env files:
+1. Copy env files and fill tokens/APIs (never commit `.env`; keep them so the app and all integrations keep running):
 - `apps/api/.env.example` -> `apps/api/.env`
 - `apps/web/.env.example` -> `apps/web/.env`
+- See **`docs/TOKENS-AND-APIS.md`** for the full list of required and optional env vars.
 2. Install deps from repo root:
 - `npm install`
 3. Start local PostgreSQL:

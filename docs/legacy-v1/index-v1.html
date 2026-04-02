@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prive Deal Finder | JV Origination Intelligence</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{--primary:#0f172a;--gold:#c9a227;--bg:#f1f5f9;--white:#ffffff;--text:#334155;--border:#e2e8f0;--success:#10b981;--warn:#f59e0b;--danger:#ef4444;--sidebar:280px;--header:68px}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text)}
+header{height:var(--header);background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;position:fixed;width:100%;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.logo{font-size:1.2rem;font-weight:800;letter-spacing:1px}.logo span{color:var(--gold)}
+.hstats{display:flex;gap:2rem;font-size:.8rem;color:#94a3b8}.hstats b{color:#fff;font-size:1rem}
+.hbtns{display:flex;gap:.75rem}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:6px;font-weight:600;font-size:.8rem;cursor:pointer;border:1px solid transparent;transition:.2s}
+.btn-gold{background:var(--gold);color:#fff;border-color:var(--gold)}
+.btn-dark{background:#1e293b;color:#fff}
+.btn-outline{background:var(--white);color:var(--text);border-color:var(--border)}
+.layout{display:flex;margin-top:var(--header);min-height:calc(100vh - var(--header))}
+aside{width:var(--sidebar);background:var(--white);border-right:1px solid var(--border);padding:1.5rem;position:fixed;top:var(--header);height:calc(100vh - var(--header));overflow-y:auto}
+.flabel{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:.4rem;margin-top:1.2rem}
+select,input[type=range]{width:100%;padding:.5rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem;background:#f8fafc}
+select:focus{outline:none;border-color:var(--gold)}
+.scoreval{display:flex;justify-content:space-between;font-size:.7rem;margin-top:.3rem;color:#64748b}
+.resetbtn{width:100%;margin-top:1.5rem;padding:.7rem;background:#f1f5f9;border:1px solid var(--border);border-radius:6px;font-weight:600;color:#475569;cursor:pointer}
+.resetbtn:hover{background:var(--border)}
+main{flex:1;margin-left:var(--sidebar);padding:2rem}
+.pipeline{background:#1e293b;color:#fff;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.plabel{font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:.5rem}
+.pills{display:flex;gap:.75rem;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:.4rem;padding:.35rem .75rem;background:rgba(255,255,255,.07);border-radius:20px;font-size:.72rem;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.on{background:var(--success);box-shadow:0 0 6px var(--success)}
+.dot.off{background:var(--warn)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;background:var(--white);padding:.9rem 1.25rem;border-radius:10px;margin-bottom:1.5rem;border:1px solid var(--border)}
+.sortrow{display:flex;align-items:center;gap:.6rem;font-size:.85rem}
+.sortrow select{padding:.35rem .6rem;width:auto}
+.sortbtn{padding:.35rem .6rem;border-radius:5px;border:1px solid var(--border);background:var(--white);cursor:pointer}
+#rcount{font-size:.8rem;color:#64748b}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.5rem}
+.card{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;cursor:pointer;transition:.2s;position:relative}
+.card:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.1)}
+.cbadge{position:absolute;top:.9rem;right:.9rem;width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;border:2px solid var(--gold);z-index:5}
+.cimg{height:140px;background:linear-gradient(135deg,#1e293b,#334155);position:relative;display:flex;align-items:flex-end;padding:.75rem}
+.ctag{background:rgba(255,255,255,.9);padding:.2rem .6rem;border-radius:4px;font-size:.65rem;font-weight:700;text-transform:uppercase;color:var(--primary)}
+.cbody{padding:1.1rem}
+.cmarket{font-size:.7rem;font-weight:700;color:var(--gold);text-transform:uppercase;margin-bottom:.2rem}
+.ctitle{font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:.9rem;line-height:1.3}
+.cmetrics{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;padding:.75rem;background:#f8fafc;border-radius:8px;margin-bottom:.8rem}
+.mitem{display:flex;flex-direction:column;gap:.15rem}
+.mlabel{font-size:.6rem;color:#94a3b8;text-transform:uppercase}
+.mval{font-size:.85rem;font-weight:700;color:var(--primary)}
+.cpains{display:flex;flex-wrap:wrap;gap:.4rem}
+.ptag{font-size:.65rem;padding:.2rem .5rem;border-radius:4px;background:#fee2e2;color:#991b1b;font-weight:600}
+.empty{text-align:center;padding:4rem;color:#94a3b8;grid-column:1/-1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:1.5rem}
+.modal{background:var(--white);width:100%;max-width:880px;max-height:90vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.mhead{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
+.mmarket{font-size:.7rem;font-weight:700;color:var(--gold);text-transform:uppercase}
+.mtitle{font-size:1.25rem;font-weight:800;color:var(--primary)}
+.mclose{font-size:1.4rem;color:#94a3b8;cursor:pointer;padding:.2rem}
+.mbody{padding:1.5rem;overflow-y:auto;flex:1;display:grid;grid-template-columns:3fr 2fr;gap:1.5rem}
+.msec{font-size:.7rem;font-weight:700;text-transform:uppercase;color:#64748b;padding-bottom:.4rem;border-bottom:2px solid var(--bg);margin-bottom:.9rem}
+.moppty{font-size:.9rem;color:#475569;line-height:1.65;margin-bottom:1.25rem}
+.mrisks{font-size:.85rem;color:#64748b;padding-left:1.1rem;line-height:1.7}
+.ocard{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-bottom:1.25rem}
+.orow{display:flex;justify-content:space-between;padding:.3rem 0;font-size:.85rem;border-bottom:1px solid var(--border)}
+.orow:last-child{border:none}
+.orow span:first-child{color:#64748b}
+.orow span:last-child{font-weight:600}
+.outbox{background:#fffbeb;border:1px solid #fef3c7;border-radius:10px;padding:1.1rem}
+.outbtns{display:flex;gap:.5rem;margin-bottom:.9rem}
+.tpl{background:var(--white);border:1px solid var(--border);border-radius:7px;padding:.9rem;font-size:.8rem;font-family:monospace;white-space:pre-wrap;line-height:1.6;margin-bottom:.75rem;display:none;max-height:220px;overflow-y:auto}
+.copybtn{width:100%;display:none}
+.mapview{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem;display:none}
+.mapframe{width:100%;height:420px;border:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PRIVE <span>DEAL FINDER</span></div>
+  <div class="hstats">
+    <div><b id="st">0</b> Deals</div>
+    <div><b id="sp">0</b> Priority</div>
+    <div><b id="sv">$0M</b> Value</div>
+  </div>
+  <div class="hbtns">
+    <button class="btn btn-outline" onclick="toggleMap()"><i class="fas fa-map"></i> Map</button>
+    <button class="btn btn-outline" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export</button>
+    <button class="btn btn-gold" onclick="genReport()"><i class="fas fa-chart-bar"></i> Report</button>
+  </div>
+</header>
+<div class="layout">
+<aside>
+  <span class="flabel">Market</span>
+  <select id="fm"><option value="">All Markets</option><option>Miami Beach</option><option>Sunny Isles</option><option>Brickell</option><option>Wynwood</option><option>Edgewater</option><option>Coconut Grove</option><option>Coral Gables</option><option>Aventura</option><option>Downtown Miami</option><option>Design District</option></select>
+  <span class="flabel">Asset Type</span>
+  <select id="ft"><option value="">All Types</option><option>Multifamily</option><option>Mixed-Use</option><option>Office</option><option>Retail</option><option>Hotel</option><option>Industrial</option><option>Land / Development</option></select>
+  <span class="flabel">Pain Point</span>
+  <select id="fp"><option value="">Any</option><option>Distressed Debt</option><option>Zoning Play</option><option>High Vacancy</option><option>Estate Sale</option><option>Pre-Foreclosure</option><option>Aging Asset</option></select>
+  <span class="flabel">Min Deal Score: <span id="sv2">70</span></span>
+  <input type="range" id="fs" min="70" max="100" value="70" oninput="document.getElementById('sv2').innerText=this.value;render()">
+  <div class="scoreval"><span>70</span><span>100</span></div>
+  <span class="flabel">Max Cap Rate</span>
+  <select id="fc"><option value="99">Any</option><option value="4">Under 4%</option><option value="5">Under 5%</option><option value="6">Under 6%</option><option value="8">Under 8%</option></select>
+  <button class="resetbtn" onclick="reset()">Reset All Filters</button>
+</aside>
+<main>
+  <div class="pipeline">
+    <div>
+      <div class="plabel">Data Pipeline Status</div>
+      <div class="pills">
+        <div class="pill"><div class="dot on"></div>Miami-Dade Appraiser</div>
+        <div class="pill"><div class="dot on"></div>CoStar Market API</div>
+        <div class="pill"><div class="dot on"></div>Public Records</div>
+        <div class="pill"><div class="dot on"></div>Google Maps API</div>
+        <div class="pill"><div class="dot off"></div>Lender DB (Q2 2026)</div>
+        <div class="pill"><div class="dot off"></div>Repliers.com</div>
+      </div>
+    </div>
+  </div>
+  <div id="mapview" class="mapview">
+    <iframe id="mapframe" class="mapframe" src="" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+  <div class="toolbar">
+    <div class="sortrow">
+      <span>Sort:</span>
+      <select id="sb"><option value="score">Score</option><option value="value">Value</option><option value="size">Size SF</option><option value="cap">Cap Rate</option></select>
+      <button class="sortbtn" onclick="toggleDir()" id="dirBtn"><i class="fas fa-sort-amount-down"></i></button>
+    </div>
+    <div id="rcount">Showing 0 deals</div>
+  </div>
+  <div id="grid" class="grid"></div>
+</main>
+</div>
+<div id="overlay" class="overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="mhead">
+      <div><div class="mmarket" id="mmarket"></div><div class="mtitle" id="mtitle"></div></div>
+      <span class="mclose" onclick="closeModal(null)">&#x2715;</span>
+    </div>
+    <div class="mbody">
+      <div>
+        <div class="msec">Investment Thesis</div>
+        <div class="moppty" id="moppty"></div>
+        <div class="msec">Property Metrics</div>
+        <div class="cmetrics" id="mmetrics"></div>
+        <div class="msec">Risk Factors</div>
+        <ul class="mrisks" id="mrisks"></ul>
+      </div>
+      <div>
+        <div class="msec">Owner Intelligence</div>
+        <div class="ocard">
+          <div class="orow"><span>Entity</span><span id="oentity"></span></div>
+          <div class="orow"><span>Principal</span><span id="oprinc"></span></div>
+          <div class="orow"><span>Phone</span><span id="ophone"></span></div>
+          <div class="orow"><span>Email</span><span id="oemail"></span></div>
+          <div class="orow"><span>Tenure</span><span id="otenure"></span></div>
+        </div>
+        <div class="orow" style="margin-bottom:.9rem;border:none">
+          <a id="maplink" href="#" target="_blank" class="btn btn-outline" style="font-size:.75rem;text-decoration:none"><i class="fas fa-map-marker-alt"></i> Google Maps</a>
+          <a id="streetlink" href="#" target="_blank" class="btn btn-outline" style="font-size:.75rem;text-decoration:none"><i class="fas fa-street-view"></i> Street View</a>
+        </div>
+        <div class="outbox">
+          <div style="font-weight:700;color:#92400e;margin-bottom:.75rem"><i class="fas fa-paper-plane"></i> Quick Outreach</div>
+          <div class="outbtns">
+            <button class="btn btn-dark" style="flex:1" onclick="genTpl('email')">Email</button>
+            <button class="btn btn-outline" style="flex:1" onclick="genTpl('sms')">SMS</button>
+            <button class="btn btn-outline" style="flex:1" onclick="genTpl('wa')">WhatsApp</button>
+          </div>
+          <div class="tpl" id="tpl"></div>
+          <button class="btn btn-outline copybtn" id="copybtn" onclick="copyTpl()"><i class="fas fa-copy"></i> Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const deals=[{id:1,market:'Miami Beach',type:'Hotel',score:94,title:'Art Deco Boutique Portfolio',size:45000,value:58000000,cap:4.2,pain:['Estate Sale','Aging Asset'],oppty:'Three adjacent Art Deco hotels with direct beach access. Owners liquidating estate. Assets 40% vacant. Consolidate + renovate to luxury.',addr:'1234 Ocean Drive, Miami Beach FL',lat:25.790654,lng:-80.130045,owner:{entity:'Ocean Drive Holdings LLC',principal:'Marcus Goldman',phone:'305-555-0122',email:'mgoldman@oceanholdings.com',tenure:'28 Years'},metrics:{'Price/Key':'$430k','Reno Est':'$8M','Pro-forma Cap':'6.8%','Keys':'120'},risks:['Historic approvals','Flooding regs','STR tax']},{id:2,market:'Wynwood',type:'Land / Development',score:91,title:'2.4 Acre Entitled Mixed-Use Site',size:104544,value:32500000,cap:0,pain:['Distressed Debt','Zoning Play'],oppty:'T6-8-O zoning, 420 units approved. Lender notice of default. 15% groundwork done. 30% below market.',addr:'245 NW 26th Street, Miami FL',lat:25.800123,lng:-80.195234,owner:{entity:'Wyn-Dev Partners LLC',principal:'Robert Chen',phone:'786-555-0988',email:'rchen@wyndev.com',tenure:'4 Years'},metrics:{'Buildable SF':'650k','Units/Ac':'175','FAR':'8.0','Cost/Unit':'$77k'},risks:['Construction vol','Rate risk','Saturation']},{id:3,market:'Brickell',type:'Office',score:85,title:'Class B Office / Res Conversion',size:88000,value:42000000,cap:5.1,pain:['High Vacancy','Aging Asset'],oppty:'Former insurance HQ at 62% occ. Resi conversion potential. Add 4 floors. 120 parking spaces.',addr:'800 Brickell Ave, Miami FL',lat:25.764270,lng:-80.190560,owner:{entity:'Brickell Square Corp',principal:'Sarah Miller',phone:'305-555-2244',email:'smiller@bricksq.com',tenure:'15 Years'},metrics:{'Current NOI':'$2.1M','Upside PSF':'$25','Parking Ratio':'1.4/1k','Walk':'98'},risks:['Conversion cost','HVAC replace','Buyout']},{id:4,market:'Edgewater',type:'Multifamily',score:89,title:'128-Unit Waterfront Value-Add',size:115000,value:48500000,cap:4.5,pain:['Estate Sale','Pre-Foreclosure'],oppty:'Waterfront with boat slips. 35% below market rents. Family dispute, 45-day sale. No CapEx 20yrs.',addr:'2100 N Bayshore Dr, Miami FL',lat:25.802345,lng:-80.184123,owner:{entity:'Edgewater Shores Trust',principal:'James Vancamp',phone:'786-555-7711',email:'jvancamp@eshorestrust.com',tenure:'42 Years'},metrics:{'Avg Rent':'$2,200','Market Rent':'$3,400','Price/Unit':'$378k','Land':'1.2 Ac'},risks:['Sea level','Relocation','Liquidity']},{id:5,market:'Coconut Grove',type:'Retail',score:82,title:'Village Center Mixed-Use Plaza',size:32000,value:18700000,cap:5.8,pain:['Aging Asset','High Vacancy'],oppty:'Retail/office complex. Anchor leaving in 6mo. Modern reposition or 5-story resi over retail.',addr:'3120 Grand Ave, Coconut Grove FL',lat:25.725678,lng:-80.237890,owner:{entity:'Grove Central LLC',principal:'Elana Ross',phone:'305-555-3300',email:'eross@grovecentral.com',tenure:'10 Years'},metrics:{'Current Yield':'5.8%','Air Rights SF':'15k','Zoning':'NC-2','Frontage':'180ft'},risks:['Parking','Preservation','Tenant mix']},{id:6,market:'Aventura',type:'Office',score:88,title:'Medical Office Portfolio (2 Bldgs)',size:72000,value:38500000,cap:6.2,pain:['Distressed Debt'],oppty:'92% occupied credit health. Lender workout. Seller needs liquidity for margin call.',addr:'19999 Biscayne Blvd, Aventura FL',lat:25.951234,lng:-80.142345,owner:{entity:'HealthCore Aventura',principal:'Dr. David Kim',phone:'305-555-4455',email:'dkim@hcore.com',tenure:'7 Years'},metrics:{'WALT':'6.8 Yrs','Credit':'75%','Mgmt Fee':'4%','OpEx PSF':'$12'},risks:['Consolidation','New comp','Medical fit']},{id:7,market:'Downtown Miami',type:'Multifamily',score:95,title:'Historic OZ Conversion',size:95000,value:24000000,cap:0,pain:['Zoning Play','Pre-Foreclosure'],oppty:'1920s tower, Opportunity Zone. 20% historic tax credits. 180 studios + hospitality. $4M lien.',addr:'100 E Flagler St, Miami FL',lat:25.773812,lng:-80.193234,owner:{entity:'Flagler Legacy Partners',principal:'Antonio Lopez',phone:'786-555-6622',email:'alopez@flaglerlegacy.com',tenure:'3 Years'},metrics:{'OZ Benefit':'Full','Tax Credits':'$4.8M','Floor Plate':'8k SF','Basement':'Avail'},risks:['Preservation','Parking','Structural']},{id:8,market:'Sunny Isles',type:'Hotel',score:86,title:'Beachfront Condo-Hotel Recap',size:155000,value:112000000,cap:3.9,pain:['Distressed Debt','Aging Asset'],oppty:'Luxury beachfront, owner-operator debt. Recap + buyout + flag (Marriott/Hilton). High RevPAR.',addr:'17315 Collins Ave, Sunny Isles Beach FL',lat:25.933456,lng:-80.123567,owner:{entity:'Sunny Isles Resort Grp',principal:'Igor Petrov',phone:'305-555-8899',email:'ipetrov@sirg.com',tenure:'8 Years'},metrics:{'RevPAR':'$245','ADR':'$420','Occ':'68%','Flag Interest':'Yes'},risks:['HOA','Erosion','Flag cost']}];
+let dir=-1,curr;
+function render(){const g=document.getElementById('grid'),m=document.getElementById('fm').value,t=document.getElementById('ft').value,s=parseInt(document.getElementById('fs').value),p=document.getElementById('fp').value,c=parseFloat(document.getElementById('fc').value),f=deals.filter(d=>{const mk=!m||d.market===m,ty=!t||d.type===t,sc=d.score>=s,pn=!p||d.pain.includes(p),cr=d.cap<=c;return mk&&ty&&sc&&pn&&cr}),sb=document.getElementById('sb').value;f.sort((a,b)=>(a[sb]-b[sb])*dir);g.innerHTML=f.length?f.map(d=>`<div class="card" onclick="openM(${d.id})"><div class="cbadge">${d.score}</div><div class="cimg"><div class="ctag">${d.type}</div></div><div class="cbody"><div class="cmarket">${d.market}</div><div class="ctitle">${d.title}</div><div class="cmetrics"><div class="mitem"><span class="mlabel">Value</span><span class="mval">$${(d.value/1e6).toFixed(1)}M</span></div><div class="mitem"><span class="mlabel">Cap Rate</span><span class="mval">${d.cap?d.cap+'%':'Dev'}</span></div></div><div class="cpains">${d.pain.map(p=>`<span class="ptag">${p}</span>`).join('')}</div></div></div>`).join(''):'<div class="empty"><i class="fas fa-search fa-3x"></i><p>No deals match filters</p></div>';document.getElementById('st').innerText=f.length;document.getElementById('sp').innerText=f.filter(d=>d.score>=90).length;document.getElementById('sv').innerText='$'+(f.reduce((s,d)=>s+d.value,0)/1e6).toFixed(0)+'M';document.getElementById('rcount').innerText=`Showing ${f.length} deals`}
+function openM(id){curr=deals.find(d=>d.id==id);document.getElementById('mmarket').innerText=curr.market;document.getElementById('mtitle').innerText=curr.title;document.getElementById('moppty').innerText=curr.oppty;document.getElementById('mmetrics').innerHTML=Object.entries(curr.metrics).map(([k,v])=>`<div class="mitem"><span class="mlabel">${k}</span><span class="mval">${v}</span></div>`).join('');document.getElementById('mrisks').innerHTML=curr.risks.map(r=>`<li>${r}</li>`).join('');document.getElementById('oentity').innerText=curr.owner.entity;document.getElementById('oprinc').innerText=curr.owner.principal;document.getElementById('ophone').innerText=curr.owner.phone;document.getElementById('oemail').innerText=curr.owner.email;document.getElementById('otenure').innerText=curr.owner.tenure;document.getElementById('maplink').href=`https://www.google.com/maps/search/?api=1&query=${curr.lat},${curr.lng}`;document.getElementById('streetlink').href=`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${curr.lat},${curr.lng}`;document.getElementById('tpl').style.display='none';document.getElementById('copybtn').style.display='none';document.getElementById('overlay').style.display='flex'}
+function closeModal(e){if(e===null||e.target.id==='overlay')document.getElementById('overlay').style.display='none';document.getElementById('tpl').style.display='none';document.getElementById('copybtn').style.display='none'}
+function toggleDir(){dir*=-1;document.getElementById('dirBtn').innerHTML=dir===-1?'<i class="fas fa-sort-amount-down"></i>':'<i class="fas fa-sort-amount-up"></i>';render()}
+function reset(){document.getElementById('fm').value='';document.getElementById('ft').value='';document.getElementById('fp').value='';document.getElementById('fs').value=70;document.getElementById('sv2').innerText=70;document.getElementById('fc').value=99;document.getElementById('sb').value='score';render()}
+function genTpl(t){const o=curr.owner;let txt='';if(t==='email')txt=`Subject: Strategic JV Opportunity - ${curr.title}\n\nDear ${o.principal},\n\nI'm with Prive Group. We've been tracking opportunities in ${curr.market} and specifically identified your asset at ${curr.addr}.\n\nWe recognize the current ${curr.pain.join(' and ')} situation and specialize in providing precision capital for these exact scenarios.\n\nCan we explore a JV or recap structure? Available this Thursday for a brief call.\n\nBest,\nPrive Group\n${o.phone}`;else if(t==='sms')txt=`Hi ${o.principal}, Prive Group here. Interested in discussing a JV opportunity for your property at ${curr.addr} in ${curr.market}. We address ${curr.pain[0]} situations. Available this week? ${o.phone}`;else txt=`Hi ${o.principal}, this is Prive Group regarding your ${curr.market} property. We'd like to discuss a partnership opportunity addressing the ${curr.pain[0]}. Can we schedule a call?`;document.getElementById('tpl').innerText=txt;document.getElementById('tpl').style.display='block';document.getElementById('copybtn').style.display='block'}
+function copyTpl(){navigator.clipboard.writeText(document.getElementById('tpl').innerText);const b=document.getElementById('copybtn');b.innerHTML='<i class="fas fa-check"></i> Copied!';setTimeout(()=>b.innerHTML='<i class="fas fa-copy"></i> Copy',2000)}
+function exportCSV(){let csv='Market,Type,Score,Title,Value,Cap,Owner,Phone,Email\n';deals.forEach(d=>csv+=`"${d.market}","${d.type}",${d.score},"${d.title}",${d.value},${d.cap},"${d.owner.principal}","${d.owner.phone}","${d.owner.email}"\n`);const blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='prive_pipeline.csv';a.click()}
+function genReport(){alert(`Pipeline Report\n\n${deals.length} Total Opportunities\nAggregate Value: $${(deals.reduce((s,d)=>s+d.value,0)/1e6).toFixed(0)}M\nAvg Deal Score: ${(deals.reduce((s,d)=>s+d.score,0)/deals.length).toFixed(1)}\n\nTop Markets: Miami Beach, Wynwood, Downtown\nPrimary Pain: Distressed Debt, Zoning Plays`)}
+function toggleMap(){const mv=document.getElementById('mapview'),mf=document.getElementById('mapframe');if(mv.style.display==='block'){mv.style.display='none';document.querySelector('.toolbar').style.display='flex';document.getElementById('grid').style.display='grid'}else{mv.style.display='block';document.querySelector('.toolbar').style.display='none';document.getElementById('grid').style.display='none';if(!mf.src){const pts=deals.map(d=>`${d.lat},${d.lng}`).join('|');mf.src=`https://www.google.com/maps/embed/v1/view?key=YOUR_API_KEY&center=25.7617,-80.1918&zoom=12`}}}
+['fm','ft','fp','fc','sb'].forEach(id=>document.getElementById(id).onchange=render);
+render();
+</script>
+</body>
+</html>

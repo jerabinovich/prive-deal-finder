@@ -31,4 +31,34 @@ export class ReportsController {
     res.setHeader("Content-Disposition", 'attachment; filename="pipeline-report.pdf"');
     res.send(pdf);
   }
+
+  @Roles("ADMIN", "ANALYST", "PARTNER")
+  @Get("pipeline.telegram")
+  async pipelineTelegram(@Query() query: PipelineQueryDto, @Res() res: Response) {
+    const text = await this.reportsService.pipelineTelegram(query);
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.send(text);
+  }
+
+  @Roles("ADMIN", "ANALYST", "PARTNER")
+  @Get("pipeline.md")
+  async pipelineMarkdown(@Query() query: PipelineQueryDto, @Res() res: Response) {
+    const markdown = await this.reportsService.pipelineMarkdown(query);
+    res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+    res.send(markdown);
+  }
+
+  @Roles("ADMIN", "ANALYST", "PARTNER")
+  @Get("pipeline.html")
+  async pipelineHtml(@Query() query: PipelineQueryDto, @Res() res: Response) {
+    const html = await this.reportsService.pipelineHtml(query);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  }
+
+  @Roles("ADMIN", "ANALYST", "PARTNER")
+  @Get("pipeline.channels")
+  async pipelineChannels(@Query() query: PipelineQueryDto) {
+    return this.reportsService.pipelineChannels(query);
+  }
 }

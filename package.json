@@ -17,6 +17,7 @@
     "cloudrun:status": "bash ./scripts/cloudrun_status.sh",
     "go-live:check": "bash ./scripts/go_live_check.sh",
     "morning:refresh": "node ./scripts/morning_refresh.js",
+    "reports:pipeline:send": "node ./scripts/send_pipeline_report.js",
     "verify:local": "bash ./scripts/verify_local.sh",
     "lint": "npm run lint -w @prive/web && npm run lint -w @prive/api",
     "test": "npm run test -w @prive/api",

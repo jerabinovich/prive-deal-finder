@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../shared/prisma.service";
 import { PipelineQueryDto } from "./dto/pipeline-query.dto";
+import { buildPipelineContext, renderPipelineHtml, renderPipelineMarkdown, renderPipelineTelegram } from "./report-renderers";
 
 export interface PipelineRow {
   status: string;
@@ -107,5 +108,31 @@ export class ReportsService {
     }
 
     return buildSimplePdf(lines);
+  }
+
+  async pipelineTelegram(query: PipelineQueryDto = {}): Promise<string> {
+    const rows = await this.pipelineSummary(query);
+    return renderPipelineTelegram(buildPipelineContext(rows));
+  }
+
+  async pipelineMarkdown(query: PipelineQueryDto = {}): Promise<string> {
+    const rows = await this.pipelineSummary(query);
+    return renderPipelineMarkdown(buildPipelineContext(rows));
+  }
+
+  async pipelineHtml(query: PipelineQueryDto = {}): Promise<string> {
+    const rows = await this.pipelineSummary(query);
+    return renderPipelineHtml(buildPipelineContext(rows));
+  }
+
+  async pipelineChannels(query: PipelineQueryDto = {}) {
+    const rows = await this.pipelineSummary(query);
+    const context = buildPipelineContext(rows);
+    return {
+      context,
+      telegram: renderPipelineTelegram(context),
+      markdown: renderPipelineMarkdown(context),
+      html: renderPipelineHtml(context),
+    };
   }
 }

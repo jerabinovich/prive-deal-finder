@@ -106,6 +106,32 @@ except Exception as e:
 - Se actualiza con cada brief generado
 - Amanda guarda en: `brain_ai_prive/output/latest_brief.html`
 
+### Pipeline report multi-canal (API Nest)
+
+- JSON: `GET /api/reports/pipeline`
+- CSV: `GET /api/reports/pipeline.csv`
+- PDF: `GET /api/reports/pipeline.pdf`
+- Telegram texto: `GET /api/reports/pipeline.telegram`
+- Markdown: `GET /api/reports/pipeline.md`
+- HTML: `GET /api/reports/pipeline.html`
+- Bundle para integraciones: `GET /api/reports/pipeline.channels` (incluye `telegram`, `markdown`, `html` en una sola respuesta)
+
+### Sender operativo (Telegram + otros canales)
+
+Script: `scripts/send_pipeline_report.js`
+
+Variables:
+- `API_BASE` (ej: `http://127.0.0.1:3001/api`)
+- `API_BEARER_TOKEN` (si API está protegida)
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+Uso:
+- Telegram: `npm run reports:pipeline:send`
+- Markdown (stdout): `npm run reports:pipeline:send -- --mode=markdown`
+- HTML (stdout): `npm run reports:pipeline:send -- --mode=html`
+- JSON bundle (stdout): `npm run reports:pipeline:send -- --mode=json`
+
 ---
 
 ## CONTEXTO MORNING vs AFTERNOON

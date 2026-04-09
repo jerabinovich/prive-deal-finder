@@ -39,6 +39,17 @@
   .todo-row:last-child { border-bottom: none; }
   .todo-check { width: 14px; height: 14px; border: 1px solid #3a3a50; border-radius: 3px; cursor: pointer; flex-shrink: 0; background: transparent; appearance: none; -webkit-appearance: none; }
   .todo-check:checked { background: #4f8ef7; border-color: #4f8ef7; }
+  .todo-actions { display:flex; align-items:center; gap:6px; }
+  .todo-btn {
+    font-size: 10px; color: #cbd5e1; background:#131625; border:1px solid #2a3350;
+    border-radius:4px; padding:2px 8px; cursor:pointer; font-family: inherit;
+  }
+  .todo-btn:hover { border-color:#4f8ef7; color:#f0f0f5; }
+  .todo-link {
+    font-size: 10px; color:#4f8ef7; text-decoration:none; border:1px solid #1a3a6a;
+    border-radius:4px; padding:2px 8px; background:#0a1a3a;
+  }
+  .todo-link:hover { color:#93c5fd; }
   .section-full { grid-column: 1 / -1; }
   .lane { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-left: 3px solid #4f8ef7; background: #0e0e18; border-radius: 0 4px 4px 0; margin-bottom: 6px; }
   .lane-distress { border-left-color: #ef4444; }
@@ -145,6 +156,40 @@
 .sp-sys   { background: #1a1a25; color: #8888a0; border: 1px solid #2a2a40; }
 .section-line { flex: 1; height: 1px; background: #1a1a25; }
 .section-desc { font-size: 10px; color: #3a3a50; white-space: nowrap; }
+
+/* Detail modal */
+.detail-modal {
+  position: fixed; inset: 0; background: rgba(3,6,18,0.78); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.detail-modal.open { display: flex; }
+.detail-panel {
+  width: min(860px, 95vw); max-height: 85vh; overflow: auto;
+  background: #0f1220; border: 1px solid #2a3350; border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+}
+.detail-head {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:14px 16px; border-bottom:1px solid #1a233f;
+}
+.detail-title { font-size: 13px; font-weight: 600; color:#f0f0f5; letter-spacing: 0.04em; }
+.detail-close {
+  font-size: 11px; background:#141a2e; color:#94a3b8; border:1px solid #2a3350;
+  border-radius: 4px; padding:4px 10px; cursor:pointer; font-family:inherit;
+}
+.detail-close:hover { color:#f0f0f5; border-color:#4f8ef7; }
+.detail-body { padding: 14px 16px 16px; }
+.detail-meta { font-size:10px; color:#8888a0; margin-bottom:10px; }
+.detail-text {
+  font-size:12px; color:#d1d5db; line-height:1.55; white-space: pre-wrap;
+  background:#0a0d18; border:1px solid #1a233f; border-radius:8px; padding:12px;
+}
+.detail-actions { margin-top: 12px; display:flex; gap:8px; }
+.detail-actions a {
+  font-size:11px; color:#cfe3ff; text-decoration:none; background:#0a1a3a;
+  border:1px solid #1a3a6a; border-radius:4px; padding:6px 10px;
+}
+.detail-actions a:hover { color:#ffffff; }
 
 </style>
 
@@ -472,7 +517,154 @@
 
 </div>
 
+<div id="detail-modal" class="detail-modal" aria-hidden="true">
+  <div class="detail-panel">
+    <div class="detail-head">
+      <div id="detail-title" class="detail-title">Detalle</div>
+      <button id="detail-close" class="detail-close">Cerrar</button>
+    </div>
+    <div class="detail-body">
+      <div id="detail-meta" class="detail-meta"></div>
+      <div id="detail-text" class="detail-text"></div>
+      <div id="detail-actions" class="detail-actions"></div>
+    </div>
+  </div>
+</div>
+
 <script>
+  const TODO_DETAIL_MAP = {
+    'Revisar reply de Calum Weaver (Civica)': {
+      meta: 'Fuente: OpenClaw · Tipo: Reply pendiente',
+      detail: 'Contexto:\n- Thread: Civica Lofts\n- Acción requerida: validar respuesta de Calum antes de cerrar.\n- Criterio de done: reply revisado y veredicto actualizado en CRM.',
+      links: [{ label: 'Abrir Gmail', href: 'https://mail.google.com/mail/u/0/#inbox' }]
+    },
+    'Confirmar que Andrea solicitó paquete MK': {
+      meta: 'Fuente: Hampton Inn · Tipo: Confirmación',
+      detail: 'Contexto:\n- Se necesita evidencia de solicitud del paquete MK.\n- Criterio de done: email/confirmación visible con fecha y responsable.',
+      links: [{ label: 'Abrir Thread Hampton', href: 'https://mail.google.com/mail/u/0/#search/Hampton%20Inn%20MK' }]
+    },
+    'Revisar 2 borradores Amanda pendientes': {
+      meta: 'Fuente: Gmail Drafts · Tipo: Aprobación',
+      detail: 'Borradores a revisar antes de marcar done:\n1) Re: Civica T12 request\n2) Follow-up: Hampton diligence\n\nCriterio de done:\n- Abriste ambos borradores\n- Confirmaste contenido y destinatarios\n- Dejaste aprobación explícita.',
+      links: [{ label: 'Abrir Drafts Gmail', href: 'https://mail.google.com/mail/u/0/#drafts' }]
+    },
+    'Commitear MORNING-BRIEF-UI-SPEC.md': {
+      meta: 'Fuente: GitHub · Tipo: Commit pendiente',
+      detail: 'Contexto:\n- Documento pendiente de commit.\n- Criterio de done: commit y push realizados, PR o hash registrado.',
+      links: [{ label: 'Abrir Repo en GitHub', href: 'https://github.com/' }]
+    },
+    'Actualizar veredicto Civica después de T12': {
+      meta: 'Fuente: CRM · Tipo: Actualización',
+      detail: 'Contexto:\n- Espera confirmación posterior a T12.\n- Criterio de done: veredicto actualizado y nota de racional en CRM.',
+      links: []
+    }
+  };
+
+  const AMANDA_DETAIL_MAP = {
+    'Solicitar PIP Hilton FLL a Andrea': {
+      meta: 'Amanda Board · Open Task',
+      detail: 'Acción:\n- Enviar/confirmar solicitud PIP Hilton FLL a Andrea.\n- Validar recepción y deadline de respuesta.',
+      links: [{ label: 'Abrir Gmail Drafts', href: 'https://mail.google.com/mail/u/0/#drafts' }]
+    },
+    'T12 Civica — confirmar receipt': {
+      meta: 'Amanda Board · Open Task',
+      detail: 'Acción:\n- Confirmar recepción del paquete T12 Civica.\n- Registrar estado y siguiente paso en pipeline.',
+      links: [{ label: 'Abrir Inbox Civica', href: 'https://mail.google.com/mail/u/0/#search/Civica%20T12' }]
+    },
+    'Calum Weaver — T12 + guidance Civica': {
+      meta: 'Amanda Board · Follow-up',
+      detail: 'Follow-up requerido:\n- Revisar guidance actual de pricing/terms.\n- Aprobar o pedir ajuste antes de enviar.',
+      links: [{ label: 'Abrir Drafts Gmail', href: 'https://mail.google.com/mail/u/0/#drafts' }]
+    },
+    'Andrea — confirma link MK Hampton Inn': {
+      meta: 'Amanda Board · Follow-up',
+      detail: 'Follow-up requerido:\n- Confirmar link y contenido del paquete MK.\n- Si falta data, enviar request directo.',
+      links: [{ label: 'Abrir Thread Andrea', href: 'https://mail.google.com/mail/u/0/#search/Andrea%20Hampton%20MK' }]
+    }
+  };
+
+  function openDetail(title, meta, detail, links) {
+    document.getElementById('detail-title').textContent = title;
+    document.getElementById('detail-meta').textContent = meta || '';
+    document.getElementById('detail-text').textContent = detail || 'Sin detalle adicional.';
+    const actions = document.getElementById('detail-actions');
+    actions.innerHTML = '';
+    (links || []).forEach((link) => {
+      const a = document.createElement('a');
+      a.href = link.href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = link.label;
+      actions.appendChild(a);
+    });
+    const modal = document.getElementById('detail-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDetail() {
+    const modal = document.getElementById('detail-modal');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function attachTodoDetailActions() {
+    document.querySelectorAll('#todos .todo-row').forEach((row) => {
+      if (row.querySelector('.todo-actions')) return;
+      const titleEl = row.querySelector('span[style*="flex:1"]');
+      if (!titleEl) return;
+      const title = titleEl.textContent.trim();
+      const sourceEl = row.querySelector('span:last-child');
+      const source = sourceEl ? sourceEl.textContent.trim() : '';
+      const config = TODO_DETAIL_MAP[title] || {
+        meta: 'Fuente: ' + source,
+        detail: 'Esta tarea requiere validación manual antes de marcar DONE.',
+        links: []
+      };
+
+      const actions = document.createElement('div');
+      actions.className = 'todo-actions';
+      const btn = document.createElement('button');
+      btn.className = 'todo-btn';
+      btn.type = 'button';
+      btn.textContent = 'Ver';
+      btn.addEventListener('click', () => openDetail(title, config.meta, config.detail, config.links));
+      actions.appendChild(btn);
+
+      const hasDraftLink = (config.links || []).some((x) => (x.label || '').toLowerCase().includes('draft'));
+      if (hasDraftLink) {
+        const lnk = document.createElement('a');
+        lnk.className = 'todo-link';
+        lnk.textContent = 'Draft';
+        lnk.href = config.links.find((x) => (x.label || '').toLowerCase().includes('draft')).href;
+        lnk.target = '_blank';
+        lnk.rel = 'noopener noreferrer';
+        actions.appendChild(lnk);
+      }
+      row.appendChild(actions);
+    });
+  }
+
+  function attachAmandaDetailActions() {
+    document.querySelectorAll('.board-item').forEach((item) => {
+      if (item.querySelector('.todo-btn')) return;
+      const raw = item.textContent.replace(/\s+/g, ' ').trim();
+      const found = Object.keys(AMANDA_DETAIL_MAP).find((key) => raw.includes(key));
+      if (!found) return;
+      const config = AMANDA_DETAIL_MAP[found];
+      const btn = document.createElement('button');
+      btn.className = 'todo-btn';
+      btn.type = 'button';
+      btn.style.marginTop = '6px';
+      btn.textContent = 'Ver detalle';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openDetail(found, config.meta, config.detail, config.links);
+      });
+      item.appendChild(btn);
+    });
+  }
+
   document.querySelectorAll('.todo-check').forEach(cb => {
     cb.addEventListener('change', function() {
       const label = this.nextElementSibling;
@@ -494,7 +686,14 @@
       l.style.color = this.checked ? '#3a3a50' : '#f0f0f5';
     });
     todos.appendChild(row);
+    attachTodoDetailActions();
     input.value = '';
   }
   document.getElementById('new-todo').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+  document.getElementById('detail-close').addEventListener('click', closeDetail);
+  document.getElementById('detail-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'detail-modal') closeDetail();
+  });
+  attachTodoDetailActions();
+  attachAmandaDetailActions();
 </script>

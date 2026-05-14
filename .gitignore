@@ -6,6 +6,7 @@ node_modules
 dist
 .next
 coverage
+output/
 test-results/
 .DS_Store
 *.log

@@ -13,6 +13,7 @@ import { OwnersModule } from "./owners/owners.module";
 import { OutreachModule } from "./outreach/outreach.module";
 import { ReportsModule } from "./reports/reports.module";
 import { PrismaModule } from "./shared/prisma.module";
+import { AgentModule } from "./agent/agent.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PrismaModule } from "./shared/prisma.module";
     ChatModule,
     DealsModule,
     HealthModule,
+    AgentModule,
     OwnersModule,
     OutreachModule,
     ReportsModule,

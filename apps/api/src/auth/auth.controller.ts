@@ -17,6 +17,16 @@ import { getAuthCookieConfig, readCookie } from "./cookies";
 import { Public } from "./public.decorator";
 import { JwtUser } from "./jwt.strategy";
 
+/**
+ * Solo se confia en la cabecera de Cloudflare Access si la peticion entro por loopback, que es por
+ * donde la entrega cloudflared. Cualquiera que hable directo con el puerto puede inventar la
+ * cabecera; nadie de afuera puede inventar la IP de origen.
+ */
+export function isLoopbackRequest(req: Request): boolean {
+  const ip = (req.ip || req.socket?.remoteAddress || "").replace(/^::ffff:/, "");
+  return ip === "127.0.0.1" || ip === "::1";
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -24,16 +34,57 @@ export class AuthController {
     private readonly config: ConfigService
   ) {}
 
+  // ── C6 (8-sep-2026): el cuerpo deja de ser fuente de identidad ──────────────────────────
+  // RAIZ: este endpoint aceptaba {email} del cuerpo, sin password, y authService.login promueve
+  // a ADMIN a cualquier email que este en AUTH_ADMIN_EMAILS. Se decia que el perimetro real era
+  // Cloudflare Access, y eso es cierto SOLO para el camino publico. MEDIDO el 8-sep: la API
+  // escucha en *:4000, no en loopback, asi que cualquier equipo del tailnet llega directo y
+  // Cloudflare no participa. Probado desde otra maquina del tailnet: /api/health devuelve 200.
+  //
+  // POR QUE NO ALCANZA CON LEER LA CABECERA. Cf-Access-Authenticated-User-Email la puede escribir
+  // cualquiera que hable directo con el puerto. Por eso la cabecera se cree UNICAMENTE si la
+  // peticion entro por loopback, que es por donde entra cloudflared (corre en esta misma maquina).
+  // Una peticion directa del tailnet tiene IP de tailnet y se rechaza aunque traiga la cabecera.
+  //
+  // LO QUE TODAVIA FALTA, dicho explicitamente para que no parezca cerrado: lo correcto de verdad
+  // es validar el JWT Cf-Access-Jwt-Assertion contra las claves publicas de Access. Esto es la
+  // capa de red, que es la que hoy esta abierta; la de firma queda anotada como siguiente paso.
+  //
+  // PALANCA DE VUELTA: AUTH_ALLOW_BODY_EMAIL=true en el .env restaura el comportamiento anterior
+  // sin tocar codigo ni redeployar nada mas que un restart. No es la configuracion normal.
   @Public()
   @Post("login")
-  async login(@Body() body: { email: string }, @Res({ passthrough: true }) res: Response) {
-    if (!body?.email?.trim()) {
-      throw new BadRequestException("Email is required");
-    }
-
-    const auth = await this.authService.login(body.email);
+  async login(
+    @Body() body: { email?: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const auth = await this.authService.login(this.resolveLoginEmail(req, body));
     this.setAuthCookies(res, auth.accessToken, auth.refreshToken);
     return auth;
+  }
+
+  /** Decide de donde sale la identidad del login. Pura salvo por leer config. */
+  private resolveLoginEmail(req: Request, body?: { email?: string }): string {
+    const raw = req.headers["cf-access-authenticated-user-email"];
+    const cfEmail = (Array.isArray(raw) ? raw[0] : raw || "").trim();
+    if (cfEmail && isLoopbackRequest(req)) {
+      return cfEmail;
+    }
+
+    const allowBody =
+      String(this.config.get<string>("AUTH_ALLOW_BODY_EMAIL", "")).trim().toLowerCase() === "true";
+    if (allowBody) {
+      const bodyEmail = (body?.email || "").trim();
+      if (!bodyEmail) {
+        throw new BadRequestException("Email is required");
+      }
+      return bodyEmail;
+    }
+
+    throw new UnauthorizedException(
+      "Login must arrive through Cloudflare Access. Use /auth/google, or set AUTH_ALLOW_BODY_EMAIL=true to restore the previous behavior."
+    );
   }
 
   @Public()

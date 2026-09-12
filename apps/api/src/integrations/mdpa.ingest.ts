@@ -4,7 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { RollStage } from "@prisma/client";
 import { parse as parseSync } from "csv-parse/sync";
 import { PrismaService } from "../shared/prisma.service";
-import { computeScore } from "../scoring/score";
+import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 
 export type MdpaDatasetType =
@@ -375,14 +375,15 @@ export class MdpaIngestService {
         deal = await this.prisma.deal.findFirst({ where: { address, city, zip } });
       }
 
-      const score = computeScore({
-        parcelId,
-        address,
+      const triage = computeTriageScore({
+        propertyUseCode,
+        ownerNames: ownerName ? [ownerName] : [],
         city,
-        zip,
-        source: "mdpa",
-        hasOwner: Boolean(ownerName),
+        state,
+        yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
+        lotSizeSqft,
       });
+      const score = triage.score;
 
       const dataCompletenessScore = computeCompletenessScore({
         parcelId,

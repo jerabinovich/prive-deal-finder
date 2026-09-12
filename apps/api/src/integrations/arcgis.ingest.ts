@@ -1,5 +1,5 @@
 import { PrismaService } from "../shared/prisma.service";
-import { computeScore } from "../scoring/score";
+import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 
 const HEADER_MAP: Record<string, string[]> = {
@@ -252,14 +252,20 @@ export async function ingestArcgisRecords(
       deal = await prisma.deal.findFirst({ where: { address, city, zip } });
     }
 
-    const score = computeScore({
-      parcelId,
-      address,
+    // 12-sep-2026: el ingest NUNCA llamaba a detectNoiseReason, por eso isNoise
+    // quedaba en false para los 72 deals (default del schema) y parcelas de
+    // ferrocarril / baldios del condado pasaban el filtro con nota alta.
+    const triage = computeTriageScore({
+      assetType,
+      propertyUseCode,
+      ownerNames: ownerName ? [ownerName] : [],
       city,
-      zip,
-      source,
-      hasOwner: Boolean(ownerName),
+      municipality,
+      state,
+      yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
+      lotSizeSqft,
     });
+    const score = triage.score;
     const dataCompletenessScore = computeCompletenessScore({
       parcelId,
       address,
@@ -301,6 +307,8 @@ export async function ingestArcgisRecords(
           market,
           score,
           dataCompletenessScore,
+          isNoise: triage.isNoise,
+          noiseReason: triage.noiseReason,
         },
       });
       createdDeals += 1;
@@ -330,6 +338,8 @@ export async function ingestArcgisRecords(
           market: deal.market ?? market,
           score,
           dataCompletenessScore,
+          isNoise: triage.isNoise,
+          noiseReason: triage.noiseReason,
         },
       });
       updatedDeals += 1;

@@ -163,11 +163,17 @@ function parseCaseTypeList(value: string | undefined) {
   return raw.length ? Array.from(new Set(raw)) : DEFAULT_FORECLOSURE_CASE_TYPES;
 }
 
+/**
+ * 13-sep-2026: mandaba "9/13/2026" y la API del Clerk pide ISO.
+ * De su documentacion tecnica (Request Parameters, parametro `date`):
+ *   "Date Only: date=2009-11-23"  ·  Accepted Values: "yyyy-mm-dd"
+ * No se detecto antes porque el saldo agotado rechazaba las consultas antes de
+ * que la fecha llegara a validarse.
+ */
 function formatBrowardDate(date: Date) {
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function normalizeQuotedText(value: string) {
@@ -185,6 +191,31 @@ function normalizeQuotedText(value: string) {
 function isInvalidSearchResponse(text: string) {
   const normalized = normalizeQuotedText(text).toLowerCase();
   return normalized.includes("invalid cases filed search") || normalized.includes("invalid date_to_use");
+}
+
+/**
+ * La API del Clerk devuelve HTTP 200 TAMBIEN cuando rechaza la consulta: el
+ * cuerpo es un texto suelto entre comillas, p.ej. "Low Unit Balance !".
+ *
+ * 13-sep-2026 — esto enmascaraba una falla total. Con saldo agotado, las 20
+ * llamadas fueron rechazadas y el conector reporto
+ * `status: OK, "no filings in selected window"`, porque contaba HTTP 200 como
+ * exito y parseApiResponse() devuelve [] ante un texto suelto. O sea: decia
+ * "no hay expedientes" cuando la verdad era "no me dejaron preguntar".
+ *
+ * Por eso el criterio es general y no una lista de mensajes conocidos: un
+ * resultado de verdad es JSON (objeto o array). Si el cuerpo es solo texto, es
+ * un error de la API — aunque el mensaje sea nuevo y no lo hayamos visto nunca.
+ */
+function isApiRejectionMessage(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return false;
+  try {
+    return typeof JSON.parse(trimmed) === "string";
+  } catch {
+    return true;
+  }
 }
 
 function parseDate(value: string) {
@@ -316,10 +347,18 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     const maxCases = this.maxCases();
     const maxRequests = this.maxRequests();
     const now = new Date();
-    const datesToQuery = Array.from({ length: lookbackDays }, (_, index) => {
-      const date = new Date(now.getTime() - index * 24 * 60 * 60 * 1000);
-      return formatBrowardDate(date);
-    });
+    // 13-sep-2026: se saltean sabados y domingos. Los tribunales no reciben
+    // expedientes el fin de semana, asi que consultarlos es gastar unidades
+    // (2 por llamada, compradas) para que la respuesta venga vacia siempre.
+    // Detectado corriendo un domingo: con lookback=2 consulto sabado y domingo,
+    // o sea los dos dias garantizados sin datos.
+    const datesToQuery: string[] = [];
+    for (let offset = 0; datesToQuery.length < lookbackDays && offset < lookbackDays + 7; offset += 1) {
+      const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
+      const weekday = date.getDay();
+      if (weekday === 0 || weekday === 6) continue;
+      datesToQuery.push(formatBrowardDate(date));
+    }
 
     const caseTypes = this.caseTypes();
 
@@ -360,6 +399,16 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
               caseTypeCode,
               date,
               status: "INVALID_SEARCH_PARAMS",
+              message: normalizeQuotedText(text),
+            });
+            continue;
+          }
+
+          if (isApiRejectionMessage(text)) {
+            failureDetails.push({
+              caseTypeCode,
+              date,
+              status: "API_REJECTED",
               message: normalizeQuotedText(text),
             });
             continue;

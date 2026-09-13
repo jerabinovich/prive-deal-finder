@@ -48,6 +48,38 @@ describe("computeTriageScore", () => {
     });
   });
 
+  describe("REGRESION: los pantanos no son terreno desarrollable", () => {
+    it("DOR 96 (pantanos, basurales) se descarta, aunque su texto diga 'waste LAND'", () => {
+      // La descripcion oficial del DOR 96 contiene la palabra "land", y el
+      // \bLAND\b de la escalera de activos la tomaba como terreno core:
+      // medido, un pantano puntuaba 45/100.
+      const r = computeTriageScore({
+        assetType: "Sewage disposal, solid waste, borrow pits, drainage reservoirs, waste land, marsh, sand dunes, swamps (DOR 96)",
+        propertyUseCode: "96", city: "PA", state: "FL",
+        ownerNames: ["ACME LLC"], source: "broward-parcels",
+      });
+      expect(r.score).toBe(0);
+      expect(r.isNoise).toBe(true);
+    });
+
+    it("DOR 95 (tierras sumergidas) tampoco", () => {
+      const r = computeTriageScore({
+        assetType: "Rivers and lakes, submerged lands (DOR 95)", propertyUseCode: "95",
+        city: "PA", state: "FL", ownerNames: ["ACME LLC"], source: "broward-parcels",
+      });
+      expect(r.score).toBe(0);
+    });
+
+    it("pero el terreno de verdad sigue arriba", () => {
+      const r = computeTriageScore({
+        assetType: "Vacant Commercial (DOR 10)", propertyUseCode: "10",
+        city: "PA", state: "FL", ownerNames: ["ACME LLC"], source: "broward-parcels",
+      });
+      expect(r.isNoise).toBe(false);
+      expect(r.score).toBeGreaterThanOrEqual(40);
+    });
+  });
+
   describe("REGRESION: el bug original no puede volver", () => {
     it("un registro COMPLETO de basura no puede puntuar alto", () => {
       const basuraCompleta = computeTriageScore({

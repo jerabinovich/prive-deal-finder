@@ -99,8 +99,8 @@ export const ENGINE_VERSION = "operational-triage-v1";
 
 export const NOISE_RULES: Array<{ reason: NoiseReason; keywords: string[] }> = [
   { reason: "UNKNOWN", keywords: ["VACANT GOVERNMENTAL", "VACANT LAND - GOVERNMENTAL"] },
-  { reason: "COMMON_AREA", keywords: ["COMMON AREA", "COMMON AREA/ELEMENT", "REC AREA"] },
-  { reason: "ROADWAY", keywords: ["ROADWAY"] },
+  { reason: "COMMON_AREA", keywords: ["COMMON AREA", "COMMON AREA/ELEMENT", "REC AREA", "COMMON ELEMENTS"] },
+  { reason: "ROADWAY", keywords: ["ROADWAY", "RIGHT-OF-WAY"] },
   { reason: "RAILROAD", keywords: ["RAILROAD"] },
   { reason: "CENTRALLY_ASSESSED", keywords: ["CENTRALLY ASSESSED"] },
   { reason: "UTILITY", keywords: ["UTILITY"] },

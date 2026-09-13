@@ -1,6 +1,7 @@
 import { PrismaService } from "../shared/prisma.service";
 import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
+import { resolveDorUseCode } from "./dor-use-codes";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -217,8 +218,13 @@ export async function ingestArcgisRecords(
     const state = pickField(attrs, HEADER_MAP.state) || "FL";
     const zip = pickField(attrs, HEADER_MAP.zip);
     const ownerName = pickField(attrs, HEADER_MAP.owner);
-    const assetType = pickField(attrs, HEADER_MAP.assetType);
-    const propertyUseCode = pickField(attrs, ["USE_CODE", "PROPERTY_USE", "DOR_UC", "CLASS_CODE"]) ?? assetType;
+    // 13-sep-2026: Broward manda USE_CODE numerico (codigo DOR de Florida) en vez
+    // de descripcion; el resto de los condados manda texto. resolveDorUseCode
+    // traduce solo si es un codigo pelado y deja pasar el texto tal cual.
+    const rawUseCode = pickField(attrs, ["USE_CODE", "PROPERTY_USE", "DOR_UC", "CLASS_CODE"]);
+    const useCodeLabel = resolveDorUseCode(rawUseCode);
+    const assetType = pickField(attrs, HEADER_MAP.assetType) ?? useCodeLabel;
+    const propertyUseCode = useCodeLabel ?? assetType;
     const lotSizeSqftRaw = toNumber(pickField(attrs, HEADER_MAP.lotSizeSqft));
     const lotSizeAcres = toNumber(pickField(attrs, HEADER_MAP.lotSizeAcres));
     const lotSizeSqft = typeof lotSizeAcres === "number" && lotSizeAcres > 0 ? lotSizeAcres * 43560 : lotSizeSqftRaw;

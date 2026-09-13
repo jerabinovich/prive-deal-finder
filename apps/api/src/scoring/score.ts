@@ -1,5 +1,6 @@
 import { detectNoiseReason, inferOwnerType } from "../deals/deals.utils";
 import type { NoiseReason } from "../deals/deals.types";
+import { isNonAcquirableDorCode } from "../integrations/dor-use-codes";
 
 /**
  * SCORE DE TRIAGE (ingesta) — 12-sep-2026
@@ -39,7 +40,11 @@ const CORE_SOUTH_FLORIDA = [
 
 /** Escalera de activos del playbook (§Core Score · "Tipo de activo", max 15). */
 function assetFitPoints(haystack: string): { points: number; label: string } {
-  if (/MULTI[- ]?FAMILY|MULTIFAMILY|MIXED[- ]?USE|VACANT LAND|VACANT RESIDENTIAL|VACANT COMMERCIAL|\bLAND\b/.test(haystack))
+  // El \bLAND\b suelto daba falsos positivos con "waste land" y "submerged lands"
+  // (descripciones oficiales del DOR 96 y 95). Se excluyen explicitamente.
+  const tierraBasura = /WASTE LAND|SUBMERGED|MARSH|SWAMP|SAND DUNE|BORROW PIT/.test(haystack);
+  if (!tierraBasura &&
+      /MULTI[- ]?FAMILY|MULTIFAMILY|MIXED[- ]?USE|VACANT LAND|VACANT RESIDENTIAL|VACANT COMMERCIAL|\bLAND\b/.test(haystack))
     return { points: 15, label: "activo core (multifamily / mixed-use / land)" };
   if (/INDUSTRIAL|WAREHOUSE|WAREH|DISTRIBUTION|TERMINAL|FLEX/.test(haystack))
     return { points: 12, label: "industrial" };
@@ -92,7 +97,18 @@ export function computeTriageScore(params: {
 }): TriageScoreResult {
   const reasons: string[] = [];
 
-  // --- GATE 1: ruido no adquirible (ferrocarril, calzada, area comun, utility...) ---
+  // --- GATE 0: codigo DOR no adquirible (gubernamental, servidumbre, pantano...) ---
+  // Va ANTES del filtro por texto porque el codigo es univoco y el texto no.
+  if (isNonAcquirableDorCode(params.propertyUseCode) || isNonAcquirableDorCode(params.assetType)) {
+    const porTexto = detectNoiseReason(params.assetType, params.propertyUseCode);
+    return {
+      score: 0, isNoise: true, noiseReason: porTexto ?? "UNKNOWN",
+      reasons: ["descartado: codigo DOR de uso no adquirible"],
+      version: TRIAGE_SCORE_VERSION,
+    };
+  }
+
+  // --- GATE 1: ruido no adquirible por texto (ferrocarril, calzada, area comun...) ---
   const noiseReason = detectNoiseReason(params.assetType, params.propertyUseCode);
   if (noiseReason) {
     return {

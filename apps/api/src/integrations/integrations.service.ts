@@ -11,6 +11,10 @@ import { MdpaConnector } from "./connectors/mdpa.connector";
 import { MiamiDadeForeclosureConnector } from "./connectors/miami-dade-foreclosure.connector";
 import { MiamiDadeParcelsConnector } from "./connectors/miami-dade-parcels.connector";
 import { PalmBeachParcelsConnector } from "./connectors/palm-beach-parcels.connector";
+import { MiamiDadeCodeEnforcementConnector } from "./connectors/miami-dade-code-enforcement.connector";
+import { fetchArcgisWhere } from "./connectors/arcgis";
+import { computeTriageScore } from "../scoring/score";
+import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
 import { IntegrationRunsQueryDto } from "./dto/integration-runs-query.dto";
 import { IntegrationStatusQueryDto } from "./dto/integration-status-query.dto";
 import { MdpaImportDto } from "./dto/mdpa-import.dto";
@@ -61,6 +65,7 @@ export class IntegrationsService {
     new MiamiDadeParcelsConnector(),
     new BrowardParcelsConnector(),
     new PalmBeachParcelsConnector(),
+    new MiamiDadeCodeEnforcementConnector(),
   ];
 
   constructor(
@@ -392,6 +397,111 @@ export class IntegrationsService {
     if (!value) return new Date();
     const parsed = new Date(value);
     return Number.isFinite(parsed.getTime()) ? parsed : new Date();
+  }
+
+  /**
+   * Resuelve los folios con señal de distress contra el catastro y crea/actualiza
+   * el deal correspondiente, para que la señal tenga a que engancharse.
+   *
+   * Usa la capa CONSULTABLE de Miami-Dade (MD_Emaps/72). Ojo: la que esta en
+   * MIAMI_DADE_PARCELS_URL es un endpoint de DESCARGA MASIVA, no acepta
+   * ?where= — por eso aca no se usa esa.
+   */
+  private async seedDealsFromDistressFolios(source: string, records: unknown[]) {
+    if (source !== "miami-dade-code-enforcement") return 0;
+
+    const folios = Array.from(
+      new Set(
+        records
+          .map((item) => {
+            const record = item as Record<string, unknown>;
+            return String(record?.FOLIO ?? record?.folio ?? "").replace(/[^\d]/g, "");
+          })
+          .filter((folio) => folio.length >= 10),
+      ),
+    ).slice(0, this.parsePositiveInt(process.env.CODE_ENFORCEMENT_MAX_SEED_FOLIOS, 60, 1, 500));
+
+    if (!folios.length) return 0;
+
+    const features: unknown[] = [];
+    for (const folio of folios) {
+      try {
+        const found = await fetchArcgisWhere(MIAMI_DADE_FALLBACK_LAYER, `FOLIO='${folio}'`, 1);
+        if (found.length) features.push(found[0]);
+      } catch {
+        // Un folio que no resuelve no frena al resto: la señal igual se guarda
+        // si el deal ya existia por otra via.
+      }
+    }
+
+    if (!features.length) return 0;
+    const ingested = await ingestArcgisRecords(this.prisma, "miami-dade-parcels", "Miami-Dade", features);
+    return ingested.createdDeals + ingested.updatedDeals;
+  }
+
+  /**
+   * Recalcula el score de los deals que acaban de recibir una señal.
+   *
+   * POR QUE HACE FALTA: el score se calcula en la INGESTA de la parcela, cuando
+   * todavia no hay señales. Sin este paso, un multifamily con un lien registrado
+   * puntuaba igual que uno sin nada — el distress, que es el termino dominante
+   * del score, quedaba en cero para siempre. Medido: los primeros 67 deals con
+   * señal seguian en 40-45, su puntaje de parcela.
+   *
+   * La etapa sale de la CONFIANZA de la señal, no del status: el pipeline
+   * generico normaliza todo status a CONFIRMED, pero la confianza sobrevive y es
+   * la que distingue un lien (alta) de una violacion abierta (baja).
+   */
+  private async rescoreDealsWithDistress(source: string) {
+    const signals = await this.prisma.dealDistressSignal.findMany({
+      where: { source },
+      select: { dealId: true, confidence: true },
+    });
+    if (!signals.length) return 0;
+
+    const strongest = new Map<string, string>();
+    const rank: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+    for (const signal of signals) {
+      const current = strongest.get(signal.dealId);
+      if (!current || (rank[signal.confidence] ?? 0) > (rank[current] ?? 0)) {
+        strongest.set(signal.dealId, signal.confidence);
+      }
+    }
+
+    let updated = 0;
+    for (const [dealId, confidence] of strongest) {
+      const deal = await this.prisma.deal.findUnique({ where: { id: dealId } });
+      if (!deal) continue;
+
+      const owners = await this.prisma.dealOwner.findMany({
+        where: { dealId },
+        select: { owner: { select: { name: true } } },
+      });
+
+      const stage =
+        confidence === "HIGH" ? "CODE_ENFORCEMENT" : confidence === "MEDIUM" ? "SIGNALS_ONLY" : "SIGNALS_ONLY";
+
+      const triage = computeTriageScore({
+        assetType: deal.assetType,
+        propertyUseCode: deal.propertyUseCode,
+        ownerNames: owners.map((item) => item.owner?.name).filter((name): name is string => Boolean(name)),
+        city: deal.city,
+        municipality: deal.municipality,
+        state: deal.state,
+        yearBuilt: deal.yearBuilt,
+        lotSizeSqft: deal.lotSizeSqft,
+        source: deal.source,
+        distressStage: stage,
+      });
+
+      if (triage.score === deal.score && triage.isNoise === deal.isNoise) continue;
+      await this.prisma.deal.update({
+        where: { id: dealId },
+        data: { score: triage.score, isNoise: triage.isNoise, noiseReason: triage.noiseReason },
+      });
+      updated += 1;
+    }
+    return updated;
   }
 
   private async ingestDistressRecords(source: string, records: unknown[]) {
@@ -1102,11 +1212,33 @@ export class IntegrationsService {
         });
       }
 
-      if (source === "miami-dade-foreclosure" || source === "broward-foreclosure") {
+      // 13-sep-2026: code-enforcement va por el MISMO pipeline generico de
+      // senales. No hace falta codigo nuevo de ingesta: ingestDistressRecords ya
+      // sabe leer FOLIO y ADDRESS y cruzarlos contra los deals existentes.
+      if (
+        source === "miami-dade-foreclosure" ||
+        source === "broward-foreclosure" ||
+        source === "miami-dade-code-enforcement"
+      ) {
+        // 13-sep-2026 — SE INVIERTE EL FLUJO, y es el cambio conceptual del dia.
+        //
+        // Antes el sistema iba de la parcela al distress: ingeria parcelas al
+        // azar y despues buscaba si alguna tenia problemas. Con ~900.000
+        // parcelas en Miami-Dade eso no cruza nunca. Medido: la primera corrida
+        // de code-enforcement trajo 600 señales reales y las 600 quedaron sin
+        // cruzar, porque solo teniamos 24 parcelas del condado.
+        //
+        // Ahora se va del distress a la parcela: cada folio con señal se
+        // resuelve contra el catastro y se crea el deal. Es el orden correcto
+        // para un buscador de oportunidades — primero el problema, despues la
+        // propiedad.
+        const seeded = await this.seedDealsFromDistressFolios(source, result.records);
         const metrics = await this.ingestDistressRecords(source, result.records);
+        const rescored = await this.rescoreDealsWithDistress(source);
+        Object.assign(metrics as Record<string, unknown>, { seededDeals: seeded, rescoredDeals: rescored });
         return this.finishRun(run.id, source, {
           status: IntegrationStatus.OK,
-          message: result.message ?? "Foreclosure sync completed",
+          message: result.message ?? "Distress sync completed",
           metrics: {
             ...metrics,
             ...(result.metrics ?? {}),

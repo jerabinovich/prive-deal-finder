@@ -685,7 +685,7 @@ export class DealsService {
     const escaped = parcelId.replace(/'/g, "''");
     const maxRows = Number(process.env.ARCGIS_MAX_ROWS || 50);
 
-    const attempts: Array<{ url: string; where: string }> = [];
+    const attempts: Array<{ url: string; where: string; orderBy?: string }> = [];
 
     if (source === "palm-beach-parcels") {
       const url = process.env.PALM_BEACH_PARCELS_URL;
@@ -696,8 +696,13 @@ export class DealsService {
     } else if (source === "broward-parcels") {
       const url = process.env.BROWARD_PARCELS_URL;
       if (url) {
-        attempts.push({ url, where: `PARCELID = '${escaped}'` });
-        attempts.push({ url, where: `LOWPARCELI = '${escaped}'` });
+        // 13-sep-2026: PARCELID y LOWPARCELI no existen en BCPA (Property
+        // Appraiser de Broward); el campo es FOLIO_NUMBER. Y la tabla no tiene
+        // OID, asi que la consulta necesita orderByFields.
+        // TERCERA COPIA de este mismo bloque: esta logica esta duplicada en
+        // deals.service.ts, deals-facts.service.ts y el conector. Arregle las
+        // tres; habria que unificarlas.
+        attempts.push({ url, where: `FOLIO_NUMBER = '${escaped}'`, orderBy: "FOLIO_NUMBER" });
       }
     } else if (source === "miami-dade-parcels") {
       const configuredUrl = process.env.MIAMI_DADE_PARCELS_URL;
@@ -714,7 +719,7 @@ export class DealsService {
     const errors: string[] = [];
     for (const attempt of attempts) {
       try {
-        const features = await fetchArcgisWhere(attempt.url, attempt.where, maxRows);
+        const features = await fetchArcgisWhere(attempt.url, attempt.where, maxRows, attempt.orderBy);
         if (features.length) return features;
       } catch (error) {
         const message = error instanceof Error ? error.message : "unknown error";

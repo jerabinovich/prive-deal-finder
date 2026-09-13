@@ -51,14 +51,18 @@ export class DealsFactsService {
   private async fetchSourceFeaturesByParcel(parcelId: string, source: string) {
     const escaped = parcelId.replace(/'/g, "''");
     const maxRows = Number(process.env.ARCGIS_MAX_ROWS || 50);
-    const attempts: Array<{ url: string; where: string }> = [];
+    const attempts: Array<{ url: string; where: string; orderBy?: string }> = [];
 
     if (source === "palm-beach-parcels") {
       const url = process.env.PALM_BEACH_PARCELS_URL;
       if (url) { attempts.push({ url, where: `PARID = '${escaped}'` }); attempts.push({ url, where: `PARCEL_NUMBER = '${escaped}'` }); }
     } else if (source === "broward-parcels") {
       const url = process.env.BROWARD_PARCELS_URL;
-      if (url) { attempts.push({ url, where: `PARCELID = '${escaped}'` }); attempts.push({ url, where: `LOWPARCELI = '${escaped}'` }); }
+      // 13-sep-2026: PARCELID y LOWPARCELI no existen en BCPA (el Property
+      // Appraiser de Broward): el campo es FOLIO_NUMBER. Mismo error que tenia
+      // el conector, repetido aca — por eso el backfill fallaba en 17 de 20.
+      // Y la tabla no tiene OID, asi que necesita orderByFields.
+      if (url) { attempts.push({ url, where: `FOLIO_NUMBER = '${escaped}'`, orderBy: "FOLIO_NUMBER" }); }
     } else if (source === "miami-dade-parcels") {
       const configuredUrl = process.env.MIAMI_DADE_PARCELS_URL;
       if (configuredUrl) {
@@ -72,7 +76,7 @@ export class DealsFactsService {
     const errors: string[] = [];
     for (const attempt of attempts) {
       try {
-        const features = await fetchArcgisWhere(attempt.url, attempt.where, maxRows);
+        const features = await fetchArcgisWhere(attempt.url, attempt.where, maxRows, attempt.orderBy);
         if (features.length) return features;
       } catch (error) {
         errors.push(`${attempt.url} (${attempt.where}): ${error instanceof Error ? error.message : "unknown"}`);

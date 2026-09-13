@@ -38,6 +38,11 @@ export async function fetchArcgisSample(
   return fetchArcgisQuery(serviceUrl, limit, whereClause, orderByFields);
 }
 
-export async function fetchArcgisWhere(serviceUrl: string, whereClause: string, limit = 50) {
-  return fetchArcgisQuery(serviceUrl, limit, whereClause);
+export async function fetchArcgisWhere(
+  serviceUrl: string,
+  whereClause: string,
+  limit = 50,
+  orderByFields?: string,
+) {
+  return fetchArcgisQuery(serviceUrl, limit, whereClause, orderByFields);
 }

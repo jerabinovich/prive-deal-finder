@@ -6,6 +6,26 @@ cd "$REPO_ROOT"
 
 echo "[deploy] repo: $REPO_ROOT"
 
+# 13-sep-2026 — GUARD. Este script crea y habilita la unit de usuario
+# prive-api.service, que escucha en :4000. Pero en este host la produccion la
+# sirve la unit de SISTEMA prive-deal-finder.service, en el MISMO puerto.
+#
+# Cuando las dos quedaron habilitadas, la que perdia la carrera hacia EADDRINUSE
+# y reintentaba cada 3 segundos para siempre: se contaron 17.919 fallos en el
+# journal antes de que alguien lo notara. El servicio andaba igual (ganaba una),
+# asi que no habia sintoma visible — solo ruido y CPU.
+#
+# Si la unit de sistema esta activa, este deploy se detiene en vez de crear la
+# competencia. Para correrlo igual: pararla antes, o exportar FORCE_STAGING=1.
+if systemctl is-active --quiet prive-deal-finder.service && [[ "${FORCE_STAGING:-0}" != "1" ]]; then
+  echo "[error] prive-deal-finder.service (unit de SISTEMA) esta activa y usa el puerto 4000."
+  echo "        Este script habilitaria prive-api.service en el mismo puerto y las dos"
+  echo "        quedarian peleandose. Opciones:"
+  echo "          sudo systemctl stop prive-deal-finder.service   # y despues correr este script"
+  echo "          FORCE_STAGING=1 $0                              # si sabes lo que haces"
+  exit 1
+fi
+
 if [[ ! -f "$REPO_ROOT/apps/api/.env" ]]; then
   echo "[error] Missing apps/api/.env"
   exit 1

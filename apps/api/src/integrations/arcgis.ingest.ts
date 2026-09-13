@@ -3,7 +3,7 @@ import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 
 const HEADER_MAP: Record<string, string[]> = {
-  parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER"],
+  parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
   address: [
     "SITUS_ADDRESS",
     "SITE_ADDR",
@@ -17,10 +17,10 @@ const HEADER_MAP: Record<string, string[]> = {
   city: ["SITUS_CITY", "CITY", "MUNICIPALITY", "TRUE_SITE_CITY", "CITYNAME", "PSTLCITY"],
   mailingAddress: ["MAIL_ADDR", "MAILING_ADDRESS", "OWNER_MAILING_ADDRESS", "PSTLADDRESS"],
   state: ["SITUS_STATE", "STATE", "PSTLSTATE"],
-  zip: ["SITUS_ZIP", "ZIP", "ZIPCODE", "TRUE_SITE_ZIP_CODE", "ZIP1", "PSTLZIP5"],
-  owner: ["OWNER_NAME1", "OWNER_NAME2", "OWNER_NAME", "OWNERNME1", "OWNERNME2", "OWNER", "OWN_NAME", "NAME", "CNVYNAME"],
+  zip: ["SITUS_ZIP", "ZIP", "ZIPCODE", "TRUE_SITE_ZIP_CODE", "ZIP1", "PSTLZIP5", "SITUS_ZIP_CODE"],
+  owner: ["OWNER_NAME1", "OWNER_NAME2", "OWNER_NAME", "OWNERNME1", "OWNERNME2", "OWNER", "OWN_NAME", "NAME", "CNVYNAME", "NAME_LINE_1"],
   assetType: ["PROPERTY_USE", "USEDSCRP", "PRPRTYDSCR", "CLASSDSCRP", "DOR_DESC"],
-  lotSizeSqft: ["LOT_SIZE_SQFT", "LOT_SQFT", "LOTSQFT", "LAND_SQFT", "LANDSQFT", "LOTSIZE", "LOT_SIZE"],
+  lotSizeSqft: ["LOT_SIZE_SQFT", "LOT_SQFT", "LOTSQFT", "LAND_SQFT", "LANDSQFT", "LOTSIZE", "LOT_SIZE", "LAND_GROSS"],
   lotSizeAcres: ["ACRES"],
   buildingSizeSqft: [
     "BUILDING_SQFT",
@@ -120,14 +120,16 @@ function computeCompletenessScore(input: {
 
 function composeAddress(record: Record<string, unknown>) {
   const parts = [
-    pickField(record, ["STREET_NUMBER"]),
+    // Broward (BCPA) parte la direccion en 5 campos SITUS_*; el resto de los
+    // condados usa los nombres cortos. Se aceptan los dos.
+    pickField(record, ["STREET_NUMBER", "SITUS_STREET_NUMBER"]),
     pickField(record, ["STREET_FRACTION"]),
-    pickField(record, ["PRE_DIR"]),
-    pickField(record, ["STREET_NAME"]),
-    pickField(record, ["STREET_SUFFIX_ABBR"]),
-    pickField(record, ["POST_DIR"]),
+    pickField(record, ["PRE_DIR", "SITUS_STREET_DIRECTION"]),
+    pickField(record, ["STREET_NAME", "SITUS_STREET_NAME"]),
+    pickField(record, ["STREET_SUFFIX_ABBR", "SITUS_STREET_TYPE"]),
+    pickField(record, ["POST_DIR", "SITUS_STREET_POST_DIR"]),
     pickField(record, ["BUILDING"]),
-    pickField(record, ["UNIT"]),
+    pickField(record, ["UNIT", "SITUS_UNIT_NUMBER"]),
   ].filter(Boolean);
 
   if (!parts.length) return undefined;
@@ -259,6 +261,7 @@ export async function ingestArcgisRecords(
       assetType,
       propertyUseCode,
       ownerNames: ownerName ? [ownerName] : [],
+      source,
       city,
       municipality,
       state,

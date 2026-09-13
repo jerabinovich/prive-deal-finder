@@ -48,7 +48,18 @@ function assetFitPoints(haystack: string): { points: number; label: string } {
   return { points: 5, label: "otro tipo de activo" };
 }
 
-function marketFitPoints(city?: string, municipality?: string, state?: string) {
+/** Fuentes cuyo condado ES core por definicion, sin depender del nombre de ciudad. */
+const CORE_SOURCES = ["miami-dade", "broward", "palm-beach", "mdpa"];
+
+function marketFitPoints(city?: string, municipality?: string, state?: string, source?: string) {
+  // 13-sep-2026: Broward devuelve SITUS_CITY como codigo de 2 letras ("PA" =
+  // Parkland, "BC" = area no incorporada), asi que buscar nombres de ciudad
+  // dejaba a TODO el condado fuera del core. El condado lo sabemos por la
+  // fuente: si el conector es de un condado core, el mercado es core. Punto.
+  const src = (source ?? "").toLowerCase();
+  if (CORE_SOURCES.some((c) => src.includes(c)))
+    return { points: 20, label: "mercado core (South Florida)" };
+
   const hay = `${city ?? ""} ${municipality ?? ""}`.toUpperCase();
   if (CORE_SOUTH_FLORIDA.some((m) => hay.includes(m)))
     return { points: 20, label: "mercado core (South Florida)" };
@@ -74,6 +85,8 @@ export function computeTriageScore(params: {
   state?: string | null;
   yearBuilt?: number | null;
   lotSizeSqft?: number | null;
+  /** Id del conector (p.ej. "broward-parcels"): define el condado sin depender del nombre de ciudad. */
+  source?: string | null;
   /** Etapa de distress si ya hay senal oficial. Hoy siempre NONE: faltan las fuentes. */
   distressStage?: string | null;
 }): TriageScoreResult {
@@ -101,7 +114,10 @@ export function computeTriageScore(params: {
 
   let score = 0;
 
-  const market = marketFitPoints(params.city ?? undefined, params.municipality ?? undefined, params.state ?? undefined);
+  const market = marketFitPoints(
+    params.city ?? undefined, params.municipality ?? undefined,
+    params.state ?? undefined, params.source ?? undefined,
+  );
   score += market.points;
   reasons.push(`${market.label} (+${market.points})`);
 

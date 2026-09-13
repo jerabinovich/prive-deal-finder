@@ -378,6 +378,7 @@ export class MdpaIngestService {
       const triage = computeTriageScore({
         propertyUseCode,
         ownerNames: ownerName ? [ownerName] : [],
+        source: "mdpa",
         city,
         state,
         yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,

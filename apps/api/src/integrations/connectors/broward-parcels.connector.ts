@@ -23,7 +23,10 @@ export class BrowardParcelsConnector implements IntegrationConnector {
     }
     try {
       const limit = Number(process.env.ARCGIS_MAX_ROWS || 50);
-      const records = await fetchArcgisSample(url, limit, "PARCELID IS NOT NULL AND SITEADDRES IS NOT NULL");
+      // BCPA_INFO no tiene OID: sin orderByFields, ArcGIS rechaza la paginacion.
+      const records = await fetchArcgisSample(
+        url, limit, "FOLIO_NUMBER IS NOT NULL AND SITUS_CITY IS NOT NULL", "FOLIO_NUMBER",
+      );
       return { status: IntegrationStatus.OK, message: "Broward parcels reachable", records };
     } catch (_error) {
       return { status: IntegrationStatus.ERROR, message: "Broward parcels fetch failed" };

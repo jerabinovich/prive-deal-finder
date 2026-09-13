@@ -27,6 +27,20 @@ export function pickField(record: Record<string, unknown>, keys: string[]) {
     const text = String(value).trim();
     if (text) return text;
   }
+
+  // 13-sep-2026: ArcGIS devuelve las claves CALIFICADAS cuando la capa es un join.
+  // Broward (BCPA) manda "SQLGIS02.dbo.BCPA_INFO.NAME_LINE_1" en vez de "NAME_LINE_1",
+  // asi que la busqueda exacta de arriba no encontraba NADA y el condado entero
+  // entraba sin dueno ni direccion. Segunda pasada: comparar por el ultimo segmento.
+  for (const key of keys) {
+    const suffix = `.${key}`;
+    for (const [recordKey, value] of Object.entries(record)) {
+      if (!recordKey.endsWith(suffix)) continue;
+      if (value === undefined || value === null) continue;
+      const text = String(value).trim();
+      if (text) return text;
+    }
+  }
   return undefined;
 }
 

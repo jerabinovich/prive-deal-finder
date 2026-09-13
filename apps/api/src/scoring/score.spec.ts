@@ -82,6 +82,21 @@ describe("computeTriageScore", () => {
       expect(land.score).toBeGreaterThan(condo.score);
     });
 
+    it("el condado core se reconoce por la FUENTE aunque la ciudad sea un codigo", () => {
+      // Broward manda SITUS_CITY como codigo de 2 letras ("PA" = Parkland).
+      // Sin la regla por fuente, todo el condado caia fuera del core.
+      const porFuente = computeTriageScore({
+        assetType: "CONDOMINIUM", city: "PA", state: "FL",
+        ownerNames: ["JUAN PEREZ"], source: "broward-parcels",
+      });
+      const sinFuente = computeTriageScore({
+        assetType: "CONDOMINIUM", city: "PA", state: "FL",
+        ownerNames: ["JUAN PEREZ"],
+      });
+      expect(porFuente.score).toBeGreaterThan(sinFuente.score);
+      expect(porFuente.reasons.join(" ")).toContain("mercado core");
+    });
+
     it("el mismo activo puntua mas en mercado core que fuera", () => {
       const core = computeTriageScore({ assetType: "MULTIFAMILY < 5 UNITS", city: "WEST PALM BEACH", state: "FL" });
       const fuera = computeTriageScore({ assetType: "MULTIFAMILY < 5 UNITS", city: "OCALA", state: "FL" });

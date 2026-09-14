@@ -6,8 +6,19 @@ import {
   SyncResult,
 } from "./types";
 
-const BROWARD_SEARCH_CASES_FILED_URL = "https://api.browardclerk.org/api/search_cases_filed";
-const DEFAULT_FORECLOSURE_CASE_TYPES = ["FOR3", "RPCF1", "RPCF2", "RPCF3", "FORE1", "FORE2", "FORE3", "FORE4", "FORE5", "FORE6"];
+const BROWARD_SEARCH_CASES_FILED_URL = "https://api.browardclerk.org/api/search_cases_filed.json";
+// 14-sep-2026 — LOS CODIGOS ANTERIORES NO EXISTEN.
+// El conector preguntaba por FOR3, RPCF1-3 y FORE1-6, y la API devolvia vacio
+// SIEMPRE. Pidiendo case_type_code=All para un viernes cualquiera aparecieron
+// 200 casos civiles y los codigos de foreclosure REALES de Broward:
+//   RPHRF6   Real Prop Homestead Res Fore $250,000 or More
+//   RPNHRF5  Real Prop NHmstd Res Fore $50K to $250K
+//   RPOR4    Real Prop Other Fore $50,000 or Less
+// Son una familia RP*F* por tipo de vivienda y tramo de valor. En vez de
+// enumerarla (y arriesgarse a perder un tramo nuevo), se pide TODO el civil del
+// dia y se filtra por el nombre del tipo. Ademas sale MAS BARATO: 1 llamada por
+// dia (2 unidades) en vez de 10.
+const FORECLOSURE_TYPE_PATTERN = /forecl|\bfore\b/i;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -23,6 +34,21 @@ function asRecord(value: unknown): JsonRecord {
 function readText(record: JsonRecord, keys: string[]) {
   for (const key of keys) {
     const value = record[key];
+    if (value === undefined || value === null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+
+  // 14-sep-2026: el endpoint .json devuelve "Case_Number", "Filed_Date" y
+  // "Case_Type_Code" — mayusculas Y guion bajo a la vez. Ninguna de las
+  // variantes de arriba (CaseNumber, case_number, CASE_NUMBER) los cubre, asi
+  // que TODOS los campos salian vacios, la huella de deduplicacion quedaba en
+  // "||" y los 11 foreclosures del dia se descartaban en silencio.
+  // Segunda pasada normalizando: sin guiones ni mayusculas.
+  const flat = (value: string) => value.replace(/[_\s-]/g, "").toLowerCase();
+  const wanted = new Set(keys.map(flat));
+  for (const [recordKey, value] of Object.entries(record)) {
+    if (!wanted.has(flat(recordKey))) continue;
     if (value === undefined || value === null) continue;
     const text = String(value).trim();
     if (text) return text;
@@ -160,7 +186,7 @@ function parseCaseTypeList(value: string | undefined) {
     .split(",")
     .map((item) => item.trim().toUpperCase())
     .filter(Boolean);
-  return raw.length ? Array.from(new Set(raw)) : DEFAULT_FORECLOSURE_CASE_TYPES;
+  return raw.length ? Array.from(new Set(raw)) : ["All"];
 }
 
 /**
@@ -210,7 +236,9 @@ function isInvalidSearchResponse(text: string) {
 function isApiRejectionMessage(text: string) {
   const trimmed = text.trim();
   if (!trimmed) return false;
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return false;
+  // 14-sep: el XML tambien es una respuesta valida — este endpoint responde XML
+  // si no se pide .json. Marcarlo como rechazo fue un falso positivo mio.
+  if (trimmed.startsWith("{") || trimmed.startsWith("[") || trimmed.startsWith("<")) return false;
   try {
     return typeof JSON.parse(trimmed) === "string";
   } catch {
@@ -268,7 +296,10 @@ function normalizeCaseRecord(caseRow: JsonRecord, fallbackType: string): JsonRec
     caseTypeDescription: caseTypeDescription || null,
     filedDate: filingDate || null,
     status: status || "CONFIRMED",
-    confidence: caseTypeCode.startsWith("FORE") || caseTypeCode.startsWith("RPCF") ? "HIGH" : "MEDIUM",
+    // Codigos reales de Broward: RPHRF* (homestead), RPNHRF* (no homestead),
+    // RPOR* (otros). Una ejecucion hipotecaria presentada es un hecho, no una
+    // inferencia: confianza alta.
+    confidence: /^RP.*F/i.test(caseTypeCode) || /^FORE/i.test(caseTypeCode) ? "HIGH" : "MEDIUM",
     observedAt: observedAt ? observedAt.toISOString() : null,
     address: propertyAddress || null,
     metadata: caseRow,
@@ -416,13 +447,25 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
 
           const rows = parseApiResponse(text);
           successfulLookups += 1;
+          const matchesBefore = gathered.length;
 
+          // Con case_type_code=All viene TODO el civil del dia (deudas de
+          // tarjeta, desalojos, negligencia...). Nos quedamos solo con lo que el
+          // propio Clerk nombra como foreclosure.
           for (const row of rows) {
-            gathered.push(normalizeCaseRecord(row, caseTypeCode));
+            const record = row as Record<string, unknown>;
+            const typeName = String(record.Case_Type ?? record.case_type ?? "");
+            const typeCode = String(record.Case_Type_Code ?? record.case_type_code ?? caseTypeCode);
+            if (caseTypeCode === "All" && !FORECLOSURE_TYPE_PATTERN.test(typeName)) continue;
+            gathered.push(normalizeCaseRecord(row, typeCode));
           }
 
-          // If filings are present for this case type on a date, no need to keep spending credits on older dates.
-          if (rows.length > 0) {
+          // 14-sep-2026: cortaba contando TODAS las filas, pero con
+          // case_type_code=All eso incluye deudas de tarjeta y desalojos. Un
+          // lunes a la manana trajo 200 casos civiles, cero foreclosures, y el
+          // conector corto igual sin mirar el viernes. Ahora corta solo si
+          // encontro foreclosures DE VERDAD.
+          if (gathered.length > matchesBefore) {
             break;
           }
         } catch (error) {

@@ -425,7 +425,6 @@ export class IntegrationsService {
     if (!url) return 0;
 
     const features: unknown[] = [];
-    let resolved = 0;
 
     for (const item of records) {
       const record = item as Record<string, unknown>;
@@ -458,7 +457,6 @@ export class IntegrationsService {
         // La clave del cruce: el registro de la señal se lleva el folio.
         record.parcelId = folio;
         features.push(found[0]);
-        resolved += 1;
       } catch {
         // Un nombre que no resuelve no frena al resto.
       }

@@ -17,14 +17,14 @@ import { UpdateWorkflowTaskDto } from "./dto/update-workflow-task.dto";
 // sufijo agregada el 13-sep, asi que contra una capa ArcGIS con join este archivo
 // no encontraba nada, en silencio. Ese bug desaparece al importar.
 import {
-  DealClassification, NoiseReason, OpportunityGateStatus, OpportunityClassificationResult,
+  DealClassification, NoiseReason, OpportunityClassificationResult,
   DistressStage, DealLane, RecommendedAction, OperationalDecision, InsightConfidence,
-  NOISE_RULES, ENGINE_VERSION, OPPORTUNITY_THRESHOLDS, SPREAD_SANITY, EARTH_RADIUS_MILES,
+  ENGINE_VERSION, OPPORTUNITY_THRESHOLDS, SPREAD_SANITY,
   MIAMI_DADE_FALLBACK_LAYER, MIN_COMPARABLE_SALE_PRICE, MAX_COMPARABLE_SALE_PRICE,
 } from "./deals.types";
 import {
   toNumber, pickField, detectNoiseReason, inferOwnerType, normalizeConfidence,
-  parseEventDate, extractGeometryPoint, distanceMiles, toRadians, parseJson,
+  parseEventDate, extractGeometryPoint, distanceMiles, parseJson,
 } from "./deals.utils";
 
 

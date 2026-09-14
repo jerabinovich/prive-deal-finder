@@ -11,175 +11,34 @@ import { ListDealsQueryDto } from "./dto/list-deals-query.dto";
 import { ProjectionScenarioDto } from "./dto/projection-scenario.dto";
 import { UpdateDealDto } from "./dto/update-deal.dto";
 import { UpdateWorkflowTaskDto } from "./dto/update-workflow-task.dto";
+// 14-sep-2026: se eliminan las copias locales. Estos tipos, constantes y helpers ya
+// vivian en deals.types.ts y deals.utils.ts — eran DOS fuentes de verdad para lo
+// mismo, y ya se habian desviado: pickField aca NO tenia la segunda pasada por
+// sufijo agregada el 13-sep, asi que contra una capa ArcGIS con join este archivo
+// no encontraba nada, en silencio. Ese bug desaparece al importar.
+import {
+  DealClassification, NoiseReason, OpportunityGateStatus, OpportunityClassificationResult,
+  DistressStage, DealLane, RecommendedAction, OperationalDecision, InsightConfidence,
+  NOISE_RULES, ENGINE_VERSION, OPPORTUNITY_THRESHOLDS, SPREAD_SANITY, EARTH_RADIUS_MILES,
+  MIAMI_DADE_FALLBACK_LAYER, MIN_COMPARABLE_SALE_PRICE, MAX_COMPARABLE_SALE_PRICE,
+} from "./deals.types";
+import {
+  toNumber, pickField, detectNoiseReason, inferOwnerType, normalizeConfidence,
+  parseEventDate, extractGeometryPoint, distanceMiles, toRadians, parseJson,
+} from "./deals.utils";
 
-const EARTH_RADIUS_MILES = 3958.8;
-const MIAMI_DADE_FALLBACK_LAYER = "https://gisweb.miamidade.gov/arcgis/rest/services/MD_Emaps/MapServer/72";
-const MIN_COMPARABLE_SALE_PRICE = 1000;
-const MAX_COMPARABLE_SALE_PRICE = 1_000_000_000;
 
-type DealClassification = "PIPELINE_LISTING" | "WATCHLIST" | "TRUE_OPPORTUNITY" | "DISTRESS_CANDIDATE";
-type InsightConfidence = "high" | "medium" | "low";
-type DealLane =
-  | "DISTRESS_OWNER"
-  | "AUCTION_MONITOR"
-  | "GOV_LAND_P3"
-  | "OFF_MARKET_STANDARD"
-  | "NON_ACQUIRABLE_NOISE"
-  | "RESEARCH_REQUIRED";
-type RecommendedAction = "CONTACT_NOW" | "MONITOR" | "AUCTION_PREP" | "GOV_PURSUE" | "RESEARCH" | "ARCHIVE";
-type DistressStage =
-  | "NONE"
-  | "SIGNALS_ONLY"
-  | "PRE_FORECLOSURE"
-  | "AUCTION_SCHEDULED"
-  | "AUCTION_POSTPONED_OR_CANCELLED"
-  | "REO_BANK_OWNED"
-  | "SHORT_SALE_ACTIVE"
-  | "TAX_SALE_PROCESS"
-  | "PROBATE_ESTATE"
-  | "CODE_ENFORCEMENT"
-  | "BANKRUPTCY"
-  | "GOVERNMENT_LAND"
-  | "UNKNOWN";
-type NoiseReason = "COMMON_AREA" | "ROADWAY" | "RAILROAD" | "CENTRALLY_ASSESSED" | "UTILITY" | "UNKNOWN";
-type OpportunityGateStatus = {
-  label: string;
-  passed: boolean;
-  value: number | string | null;
-  threshold: number | string;
-};
 
-type OpportunityClassificationResult = {
-  classification: DealClassification;
-  classificationReason: string;
-  gates: {
-    spread: OpportunityGateStatus;
-    comps: OpportunityGateStatus;
-    completeness: OpportunityGateStatus;
-    confidence: OpportunityGateStatus;
-  };
-  nextBestAction: string;
-  foreclosureStatus: string;
-};
 
-type OperationalDecision = {
-  lane: DealLane;
-  recommendedAction: RecommendedAction;
-  distressStage: DistressStage;
-  nextEventDate: Date | null;
-  contactabilityScore: number;
-  isNoise: boolean;
-  noiseReason: NoiseReason | null;
-  ownerType: "PRIVATE" | "GOV" | "HOA" | "UTILITY" | "UNKNOWN";
-  why: string[];
-  blockers: string[];
-};
 
-const OPPORTUNITY_THRESHOLDS = {
-  minSpreadPct: 10,
-  minComparableCount: 8,
-  minCompletenessScore: 70,
-} as const;
 
-const SPREAD_SANITY = {
-  minPct: -90,
-  maxPct: 250,
-} as const;
 
-const ENGINE_VERSION = "operational-triage-v1";
 
-const NOISE_RULES: Array<{ reason: NoiseReason; keywords: string[] }> = [
-  { reason: "UNKNOWN", keywords: ["VACANT GOVERNMENTAL", "VACANT LAND - GOVERNMENTAL"] },
-  { reason: "COMMON_AREA", keywords: ["COMMON AREA", "COMMON AREA/ELEMENT", "REC AREA", "COMMON ELEMENTS"] },
-  { reason: "ROADWAY", keywords: ["ROADWAY", "RIGHT-OF-WAY"] },
-  { reason: "RAILROAD", keywords: ["RAILROAD"] },
-  { reason: "CENTRALLY_ASSESSED", keywords: ["CENTRALLY ASSESSED"] },
-  { reason: "UTILITY", keywords: ["UTILITY"] },
-];
 
-function toNumber(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return undefined;
-  const normalized = value.replace(/[$,]/g, "").trim();
-  if (!normalized) return undefined;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
-function pickField(record: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (value === undefined || value === null) continue;
-    const text = String(value).trim();
-    if (text) return text;
-  }
-  return undefined;
-}
 
-function extractGeometryPoint(feature: { geometry?: Record<string, unknown> }) {
-  const geometry = feature.geometry;
-  if (!geometry || typeof geometry !== "object") return undefined;
 
-  const x = geometry.x;
-  const y = geometry.y;
-  if (typeof x === "number" && typeof y === "number") {
-    return { latitude: y, longitude: x };
-  }
 
-  const rings = geometry.rings as unknown;
-  if (!Array.isArray(rings) || !Array.isArray(rings[0]) || !rings[0].length) return undefined;
-
-  const points = rings[0] as Array<[number, number]>;
-  let sumX = 0;
-  let sumY = 0;
-  let count = 0;
-
-  for (const point of points) {
-    if (!Array.isArray(point) || point.length < 2) continue;
-    if (typeof point[0] !== "number" || typeof point[1] !== "number") continue;
-    sumX += point[0];
-    sumY += point[1];
-    count += 1;
-  }
-
-  if (!count) return undefined;
-  return {
-    latitude: sumY / count,
-    longitude: sumX / count,
-  };
-}
-
-function toRadians(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function distanceMiles(
-  originLat?: number | null,
-  originLng?: number | null,
-  targetLat?: number | null,
-  targetLng?: number | null
-) {
-  if (
-    originLat === undefined ||
-    originLat === null ||
-    originLng === undefined ||
-    originLng === null ||
-    targetLat === undefined ||
-    targetLat === null ||
-    targetLng === undefined ||
-    targetLng === null
-  ) {
-    return null;
-  }
-
-  const dLat = toRadians(targetLat - originLat);
-  const dLng = toRadians(targetLng - originLng);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(originLat)) * Math.cos(toRadians(targetLat)) * Math.sin(dLng / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Number((EARTH_RADIUS_MILES * c).toFixed(3));
-}
 
 function avg(values: Array<number | null | undefined>) {
   const filtered = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
@@ -262,14 +121,6 @@ function formatAddress(parts: Array<string | null | undefined>) {
   return parts.map((part) => toCleanText(part)).filter(Boolean).join(", ").trim() || null;
 }
 
-function parseJson<T>(value: string | null | undefined): T | null {
-  if (!value) return null;
-  try {
-    return JSON.parse(value) as T;
-  } catch (_error) {
-    return null;
-  }
-}
 
 function inferAssetTypeFromUse(rawValue?: string | null) {
   const value = toCleanText(rawValue);
@@ -290,44 +141,9 @@ function inferAssetTypeFromUse(rawValue?: string | null) {
   return value;
 }
 
-function normalizeConfidence(value: unknown): InsightConfidence {
-  if (value === "high" || value === "medium" || value === "low") return value;
-  return "low";
-}
 
-function detectNoiseReason(assetType?: string | null, propertyUseCode?: string | null): NoiseReason | null {
-  const haystack = `${assetType ?? ""} ${propertyUseCode ?? ""}`.toUpperCase();
-  for (const rule of NOISE_RULES) {
-    if (rule.keywords.some((keyword) => haystack.includes(keyword))) {
-      return rule.reason;
-    }
-  }
-  return null;
-}
 
-function parseEventDate(value: unknown) {
-  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
-  if (typeof value === "string" || typeof value === "number") {
-    const parsed = new Date(value);
-    return Number.isFinite(parsed.getTime()) ? parsed : null;
-  }
-  return null;
-}
 
-function inferOwnerType(ownerNames: string[]) {
-  const joined = ownerNames.join(" ").toUpperCase();
-  if (!joined.trim()) return "UNKNOWN" as const;
-  if (joined.includes("COUNTY") || joined.includes("CITY OF") || joined.includes("STATE OF") || joined.includes("TOWN OF")) {
-    return "GOV" as const;
-  }
-  if (joined.includes("HOA") || joined.includes("HOMEOWNERS")) {
-    return "HOA" as const;
-  }
-  if (joined.includes("UTILITY") || joined.includes("WATER") || joined.includes("ELECTRIC")) {
-    return "UTILITY" as const;
-  }
-  return "PRIVATE" as const;
-}
 
 function inferDistressStage(signals: Array<{ metadata?: string | null; source?: string | null }>): DistressStage {
   if (!signals.length) return "NONE";

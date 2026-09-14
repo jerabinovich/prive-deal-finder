@@ -302,8 +302,32 @@ function normalizeCaseRecord(caseRow: JsonRecord, fallbackType: string): JsonRec
     confidence: /^RP.*F/i.test(caseTypeCode) || /^FORE/i.test(caseTypeCode) ? "HIGH" : "MEDIUM",
     observedAt: observedAt ? observedAt.toISOString() : null,
     address: propertyAddress || null,
+    // 14-sep-2026: el expediente NO trae folio ni direccion de la propiedad —
+    // trae la CARATULA ("Banco Plaintiff vs. Fulano, et al Defendant"). El
+    // demandado es el dueño, y su nombre es la unica llave que tenemos para
+    // encontrar la propiedad en el catastro. Se extrae aca y se lleva en el
+    // registro para que el servicio pueda resolverlo.
+    caption: readText(caseRow, ["Caption", "caption", "CAPTION", "Style"]) || null,
+    defendantName: extractDefendant(readText(caseRow, ["Caption", "caption", "CAPTION", "Style"])),
     metadata: caseRow,
   };
+}
+
+/**
+ * Saca el nombre del demandado de la caratula.
+ *
+ * Formato del Clerk: "<demandante> Plaintiff vs. <demandado>, et al Defendant".
+ * Medido sobre los 11 expedientes del 11-sep: resuelve 7. Los 4 que no son
+ * apellidos compuestos ("St. Urbain-Dupigny"), empresas con la razon social
+ * partida, y una caratula que arranca con "THE TRUSTEES OF THE...". Se devuelve
+ * el nombre crudo y el servicio decide como buscarlo.
+ */
+function extractDefendant(caption: string): string | null {
+  if (!caption) return null;
+  const m = /vs\.?\s*([\s\S]+?)(?:,\s*et al|\s+Defendant\b|$)/i.exec(caption);
+  if (!m) return null;
+  const name = m[1].replace(/\s+/g, " ").trim();
+  return name || null;
 }
 
 export class BrowardForeclosureConnector implements IntegrationConnector {

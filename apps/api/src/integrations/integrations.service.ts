@@ -407,7 +407,70 @@ export class IntegrationsService {
    * MIAMI_DADE_PARCELS_URL es un endpoint de DESCARGA MASIVA, no acepta
    * ?where= — por eso aca no se usa esa.
    */
+  /**
+   * Resuelve el demandado de un expediente de foreclosure contra el catastro de
+   * Broward, escribe el folio encontrado EN EL PROPIO REGISTRO (para que el
+   * pipeline generico de señales pueda cruzarlo) y crea el deal.
+   *
+   * POR QUE ASI: un expediente judicial no trae folio ni direccion — trae la
+   * caratula. El demandado es el dueño, y el catastro guarda los nombres como
+   * "APELLIDO,NOMBRE". Medido sobre los 11 expedientes del 11-sep: resuelve 7.
+   * Los 4 restantes son apellidos compuestos, empresas y una caratula que
+   * arranca con "THE TRUSTEES OF THE".
+   *
+   * Es GRATIS: el catastro de Broward es ArcGIS abierto, no consume unidades.
+   */
+  private async seedDealsFromForeclosureDefendants(records: unknown[]) {
+    const url = process.env.BROWARD_PARCELS_URL;
+    if (!url) return 0;
+
+    const features: unknown[] = [];
+    let resolved = 0;
+
+    for (const item of records) {
+      const record = item as Record<string, unknown>;
+      const raw = String(record?.defendantName ?? "").trim();
+      if (!raw) continue;
+
+      const parts = raw
+        .split(/\s+/)
+        .map((piece) => piece.replace(/[.,]/g, "").trim())
+        .filter((piece) => piece && !["the", "of", "et", "al"].includes(piece.toLowerCase()));
+      if (parts.length < 2) continue;
+
+      // Persona: "Veronica Laingor" -> LAINGOR,VERONICA
+      // Empresa: se busca por la primera palabra distintiva, que el catastro
+      //          guarda al principio de la razon social.
+      const esEmpresa = /\b(inc|llc|corp|trust|ltd|company|association|assn)\b/i.test(raw);
+      const clave = esEmpresa
+        ? `${parts[0].toUpperCase()}%`
+        : `${parts[parts.length - 1].toUpperCase()},${parts[0].toUpperCase()}%`;
+
+      try {
+        const found = await fetchArcgisWhere(
+          url, `NAME_LINE_1 LIKE '${clave.replace(/'/g, "''")}'`, 1, "FOLIO_NUMBER",
+        );
+        if (!found.length) continue;
+        const attrs = (found[0] as { attributes?: Record<string, unknown> })?.attributes ?? {};
+        const folio = String(attrs.FOLIO_NUMBER ?? "").trim();
+        if (!folio) continue;
+
+        // La clave del cruce: el registro de la señal se lleva el folio.
+        record.parcelId = folio;
+        features.push(found[0]);
+        resolved += 1;
+      } catch {
+        // Un nombre que no resuelve no frena al resto.
+      }
+    }
+
+    if (!features.length) return 0;
+    const ingested = await ingestArcgisRecords(this.prisma, "broward-parcels", "Broward", features);
+    return ingested.createdDeals + ingested.updatedDeals;
+  }
+
   private async seedDealsFromDistressFolios(source: string, records: unknown[]) {
+    if (source === "broward-foreclosure") return this.seedDealsFromForeclosureDefendants(records);
     if (source !== "miami-dade-code-enforcement") return 0;
 
     const folios = Array.from(
@@ -479,7 +542,11 @@ export class IntegrationsService {
       });
 
       const stage =
-        confidence === "HIGH" ? "CODE_ENFORCEMENT" : confidence === "MEDIUM" ? "SIGNALS_ONLY" : "SIGNALS_ONLY";
+          source === "broward-foreclosure" || source === "miami-dade-foreclosure"
+          ? "PRE_FORECLOSURE"
+          : confidence === "HIGH"
+            ? "CODE_ENFORCEMENT"
+            : "SIGNALS_ONLY";
 
       const triage = computeTriageScore({
         assetType: deal.assetType,

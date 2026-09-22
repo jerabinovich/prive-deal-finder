@@ -18,6 +18,9 @@ const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().positive().default(4000),
+    // 22-sep-2026: sin valor escucha en todas las interfaces, como siempre; con 127.0.0.1 solo se
+    // llega desde Spark o por tunel ssh.
+    API_HOST: z.string().trim().optional(),
     DATABASE_URL: z
       .string()
       .min(1)

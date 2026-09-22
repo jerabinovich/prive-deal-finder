@@ -27,6 +27,13 @@ export function isLoopbackRequest(req: Request): boolean {
   return ip === "127.0.0.1" || ip === "::1";
 }
 
+/** cloudflared marca todo lo que entrega con estas cabeceras; un tunel ssh no las trae. */
+export function arrivedThroughCloudflare(req: Request): boolean {
+  const ray = req.headers["cf-ray"];
+  const ip = req.headers["cf-connecting-ip"];
+  return Boolean((Array.isArray(ray) ? ray[0] : ray)?.trim() || (Array.isArray(ip) ? ip[0] : ip)?.trim());
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -72,8 +79,14 @@ export class AuthController {
       return cfEmail;
     }
 
+    // 22-sep-2026, decision de JR: se entra por tunel ssh. Con AUTH_ALLOW_BODY_EMAIL=loopback el
+    // correo del cuerpo vale SOLO si la peticion entro por loopback y no la trajo cloudflared.
+    // Con la API escuchando solo en 127.0.0.1 (API_HOST), eso es: desde Spark o por el tunel,
+    // que Tailscale SSH ya autentica. No reabre lo que C6 cerro: desde el tailnet o la red local
+    // sigue rechazado, y por Cloudflare manda la cabecera de Access o nada.
+    const mode = String(this.config.get<string>("AUTH_ALLOW_BODY_EMAIL", "")).trim().toLowerCase();
     const allowBody =
-      String(this.config.get<string>("AUTH_ALLOW_BODY_EMAIL", "")).trim().toLowerCase() === "true";
+      mode === "true" || (mode === "loopback" && isLoopbackRequest(req) && !arrivedThroughCloudflare(req));
     if (allowBody) {
       const bodyEmail = (body?.email || "").trim();
       if (!bodyEmail) {

@@ -1,0 +1,532 @@
+{
+ "corrida": "2026-09-22T12:10:07",
+ "estado": "COMPLETA",
+ "folios": 9,
+ "reusadas": 5,
+ "intentos": 4,
+ "consultados": 2,
+ "con_datos": 5,
+ "unidades_gastadas": 2,
+ "saldo_informado_primero": 150,
+ "saldo_informado_ultimo": 149,
+ "saldo_final_estimado": 148,
+ "chequeo_unidades": null,
+ "resultados": {
+  "3031210000490": {
+   "status": "Successful",
+   "status_desc": "Record Found",
+   "origen": "3031210000490-20260922-083137.xml",
+   "documentos": 10,
+   "deuda": [
+    {
+     "cfn": "2019-100002",
+     "tipo": "MOR",
+     "fecha": "2019-03-01T00:00:00",
+     "consid1": 6000000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "BUYER ALPHA LLC"
+     ],
+     "cancelado": true,
+     "monto": 6000000.0
+    },
+    {
+     "cfn": "2023-300001",
+     "tipo": "LIE",
+     "fecha": "2023-02-01T00:00:00",
+     "consid1": 0,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "CITY OF MIAMI"
+     ],
+     "cancelado": false,
+     "monto": 0.0
+    },
+    {
+     "cfn": "2024-300003",
+     "tipo": "LIE",
+     "fecha": "2024-01-15T00:00:00",
+     "consid1": 0,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "CONTRACTOR BETA INC"
+     ],
+     "cancelado": true,
+     "monto": 0.0
+    },
+    {
+     "cfn": "2024-400002",
+     "tipo": "JUD",
+     "fecha": "2024-09-09T00:00:00",
+     "consid1": 125000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "SUPPLIER GAMMA CORP"
+     ],
+     "cancelado": false,
+     "monto": 125000.0
+    },
+    {
+     "cfn": "2025-300002",
+     "tipo": "LIE",
+     "fecha": "2025-11-01T00:00:00",
+     "consid1": 0,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "CITY OF MIAMI"
+     ],
+     "cancelado": false,
+     "monto": 0.0
+    },
+    {
+     "cfn": "2025-944351",
+     "tipo": "MOR",
+     "fecha": "2025-12-10T00:00:00",
+     "consid1": 7270000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "BUYER ALPHA LLC"
+     ],
+     "cancelado": false,
+     "monto": 7270000.0
+    },
+    {
+     "cfn": "2026-400001",
+     "tipo": "LIS",
+     "fecha": "2026-08-01T00:00:00",
+     "consid1": 0,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "LENDER TWO CAPITAL LLC"
+     ],
+     "cancelado": false,
+     "monto": 0.0
+    }
+   ],
+   "ventas": [
+    {
+     "cfn": "2019-100001",
+     "tipo": "WD",
+     "fecha": "2019-03-01T00:00:00",
+     "consid1": 10000000,
+     "consid2": 0,
+     "sellos": 60000,
+     "intangible": 0,
+     "partes": [
+      "SELLER ONE LLC"
+     ],
+     "cancelado": false,
+     "monto": 10000000.0
+    }
+   ],
+   "otros_tipos": [
+    "REL",
+    "SAT"
+   ],
+   "deuda_viva_registrada": 7270000,
+   "hipotecas": [
+    {
+     "cfn": "2019-100002",
+     "fecha": "2019-03-01",
+     "monto": 6000000.0,
+     "estado": "cancelada",
+     "motivo": "por 2021-200001",
+     "partes": [
+      "BUYER ALPHA LLC",
+      "LENDER ONE BANK"
+     ]
+    },
+    {
+     "cfn": "2025-944351",
+     "fecha": "2025-12-10",
+     "monto": 7270000.0,
+     "estado": "vigente probable",
+     "motivo": "",
+     "partes": [
+      "BUYER ALPHA LLC",
+      "LENDER TWO CAPITAL LLC"
+     ]
+    }
+   ],
+   "deuda_vigente_probable": 7270000,
+   "ultimo_traspaso": {
+    "cfn": "2019-100001",
+    "fecha": "2019-03-01",
+    "tipo": "WD",
+    "precio": 10000000.0
+   },
+   "ultima_compra_sin_hipoteca_en_indice": false,
+   "certificados_de_titulo": [],
+   "gravamenes": {
+    "total": 3,
+    "liberados_en_indice": 1,
+    "ultimos_24_meses": 1,
+    "ultimo": "2025-11-01",
+    "partes_frecuentes": {
+     "BUYER ALPHA LLC": 3,
+     "CITY OF MIAMI": 2,
+     "CONTRACTOR BETA INC": 1
+    }
+   }
+  },
+  "3031010032900": {
+   "status": "Successful",
+   "status_desc": "Record Found",
+   "origen": "3031010032900-20260922-083137.xml",
+   "documentos": 1,
+   "deuda": [
+    {
+     "cfn": "2026-500415",
+     "tipo": "MOR",
+     "fecha": "2026-07-23T00:00:00",
+     "consid1": 5950848,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "OWNER BRAVO LLC"
+     ],
+     "cancelado": false,
+     "monto": 5950848.0
+    }
+   ],
+   "ventas": [],
+   "otros_tipos": [],
+   "deuda_viva_registrada": 5950848,
+   "hipotecas": [
+    {
+     "cfn": "2026-500415",
+     "fecha": "2026-07-23",
+     "monto": 5950848.0,
+     "estado": "vigente probable",
+     "motivo": "",
+     "partes": [
+      "OWNER BRAVO LLC",
+      "LENDER THREE HOLDINGS LLC"
+     ]
+    }
+   ],
+   "deuda_vigente_probable": 5950848,
+   "ultimo_traspaso": null,
+   "ultima_compra_sin_hipoteca_en_indice": false,
+   "certificados_de_titulo": [],
+   "gravamenes": {
+    "total": 0,
+    "liberados_en_indice": 0,
+    "ultimos_24_meses": 0,
+    "ultimo": null,
+    "partes_frecuentes": {}
+   }
+  },
+  "3022200021810": {
+   "status": "Successful",
+   "status_desc": "Record Found",
+   "origen": "3022200021810-20260922-083137.xml",
+   "documentos": 6,
+   "deuda": [
+    {
+     "cfn": "1990-11111",
+     "tipo": "MOR",
+     "fecha": "1990-01-10T00:00:00",
+     "consid1": 90000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "OLD OWNER"
+     ],
+     "cancelado": false,
+     "monto": 90000.0
+    },
+    {
+     "cfn": "2000-22222",
+     "tipo": "MOR",
+     "fecha": "2000-05-05T00:00:00",
+     "consid1": 150000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "MID OWNER"
+     ],
+     "cancelado": false,
+     "monto": 150000.0
+    },
+    {
+     "cfn": "2026-55555",
+     "tipo": "MOR",
+     "fecha": "2026-07-01T00:00:00",
+     "consid1": 8000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "PRIVATE BORROWER"
+     ],
+     "cancelado": false,
+     "monto": 8000.0
+    },
+    {
+     "cfn": "2026-66666",
+     "tipo": "MOR",
+     "fecha": null,
+     "consid1": 0,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 100,
+     "partes": [
+      "PRIVATE BORROWER"
+     ],
+     "cancelado": false,
+     "monto_derivado_de": "impuesto intangible",
+     "monto": 50000
+    }
+   ],
+   "ventas": [
+    {
+     "cfn": "2005-33333",
+     "tipo": "DEE",
+     "fecha": "2005-07-07T00:00:00",
+     "consid1": 400000,
+     "consid2": 0,
+     "sellos": 2800,
+     "intangible": 0,
+     "partes": [
+      "MID OWNER"
+     ],
+     "cancelado": false,
+     "monto": 400000.0
+    }
+   ],
+   "otros_tipos": [
+    "CTI"
+   ],
+   "deuda_viva_registrada": 298000,
+   "hipotecas": [
+    {
+     "cfn": "2026-66666",
+     "fecha": "",
+     "monto": 50000,
+     "estado": "vigente probable",
+     "motivo": "sin fecha legible: no se puede ordenar",
+     "partes": [
+      "PRIVATE BORROWER",
+      "UNKNOWN LENDER"
+     ]
+    },
+    {
+     "cfn": "1990-11111",
+     "fecha": "1990-01-10",
+     "monto": 90000.0,
+     "estado": "anterior a un traspaso",
+     "motivo": "DEE 2005-33333 del 2005-07-07",
+     "partes": [
+      "OLD OWNER",
+      "OLD BANK"
+     ]
+    },
+    {
+     "cfn": "2000-22222",
+     "fecha": "2000-05-05",
+     "monto": 150000.0,
+     "estado": "anterior a un traspaso",
+     "motivo": "DEE 2005-33333 del 2005-07-07",
+     "partes": [
+      "MID OWNER",
+      "MID BANK"
+     ]
+    },
+    {
+     "cfn": "2026-55555",
+     "fecha": "2026-07-01",
+     "monto": 8000.0,
+     "estado": "vigente probable",
+     "motivo": "",
+     "partes": [
+      "PRIVATE BORROWER",
+      "PRIVATE LENDER"
+     ]
+    }
+   ],
+   "deuda_vigente_probable": 58000,
+   "ultimo_traspaso": {
+    "cfn": "2012-44444",
+    "fecha": "2012-02-02",
+    "tipo": "CTI",
+    "precio": 0.0
+   },
+   "ultima_compra_sin_hipoteca_en_indice": false,
+   "certificados_de_titulo": [
+    "2012-02-02"
+   ],
+   "gravamenes": {
+    "total": 0,
+    "liberados_en_indice": 0,
+    "ultimos_24_meses": 0,
+    "ultimo": null,
+    "partes_frecuentes": {}
+   }
+  },
+  "3040000000010": {
+   "status": "Successful",
+   "status_desc": "Record Found",
+   "origen": "3040000000010-20260922-083137.xml",
+   "documentos": 2,
+   "deuda": [
+    {
+     "cfn": "2015-77777",
+     "tipo": "MOR",
+     "fecha": "2015-01-01T00:00:00",
+     "consid1": 300000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "OWNER H"
+     ],
+     "cancelado": false,
+     "monto": 300000.0
+    }
+   ],
+   "ventas": [],
+   "otros_tipos": [
+    "SATMOR"
+   ],
+   "deuda_viva_registrada": 300000,
+   "hipotecas": [
+    {
+     "cfn": "2015-77777",
+     "fecha": "2015-01-01",
+     "monto": 300000.0,
+     "estado": "cancelada",
+     "motivo": "por 2018-88888",
+     "partes": [
+      "OWNER H",
+      "BANK H"
+     ]
+    }
+   ],
+   "deuda_vigente_probable": 0,
+   "ultimo_traspaso": null,
+   "ultima_compra_sin_hipoteca_en_indice": false,
+   "certificados_de_titulo": [],
+   "gravamenes": {
+    "total": 0,
+    "liberados_en_indice": 0,
+    "ultimos_24_meses": 0,
+    "ultimo": null,
+    "partes_frecuentes": {}
+   }
+  },
+  "3050000000020": {
+   "status": "Successful",
+   "status_desc": "Record Found",
+   "origen": "3050000000020-20260922-083137.xml",
+   "documentos": 2,
+   "deuda": [
+    {
+     "cfn": "2010-12121",
+     "tipo": "MOR",
+     "fecha": "2010-01-01T00:00:00",
+     "consid1": 250000,
+     "consid2": 0,
+     "sellos": 0,
+     "intangible": 0,
+     "partes": [
+      "PRIOR OWNER"
+     ],
+     "cancelado": false,
+     "monto": 250000.0
+    }
+   ],
+   "ventas": [
+    {
+     "cfn": "2021-13131",
+     "tipo": "WD",
+     "fecha": "2021-04-04T00:00:00",
+     "consid1": 900000,
+     "consid2": 0,
+     "sellos": 5400,
+     "intangible": 0,
+     "partes": [
+      "PRIOR OWNER"
+     ],
+     "cancelado": false,
+     "monto": 900000.0
+    }
+   ],
+   "otros_tipos": [],
+   "deuda_viva_registrada": 250000,
+   "hipotecas": [
+    {
+     "cfn": "2010-12121",
+     "fecha": "2010-01-01",
+     "monto": 250000.0,
+     "estado": "anterior a un traspaso",
+     "motivo": "WD 2021-13131 del 2021-04-04",
+     "partes": [
+      "PRIOR OWNER",
+      "PRIOR BANK"
+     ]
+    }
+   ],
+   "deuda_vigente_probable": 0,
+   "ultimo_traspaso": {
+    "cfn": "2021-13131",
+    "fecha": "2021-04-04",
+    "tipo": "WD",
+    "precio": 900000.0
+   },
+   "ultima_compra_sin_hipoteca_en_indice": true,
+   "certificados_de_titulo": [],
+   "gravamenes": {
+    "total": 0,
+    "liberados_en_indice": 0,
+    "ultimos_24_meses": 0,
+    "ultimo": null,
+    "partes_frecuentes": {}
+   }
+  },
+  "3060000000030": {
+   "status": "Successful",
+   "status_desc": "Success: No Records Found",
+   "saldo_informado": 149,
+   "documentos": 0
+  },
+  "3070000000040": {
+   "error": "timed out"
+  },
+  "3080000000050": {
+   "status": "Failed",
+   "status_desc": "Invalid Parameter",
+   "saldo_informado": 150,
+   "ip": "100.64.1.2"
+  },
+  "3090000000060": {
+   "status": "Successful",
+   "status_desc": "Record Found",
+   "origen": "3090000000060-20260921-101010.xml",
+   "documentos": 3,
+   "deuda": [],
+   "ventas": [],
+   "otros_tipos": [
+    "DEE"
+   ],
+   "deuda_viva_registrada": 0
+  }
+ }
+}

@@ -8,6 +8,7 @@ import ColumnHeaderSort from "../../components/ColumnHeaderSort";
 import TableEmptyState from "../../components/TableEmptyState";
 import TableFilterRow from "../../components/TableFilterRow";
 import { useToast } from "../../components/ToastProvider";
+import RecordedDebtSection from "./RecordedDebtSection";
 
 interface Deal {
   id: string;
@@ -1554,6 +1555,8 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
           <TableEmptyState message="Dato no disponible en fuentes actuales para historial fiscal." />
         )}
       </section>
+
+      <RecordedDebtSection dealId={params.id} />
 
       <section className="card detail-section">
         <h3 className="section-title">Insights</h3>

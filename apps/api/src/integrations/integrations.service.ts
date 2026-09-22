@@ -12,6 +12,8 @@ import { MiamiDadeForeclosureConnector } from "./connectors/miami-dade-foreclosu
 import { MiamiDadeParcelsConnector } from "./connectors/miami-dade-parcels.connector";
 import { PalmBeachParcelsConnector } from "./connectors/palm-beach-parcels.connector";
 import { MiamiDadeCodeEnforcementConnector } from "./connectors/miami-dade-code-enforcement.connector";
+import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector";
+import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
 import { fetchArcgisWhere } from "./connectors/arcgis";
 import { computeTriageScore } from "../scoring/score";
 import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
@@ -66,6 +68,7 @@ export class IntegrationsService {
     new BrowardParcelsConnector(),
     new PalmBeachParcelsConnector(),
     new MiamiDadeCodeEnforcementConnector(),
+    new MiamiDadeClerkConnector(),
   ];
 
   constructor(
@@ -1126,6 +1129,31 @@ export class IntegrationsService {
           status: IntegrationStatus.OK,
           message: `MDPA ingested ${ingest.processed} rows`,
           metrics: ingest as unknown as Record<string, unknown>,
+        });
+      }
+
+      // 22-sep-2026: deuda registrada del Clerk, SOLO INFORMATIVA. Importa el resultado.json
+      // que ya pago consultar.py: cero consultas al Clerk. Escribe solo StagingRecord; no toca
+      // deals, señales, eventos ni metricas, asi que el triage y el score no se enteran.
+      if (source === MIAMI_DADE_CLERK_SOURCE && connector instanceof MiamiDadeClerkConnector) {
+        const loaded = connector.loadResult();
+        if (!loaded.parsed) {
+          return this.finishRun(run.id, source, { status: loaded.status, message: loaded.message });
+        }
+        const stored = await storeRecordedDebt(this.prisma, loaded.parsed.snapshots);
+        return this.finishRun(run.id, source, {
+          status: IntegrationStatus.OK,
+          message:
+            `Deuda registrada importada (solo informativo): ${stored.storedRecords} folios nuevos o cambiados, ` +
+            `${stored.unchangedRecords} sin cambios, ${stored.matchedDeals} con deal`,
+          metrics: {
+            ...stored,
+            skippedFolios: loaded.parsed.skipped.length,
+            skippedDetails: loaded.parsed.skipped.slice(0, 50),
+            sourceRunAt: loaded.parsed.runAt,
+            sourceFile: loaded.filePath,
+            clerkUnitsSpent: 0,
+          },
         });
       }
 

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../shared/prisma.service";
 import { fetchArcgisWhere } from "../integrations/connectors/arcgis";
+import { readRecordedDebt } from "../integrations/miami-dade-clerk.debt";
 import { CreateDealDto } from "./dto/create-deal.dto";
 import { CreateDealDocumentDto } from "./dto/create-deal-document.dto";
 import { CreateDealMediaDto } from "./dto/create-deal-media.dto";
@@ -1565,6 +1566,15 @@ export class DealsService {
       estimatedValue,
       classification,
     };
+  }
+
+  /** Deuda registrada del Clerk para la ficha. Solo lectura y solo informativa: no entra al triage. */
+  async getRecordedDebt(id: string) {
+    const deal = await this.prisma.deal.findUnique({ where: { id }, select: { parcelId: true, market: true } });
+    if (!deal) {
+      throw new NotFoundException("Deal not found");
+    }
+    return readRecordedDebt(this.prisma, deal);
   }
 
   async getDataQuality(id: string) {

@@ -67,6 +67,12 @@ export class DealsController {
   }
 
   @Roles("ADMIN", "ANALYST", "PARTNER")
+  @Get(":id/recorded-debt")
+  async recordedDebt(@Param("id") id: string) {
+    return this.dealsService.getRecordedDebt(id);
+  }
+
+  @Roles("ADMIN", "ANALYST", "PARTNER")
   @Post(":id/projections")
   async projections(@Param("id") id: string, @Body() body: ProjectionScenarioDto) {
     return this.dealsService.buildProjection(id, body);

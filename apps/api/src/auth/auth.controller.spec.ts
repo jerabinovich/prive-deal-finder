@@ -7,7 +7,7 @@
  */
 import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import type { Request } from "express";
-import { AuthController, isLoopbackRequest } from "./auth.controller";
+import { AuthController, arrivedThroughCloudflare, isLoopbackRequest } from "./auth.controller";
 
 type Cfg = Record<string, string>;
 
@@ -71,6 +71,56 @@ describe("resolveLoginEmail", () => {
     const r = resolver(mkController({ AUTH_ALLOW_BODY_EMAIL: "true" }));
     expect(r(mkReq("100.108.120.120"), { email: "jr@privegroup.com" })).toBe("jr@privegroup.com");
     expect(() => r(mkReq("100.108.120.120"), { email: "   " })).toThrow(BadRequestException);
+  });
+
+  describe("modo loopback (22-sep-2026: acceso por tunel ssh)", () => {
+    const loop = () => resolver(mkController({ AUTH_ALLOW_BODY_EMAIL: "loopback" }));
+
+    it("acepta el correo del cuerpo si entra por loopback, que es lo que hace el tunel", () => {
+      expect(loop()(mkReq("127.0.0.1"), { email: "jr@privegroup.com" })).toBe("jr@privegroup.com");
+      expect(loop()(mkReq("::1"), { email: "jr@privegroup.com" })).toBe("jr@privegroup.com");
+      expect(loop()(mkReq("::ffff:127.0.0.1"), { email: "jr@privegroup.com" })).toBe("jr@privegroup.com");
+    });
+
+    it("sigue rechazando el cuerpo desde el tailnet, la red local o un contenedor en bridge", () => {
+      for (const ip of ["100.108.120.120", "10.1.10.109", "172.17.0.2"]) {
+        expect(() => loop()(mkReq(ip), { email: "jr@privegroup.com" })).toThrow(UnauthorizedException);
+      }
+    });
+
+    it("rechaza el cuerpo si lo trajo cloudflared aunque llegue por loopback", () => {
+      const casos: Array<Record<string, string>> = [{ "cf-ray": "8c1f2a3b4c5d6e7f-MIA" }, { "cf-connecting-ip": "203.0.113.9" }];
+      for (const h of casos) {
+        expect(() => loop()(mkReq("127.0.0.1", h), { email: "jr@privegroup.com" })).toThrow(UnauthorizedException);
+      }
+    });
+
+    it("la cabecera de Access le sigue ganando al cuerpo", () => {
+      const CF_EMAIL = "cf-access-authenticated-user-email";
+      expect(loop()(mkReq("127.0.0.1", { [CF_EMAIL]: "real@privegroup.com", "cf-ray": "x" }), { email: "otro@ejemplo.com" }))
+        .toBe("real@privegroup.com");
+    });
+
+    it("un correo vacio por loopback es un pedido mal formado, no un login", () => {
+      expect(() => loop()(mkReq("127.0.0.1"), { email: "  " })).toThrow(BadRequestException);
+    });
+
+    it("solo el literal loopback activa el modo", () => {
+      for (const v of ["loop", "local", "127.0.0.1", "LOOPBACK "]) {
+        const r = resolver(mkController({ AUTH_ALLOW_BODY_EMAIL: v }));
+        if (v.trim().toLowerCase() === "loopback") {
+          expect(r(mkReq("127.0.0.1"), { email: "a@b.com" })).toBe("a@b.com");
+        } else {
+          expect(() => r(mkReq("127.0.0.1"), { email: "a@b.com" })).toThrow(UnauthorizedException);
+        }
+      }
+    });
+
+    it("arrivedThroughCloudflare solo mira cabeceras no vacias", () => {
+      expect(arrivedThroughCloudflare(mkReq("127.0.0.1"))).toBe(false);
+      expect(arrivedThroughCloudflare(mkReq("127.0.0.1", { "cf-ray": " " }))).toBe(false);
+      expect(arrivedThroughCloudflare(mkReq("127.0.0.1", { "cf-ray": "abc" }))).toBe(true);
+    });
   });
 
   it("la palanca solo se activa con el literal true", () => {

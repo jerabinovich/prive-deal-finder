@@ -38,9 +38,13 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   app.useGlobalFilters(new ApiExceptionFilter());
 
-  await app.listen(env.PORT);
+  if (env.API_HOST) {
+    await app.listen(env.PORT, env.API_HOST);
+  } else {
+    await app.listen(env.PORT);
+  }
   // eslint-disable-next-line no-console
-  console.log(`API listening on ${env.PORT}`);
+  console.log(`API listening on ${env.PORT}${env.API_HOST ? ` (${env.API_HOST})` : ""}`);
 }
 
 bootstrap();

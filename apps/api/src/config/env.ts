@@ -36,6 +36,10 @@ const envSchema = z
     AUTH_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
     AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
     WEB_APP_URL: z.string().url(),
+    // 2-oct-2026: origenes extra para CORS, separados por coma (el acceso por el tailnet).
+    WEB_EXTRA_ORIGINS: z.string().default(""),
+    // 2-oct-2026: identidades de Tailscale que pueden entrar por tailscale serve, separadas por coma.
+    AUTH_TAILSCALE_LOGINS: z.string().default(""),
     GOOGLE_OAUTH_CLIENT_ID: z.string().min(1),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1),
     GOOGLE_OAUTH_REDIRECT_URI: z.string().url(),

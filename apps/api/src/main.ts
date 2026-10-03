@@ -7,7 +7,7 @@ import { ApiExceptionFilter } from "./shared/http-exception.filter";
 async function bootstrap() {
   const env = validateEnv(process.env);
   const allowedExactOrigins = new Set(
-    env.WEB_APP_URL.split(",")
+    [env.WEB_APP_URL, env.WEB_EXTRA_ORIGINS].join(",").split(",")
       .map((value) => value.trim())
       .filter(Boolean),
   );

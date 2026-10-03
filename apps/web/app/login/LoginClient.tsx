@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiBase, apiFetch, setStoredAuthTokens } from "../../lib/api";
+import { takeAfterLoginPath } from "../../lib/use-require-auth";
 
 interface LoginResponse {
   accessToken: string;
@@ -23,11 +24,12 @@ export default function LoginClient() {
   const [hydrated, setHydrated] = useState(false);
 
   const navigateToDeals = useCallback(() => {
-    router.replace("/deals");
+    const target = takeAfterLoginPath();
+    router.replace(target);
     if (typeof window !== "undefined") {
       setTimeout(() => {
         if (window.location.pathname.startsWith("/login")) {
-          window.location.replace("/deals");
+          window.location.replace(target);
         }
       }, 250);
     }

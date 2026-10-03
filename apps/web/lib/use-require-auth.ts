@@ -4,6 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "./api";
 
+export const AFTER_LOGIN_KEY = "prive_after_login";
+
+/** Solo rutas internas: empieza con una barra, no con dos, y no vuelve al login. */
+export function takeAfterLoginPath(): string {
+  if (typeof window === "undefined") return "/deals";
+  try {
+    const v = window.sessionStorage.getItem(AFTER_LOGIN_KEY) || "";
+    window.sessionStorage.removeItem(AFTER_LOGIN_KEY);
+    if (v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/login")) return v;
+  } catch (_error) {
+    // Sin storage, a /deals.
+  }
+  return "/deals";
+}
+
 export function useRequireAuth() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -15,6 +30,14 @@ export function useRequireAuth() {
     let guardResolved = false;
 
     function redirectToLogin() {
+      // 2-oct-2026: recordar a donde iba, para que el link de la alerta abra la ficha despues del login.
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        try {
+          window.sessionStorage.setItem(AFTER_LOGIN_KEY, window.location.pathname + window.location.search);
+        } catch (_error) {
+          // Sin storage, el login vuelve a /deals como antes.
+        }
+      }
       router.replace("/login");
 
       if (typeof window !== "undefined") {

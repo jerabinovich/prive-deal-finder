@@ -27,6 +27,26 @@ export function isLoopbackRequest(req: Request): boolean {
   return ip === "127.0.0.1" || ip === "::1";
 }
 
+/**
+ * 2-oct-2026, decision de JR: el Deal Finder tambien se abre por el tailnet, como el panel de
+ * OpenClaw, via `tailscale serve` (https://<nodo>.ts.net:8445). MEDIDO ese dia con un servidor eco:
+ * serve conserva el Host original (<nodo>.ts.net:puerto), entrega desde 127.0.0.1, BORRA la
+ * cabecera Tailscale-User-Login que mande el cliente y pone la real, y NO borra las cabeceras de
+ * Cloudflare. Por eso una peticion que trae Host *.ts.net se decide SOLO por la identidad de
+ * Tailscale, nunca por Cf-Access ni por el modo loopback.
+ */
+export function arrivedThroughTailscaleServe(req: Request): boolean {
+  const raw = req.headers["host"];
+  const host = String((Array.isArray(raw) ? raw[0] : raw) || "").trim().toLowerCase();
+  const hostname = host.startsWith("[") ? host : host.split(":")[0];
+  return hostname.endsWith(".ts.net");
+}
+
+export function tailscaleLogin(req: Request): string {
+  const raw = req.headers["tailscale-user-login"];
+  return String((Array.isArray(raw) ? raw[0] : raw) || "").trim().toLowerCase();
+}
+
 /** cloudflared marca todo lo que entrega con estas cabeceras; un tunel ssh no las trae. */
 export function arrivedThroughCloudflare(req: Request): boolean {
   const ray = req.headers["cf-ray"];
@@ -73,6 +93,22 @@ export class AuthController {
 
   /** Decide de donde sale la identidad del login. Pura salvo por leer config. */
   private resolveLoginEmail(req: Request, body?: { email?: string }): string {
+    if (arrivedThroughTailscaleServe(req)) {
+      const allowed = String(this.config.get<string>("AUTH_TAILSCALE_LOGINS", ""))
+        .split(",")
+        .map((v) => v.trim().toLowerCase())
+        .filter(Boolean);
+      const login = tailscaleLogin(req);
+      if (!isLoopbackRequest(req) || !login || !allowed.includes(login)) {
+        throw new UnauthorizedException("Tailscale identity not allowed");
+      }
+      const bodyEmail = (body?.email || "").trim();
+      if (!bodyEmail) {
+        throw new BadRequestException("Email is required");
+      }
+      return bodyEmail;
+    }
+
     const raw = req.headers["cf-access-authenticated-user-email"];
     const cfEmail = (Array.isArray(raw) ? raw[0] : raw || "").trim();
     if (cfEmail && isLoopbackRequest(req)) {

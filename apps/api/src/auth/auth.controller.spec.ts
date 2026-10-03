@@ -7,7 +7,12 @@
  */
 import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import type { Request } from "express";
-import { AuthController, arrivedThroughCloudflare, isLoopbackRequest } from "./auth.controller";
+import {
+  AuthController,
+  arrivedThroughCloudflare,
+  arrivedThroughTailscaleServe,
+  isLoopbackRequest,
+} from "./auth.controller";
 
 type Cfg = Record<string, string>;
 
@@ -133,5 +138,60 @@ describe("resolveLoginEmail", () => {
         expect(() => r(mkReq("10.0.0.5"), { email: "a@b.com" })).toThrow(UnauthorizedException);
       }
     }
+  });
+});
+
+describe("tailscale serve (2-oct-2026: acceso por el tailnet, como el panel)", () => {
+  const TS_HOST = "spark-15b9.tail78eb6e.ts.net:8445";
+  const CF = "cf-access-authenticated-user-email";
+  const cfg = { AUTH_ALLOW_BODY_EMAIL: "loopback", AUTH_TAILSCALE_LOGINS: "jerabinovich@github" };
+  const ts = (login?: string, extra: Record<string, string> = {}) =>
+    mkReq("127.0.0.1", { host: TS_HOST, ...(login === undefined ? {} : { "tailscale-user-login": login }), ...extra });
+
+  it("reconoce el Host del tailnet y nada mas", () => {
+    expect(arrivedThroughTailscaleServe(mkReq("127.0.0.1", { host: TS_HOST }))).toBe(true);
+    expect(arrivedThroughTailscaleServe(mkReq("127.0.0.1", { host: "spark-15b9.tail78eb6e.ts.net" }))).toBe(true);
+    for (const h of ["localhost:4000", "127.0.0.1:4000", "dealfinder.privegroup.com", "ts.net.evil.com", ""]) {
+      expect(arrivedThroughTailscaleServe(mkReq("127.0.0.1", { host: h }))).toBe(false);
+    }
+  });
+
+  it("deja entrar a la identidad permitida con su correo", () => {
+    const r = resolver(mkController(cfg));
+    expect(r(ts("jerabinovich@github"), { email: "admin@privegroup.com" })).toBe("admin@privegroup.com");
+    expect(r(ts("JeRabinovich@GitHub"), { email: "admin@privegroup.com" })).toBe("admin@privegroup.com");
+  });
+
+  it("rechaza otra identidad, la falta de identidad y la lista vacia", () => {
+    const r = resolver(mkController(cfg));
+    expect(() => r(ts("otro@github"), { email: "admin@privegroup.com" })).toThrow(UnauthorizedException);
+    expect(() => r(ts(), { email: "admin@privegroup.com" })).toThrow(UnauthorizedException);
+    expect(() => r(ts(""), { email: "admin@privegroup.com" })).toThrow(UnauthorizedException);
+    const vacia = resolver(mkController({ AUTH_ALLOW_BODY_EMAIL: "loopback" }));
+    expect(() => vacia(ts("jerabinovich@github"), { email: "admin@privegroup.com" })).toThrow(UnauthorizedException);
+  });
+
+  it("EL CASO: serve no borra Cf-Access, asi que por el tailnet esa cabecera no vale nada", () => {
+    const r = resolver(mkController(cfg));
+    expect(() => r(ts(undefined, { [CF]: "jr@privegroup.com" }))).toThrow(UnauthorizedException);
+    expect(() => r(ts("otro@github", { [CF]: "jr@privegroup.com" }))).toThrow(UnauthorizedException);
+    expect(r(ts("jerabinovich@github", { [CF]: "otro@ejemplo.com" }), { email: "admin@privegroup.com" }))
+      .toBe("admin@privegroup.com");
+  });
+
+  it("exige loopback aunque el Host diga ts.net", () => {
+    const r = resolver(mkController(cfg));
+    const req = mkReq("100.98.56.95", { host: TS_HOST, "tailscale-user-login": "jerabinovich@github" });
+    expect(() => r(req, { email: "admin@privegroup.com" })).toThrow(UnauthorizedException);
+  });
+
+  it("un correo vacio sigue siendo un pedido mal formado", () => {
+    const r = resolver(mkController(cfg));
+    expect(() => r(ts("jerabinovich@github"), { email: " " })).toThrow(BadRequestException);
+  });
+
+  it("el tunel ssh (Host localhost) sigue igual que antes", () => {
+    const r = resolver(mkController(cfg));
+    expect(r(mkReq("127.0.0.1", { host: "localhost:4000" }), { email: "jr@privegroup.com" })).toBe("jr@privegroup.com");
   });
 });

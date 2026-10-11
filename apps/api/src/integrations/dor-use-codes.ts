@@ -153,15 +153,111 @@ export function resolveDorUseCode(value?: string | null): string | undefined {
  *   91-98  utility, mineria, derechos de subsuelo, calles y servidumbres,
  *          tierras sumergidas, saneamiento y pantanos, parkland, centrally assessed
  */
+/**
+ * TIERRA PUBLICA QUE SI PUEDE VENDERSE — 28-sep-2026, decision de JR.
+ *
+ * El enum DealLane tiene un carril GOV_LAND_P3 que estaba vacio POR DISENO:
+ * los codigos 80 a 89 estaban todos en el set de no adquirible, asi que el
+ * GATE 0 los mandaba a score 0 y el carril no se podia poblar nunca.
+ *
+ * Medido: de las 18 parcelas gubernamentales de la base, 8 son DOR 82, o sea
+ * bosques y parques de Broward, y 10 son de Miami-Dade: 6 gubernamental
+ * vacante, 2 del condado, 2 municipales. Esas 10 pueden ser excedente.
+ * Militar (81), parques (82), escuelas (83), colleges (84) y hospitales
+ * publicos (85) siguen fuera: no se compran.
+ */
+export const GOV_P3_CODES = new Set<string>(["80", "86", "87", "88", "89"]);
+
 const NON_ACQUIRABLE_CODES = new Set<string>([
   "09",
-  "80", "81", "82", "83", "84", "85", "86", "87", "88", "89",
+  "81", "82", "83", "84", "85",
   "91", "92", "93", "94", "95", "96", "97", "98",
 ]);
 
-export function isNonAcquirableDorCode(value?: string | null): boolean {
-  if (!value) return false;
+/**
+ * VOCABULARIOS DE CONDADO A CODIGO DOR — 28-sep-2026
+ *
+ * POR QUE. Medido sobre los 360 deals: solo Broward manda el codigo DOR, 113 de
+ * 113. Miami-Dade manda 198 valores de texto propio y Palm Beach 46, o sea 244
+ * de 360 (68%) sin codigo. La version anterior de isNonAcquirableDorCode solo
+ * sabia leer el numero pelado o el sufijo "(DOR NN)", asi que para esos 244
+ * devolvia false SIEMPRE y el GATE 0 de score.ts no podia disparar nunca.
+ * Medido: Broward marca ruido en 34 de 113 (30%), Miami-Dade en 12 de 199 (6%),
+ * Palm Beach en 2 de 46 (4%). No son mejores parcelas: son gates apagados.
+ *
+ * Las claves son transcripcion de los valores REALES de la base, no inventadas.
+ * En Miami-Dade el valor tiene forma "CATEGORIA : SUBCATEGORIA" y la categoria
+ * es la que manda; en Palm Beach el valor entero es la categoria.
+ */
+const MIAMI_DADE_USE_TO_DOR: Record<string, string> = {
+  "RESIDENTIAL - SINGLE FAMILY": "01",
+  "RESIDENTIAL - TOTAL VALUE": "01",
+  "MULTIFAMILY 2-9 UNITS": "08",
+  "MULTIFAMILY 10 UNITS PLUS": "03",
+  "VACANT RESIDENTIAL": "00",
+  "VACANT LAND - COMMERCIAL": "10",
+  "VACANT LAND - INDUSTRIAL": "40",
+  "VACANT GOVERNMENTAL": "80",
+  "CENTRALLY ASSESSED": "98",
+  "LIGHT MANUFACTURING": "41",
+  "SERVICE STATION": "26",
+  MUNICIPAL: "89",
+  COUNTY: "86",
+  "AUTOMOTIVE OR MARINE": "27",
+  STORE: "11",
+  "LEASEHOLD INTEREST": "90",
+  "ACREAGE NOT CLASSIFIED AG": "99",
+  "PARKING LOT/MOBILE HOME PARK": "28",
+  "OFFICE BUILDING - ONE STORY": "17",
+  "OFFICE BUILDING - MULTISTORY": "18",
+  "COMMUNITY SHOPPING CENTER": "16",
+  "RESTAURANT OR CAFETERIA": "21",
+  "RELIGIOUS - EXEMPT": "71",
+  "HOME FOR THE AGED": "74",
+  "BENEVOLENT - EXEMPT": "77",
+  "IMPROVED PASTURES": "50",
+  "PVT PARK -REC AREA -ROADWAY": "94",
+};
+
+const PALM_BEACH_USE_TO_DOR: Record<string, string> = {
+  CONDOMINIUM: "04",
+  "SINGLE FAMILY": "01",
+  TOWNHOUSE: "01",
+  "RESIDENTIAL COMMON AREA/ELEMENT": "09",
+  "WAREH/DIST TERM CONDO": "48",
+  "STORE/OFF/RES CONDO": "12",
+  "VACANT COMMERCIAL LAND": "10",
+  "MFR 5 TO 9 UNITS": "08",
+  "MULTIFAMILY < 5 UNITS": "08",
+  VACANT: "00",
+  "OFFICE BLDG-NON MEDICAL 1 TO 3 STORIES": "17",
+};
+
+/**
+ * "REFERENCE FOLIO" de Miami-Dade NO esta en el mapa a proposito: no es una
+ * propiedad, es un folio de referencia del catastro. Sin codigo queda sin
+ * clasificar, y la compuerta lo manda a revisar en vez de tragarlo en silencio.
+ */
+
+/** Codigo DOR de dos digitos, venga como numero, como "(DOR NN)" o como texto de condado. */
+export function toDorCode(value?: string | null): string | undefined {
+  if (!value) return undefined;
   const raw = String(value).trim();
-  const bare = /^\d{1,2}$/.test(raw) ? raw.padStart(2, "0") : raw.match(/\(DOR (\d{2})\)/)?.[1];
-  return bare ? NON_ACQUIRABLE_CODES.has(bare) : false;
+  if (!raw) return undefined;
+  if (/^\d{1,2}$/.test(raw)) return raw.padStart(2, "0");
+  const sufijo = raw.match(/\(DOR (\d{2})\)/)?.[1];
+  if (sufijo) return sufijo;
+  const categoria = raw.toUpperCase().split(" : ")[0].trim();
+  return MIAMI_DADE_USE_TO_DOR[categoria] ?? PALM_BEACH_USE_TO_DOR[categoria];
+}
+
+export function isNonAcquirableDorCode(value?: string | null): boolean {
+  const code = toDorCode(value);
+  return code ? NON_ACQUIRABLE_CODES.has(code) : false;
+}
+
+/** Tierra publica candidata a P3: no es ruido, tiene carril propio. */
+export function isGovP3DorCode(value?: string | null): boolean {
+  const code = toDorCode(value);
+  return code ? GOV_P3_CODES.has(code) : false;
 }

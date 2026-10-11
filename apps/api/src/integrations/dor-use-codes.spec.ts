@@ -13,8 +13,16 @@ describe("codigos DOR de Florida", () => {
   });
 
   it("marca como no adquirible el rango gubernamental y las servidumbres", () => {
-    for (const c of ["80", "82", "86", "89", "94", "95", "96", "98", "09"]) {
-      expect(isNonAcquirableDorCode(c)).toBe(true);
+    // 28-sep-2026: 80, 86, 87, 88 y 89 SALIERON de este set por decision de JR.
+    // Tierra publica que puede ser excedente y venderse: va al carril
+    // GOV_LAND_P3, que existia vacio porque este set lo tapaba. Militar (81),
+    // parques (82), escuelas (83), colleges (84) y hospitales publicos (85) se
+    // quedan, esos no se compran.
+    for (const c of ["09", "81", "82", "83", "84", "85", "94", "95", "96", "98"]) {
+      expect({ c, no: isNonAcquirableDorCode(c) }).toEqual({ c, no: true });
+    }
+    for (const c of ["80", "86", "87", "88", "89"]) {
+      expect({ c, no: isNonAcquirableDorCode(c) }).toEqual({ c, no: false });
     }
   });
 

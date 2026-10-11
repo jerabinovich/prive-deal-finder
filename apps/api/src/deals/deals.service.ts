@@ -1,3 +1,5 @@
+import { decidirOperacion } from "./operational-decision";
+import type { EntradaDecision } from "./operational-decision";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../shared/prisma.service";
@@ -17,16 +19,8 @@ import { UpdateWorkflowTaskDto } from "./dto/update-workflow-task.dto";
 // mismo, y ya se habian desviado: pickField aca NO tenia la segunda pasada por
 // sufijo agregada el 13-sep, asi que contra una capa ArcGIS con join este archivo
 // no encontraba nada, en silencio. Ese bug desaparece al importar.
-import {
-  DealClassification, NoiseReason, OpportunityClassificationResult,
-  DistressStage, DealLane, RecommendedAction, OperationalDecision, InsightConfidence,
-  ENGINE_VERSION, OPPORTUNITY_THRESHOLDS, SPREAD_SANITY,
-  MIAMI_DADE_FALLBACK_LAYER, MIN_COMPARABLE_SALE_PRICE, MAX_COMPARABLE_SALE_PRICE,
-} from "./deals.types";
-import {
-  toNumber, pickField, detectNoiseReason, inferOwnerType, normalizeConfidence,
-  parseEventDate, extractGeometryPoint, distanceMiles, parseJson,
-} from "./deals.utils";
+import { DealClassification, OpportunityClassificationResult, OperationalDecision, InsightConfidence, ENGINE_VERSION, OPPORTUNITY_THRESHOLDS, SPREAD_SANITY, MIAMI_DADE_FALLBACK_LAYER, MIN_COMPARABLE_SALE_PRICE, MAX_COMPARABLE_SALE_PRICE } from "./deals.types";
+import { toNumber, pickField, normalizeConfidence, extractGeometryPoint, distanceMiles, parseJson } from "./deals.utils";
 
 
 
@@ -146,22 +140,6 @@ function inferAssetTypeFromUse(rawValue?: string | null) {
 
 
 
-function inferDistressStage(signals: Array<{ metadata?: string | null; source?: string | null }>): DistressStage {
-  if (!signals.length) return "NONE";
-  const payload = signals
-    .map((signal) => {
-      const parsed = parseJson<Record<string, unknown>>(signal.metadata ?? null);
-      return JSON.stringify(parsed ?? {}).toUpperCase();
-    })
-    .join(" ");
-  if (payload.includes("AUCTION") || payload.includes("NOTICE OF SALE")) return "AUCTION_SCHEDULED";
-  if (payload.includes("POSTPONED") || payload.includes("CANCEL")) return "AUCTION_POSTPONED_OR_CANCELLED";
-  if (payload.includes("LIS PENDENS") || payload.includes("FORECLOS")) return "PRE_FORECLOSURE";
-  if (payload.includes("TAX")) return "TAX_SALE_PROCESS";
-  if (payload.includes("BANKRUPTCY")) return "BANKRUPTCY";
-  if (payload.includes("PROBATE")) return "PROBATE_ESTATE";
-  return "SIGNALS_ONLY";
-}
 
 function classifyOpportunity(input: {
   spreadToAskPct: number | null;
@@ -346,138 +324,8 @@ export class DealsService {
     return deal;
   }
 
-  private computeOperationalDecision(input: {
-    deal: {
-      assetType?: string | null;
-      propertyUseCode?: string | null;
-      parcelId?: string | null;
-      address?: string | null;
-      mailingAddress?: string | null;
-      nextEventDate?: Date | null;
-      contactabilityScore?: number | null;
-      isNoise?: boolean | null;
-      noiseReason?: string | null;
-    };
-    owners: Array<{ name?: string | null; phone?: string | null; email?: string | null }>;
-    distressSignals: Array<{ metadata?: string | null }>;
-    events: Array<{ eventType?: string | null; eventDate?: Date | null; source?: string | null }>;
-    classification: DealClassification;
-    completenessScore: number;
-    spreadToAskPct: number | null;
-    comparableCount: number;
-  }): OperationalDecision {
-    const ownerNames = input.owners.map((owner) => toCleanText(owner.name ?? null)).filter((item): item is string => Boolean(item));
-    const ownerType = inferOwnerType(ownerNames);
-    const explicitNoiseReason = input.deal.noiseReason as NoiseReason | null;
-    const noiseReason = explicitNoiseReason ?? detectNoiseReason(input.deal.assetType, input.deal.propertyUseCode);
-    const isNoise = Boolean(input.deal.isNoise) || Boolean(noiseReason);
-    const haystack = `${input.deal.assetType ?? ""} ${input.deal.propertyUseCode ?? ""}`.toUpperCase();
-    const isGovKeyword =
-      haystack.includes("GOVERNMENTAL") || haystack.includes("COUNTY") || haystack.includes("CITY") || haystack.includes("STATE");
-    const isGov = ownerType === "GOV" || isGovKeyword;
-    const distressStage = input.distressSignals.length
-      ? inferDistressStage(input.distressSignals)
-      : isGov
-        ? "GOVERNMENT_LAND"
-        : "NONE";
-    const todayMs = Date.now();
-    const nextEventFromEvents = input.events
-      .map((entry) => parseEventDate(entry.eventDate))
-      .filter((entry): entry is Date => Boolean(entry))
-      .filter((entry) => entry.getTime() >= todayMs)
-      .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
-    const nextEventDate = nextEventFromEvents ?? input.deal.nextEventDate ?? null;
-    const hasDispositionEvidence = input.events.some((entry) => {
-      const eventType = (entry.eventType ?? "").toUpperCase();
-      const source = (entry.source ?? "").toUpperCase();
-      return (
-        eventType.includes("RFP") ||
-        eventType.includes("RFQ") ||
-        eventType.includes("IFB") ||
-        eventType.includes("SURPLUS") ||
-        eventType.includes("PUBLIC_AUCTION") ||
-        source.includes("GOVDEALS") ||
-        source.includes("SAM.GOV")
-      );
-    });
-    const hasDistress = input.distressSignals.length > 0;
-    const hasPhone = input.owners.some((owner) => Boolean(toCleanText(owner.phone ?? null)));
-    const hasEmail = input.owners.some((owner) => Boolean(toCleanText(owner.email ?? null)));
-    const rawContactability =
-      (input.deal.contactabilityScore ?? 0) > 0
-        ? Number(input.deal.contactabilityScore)
-        : clamp(
-            (input.deal.mailingAddress ? 35 : 0) +
-              (input.deal.address ? 15 : 0) +
-              (hasPhone ? 30 : 0) +
-              (hasEmail ? 20 : 0),
-            0,
-            100,
-          );
-    const contactabilityScore = Number(rawContactability.toFixed(1));
-
-    const why: string[] = [];
-    const blockers: string[] = [];
-    let lane: DealLane;
-    let recommendedAction: RecommendedAction;
-
-    if (isNoise) {
-      lane = "NON_ACQUIRABLE_NOISE";
-      recommendedAction = "ARCHIVE";
-      why.push("Use category matches non-acquirable pattern.");
-      blockers.push("Non-acquirable asset category by policy.");
-    } else if (!input.deal.parcelId && !input.deal.address) {
-      lane = "RESEARCH_REQUIRED";
-      recommendedAction = "RESEARCH";
-      why.push("Missing property identifier for reliable actioning.");
-      blockers.push("Need parcel ID or confirmed situs address.");
-    } else if (isGov) {
-      lane = "GOV_LAND_P3";
-      recommendedAction = hasDispositionEvidence ? "GOV_PURSUE" : "MONITOR";
-      why.push("Government-owned/use parcel routed to Gov/P3 lane.");
-      if (!hasDispositionEvidence) blockers.push("No official disposition evidence yet (RFP/surplus/auction).");
-    } else if (hasDistress) {
-      if (distressStage === "AUCTION_SCHEDULED" || distressStage === "AUCTION_POSTPONED_OR_CANCELLED") {
-        lane = "AUCTION_MONITOR";
-        recommendedAction = "AUCTION_PREP";
-        why.push("Distress evidence indicates auction-stage workflow.");
-      } else {
-        lane = "DISTRESS_OWNER";
-        recommendedAction = "CONTACT_NOW";
-        why.push("Official distress evidence supports direct owner/trustee action.");
-      }
-    } else {
-      lane = "OFF_MARKET_STANDARD";
-      recommendedAction =
-        input.classification === "TRUE_OPPORTUNITY"
-          ? "CONTACT_NOW"
-          : input.classification === "WATCHLIST"
-            ? "MONITOR"
-            : input.completenessScore < 40
-              ? "RESEARCH"
-              : "MONITOR";
-      why.push("Off-market workflow selected from current data quality and opportunity gates.");
-    }
-
-    if (typeof input.spreadToAskPct === "number" && input.spreadToAskPct < 10) {
-      blockers.push("Spread below strict threshold (10%).");
-    }
-    if (input.comparableCount < 8) blockers.push("Comparable coverage below strict threshold (8).");
-    if (input.completenessScore < 70) blockers.push("Data completeness below strict threshold (70%).");
-    if (contactabilityScore < 50) blockers.push("Low contactability; enrich owner phone/email first.");
-
-    return {
-      lane,
-      recommendedAction,
-      distressStage,
-      nextEventDate,
-      contactabilityScore,
-      isNoise,
-      noiseReason,
-      ownerType,
-      why: why.slice(0, 3),
-      blockers: blockers.slice(0, 6),
-    };
+  private computeOperationalDecision(input: EntradaDecision): OperationalDecision {
+    return decidirOperacion(input);
   }
 
   private hasMissingFacts(deal: {

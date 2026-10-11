@@ -28,14 +28,32 @@ describe("computeTriageScore", () => {
       expect(r.isNoise).toBe(true);
     });
 
-    it("descarta tierra gubernamental", () => {
+    it("la tierra publica vendible YA NO se descarta: va al carril P3", () => {
       const r = computeTriageScore({
         assetType: "VACANT GOVERNMENTAL : VACANT LAND - GOVERNMENTAL",
         propertyUseCode: "VACANT GOVERNMENTAL : VACANT LAND - GOVERNMENTAL",
         city: "MIAMI", state: "FL",
       });
-      expect(r.score).toBe(0);
-      expect(r.isNoise).toBe(true);
+      // 29-sep-2026, decision de JR: los codigos DOR 80, 86, 87, 88 y 89 son
+      // tierra publica que puede ser excedente y venderse. Salieron del set de
+      // no adquirible y van al carril GOV_LAND_P3, que existia vacio porque
+      // este gate lo tapaba. Militar, parques, escuelas y hospitales publicos
+      // siguen descartados, y eso se verifica en el caso de abajo.
+      expect(r.score).toBeGreaterThan(0);
+      expect(r.isNoise).toBe(false);
+    });
+
+    it("pero militar, parques, escuelas y hospitales publicos siguen descartados", () => {
+      for (const uso of [
+        "Military (DOR 81)",
+        "Forest, parks, recreational areas (DOR 82)",
+        "Public county schools (DOR 83)",
+        "Colleges (non private) (DOR 84)",
+        "Hospitals (non private) (DOR 85)",
+      ]) {
+        const r = computeTriageScore({ propertyUseCode: uso, city: "MIAMI", state: "FL" });
+        expect({ uso, score: r.score, ruido: r.isNoise }).toEqual({ uso, score: 0, ruido: true });
+      }
     });
 
     it("descarta por propietario que no transacciona, aunque el activo sirva", () => {

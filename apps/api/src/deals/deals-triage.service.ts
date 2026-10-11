@@ -1,122 +1,16 @@
+import { decidirOperacion } from "./operational-decision";
+import type { EntradaDecision } from "./operational-decision";
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../shared/prisma.service";
-import {
-  DealClassification,
-  DealLane,
-  DistressStage,
-  ENGINE_VERSION,
-  OperationalDecision,
-  RecommendedAction,
-} from "./deals.types";
-import {
-  classifyOpportunity,
-  clamp,
-  detectNoiseReason,
-  inferDistressStage,
-  inferOwnerType,
-  isReasonableSalePrice,
-  isSpreadOutlier,
-  normalizeConfidence,
-  parseEventDate,
-  parseJson,
-  safePercent,
-  toCleanText,
-} from "./deals.utils";
+import { ENGINE_VERSION, OperationalDecision } from "./deals.types";
+import { classifyOpportunity, isReasonableSalePrice, isSpreadOutlier, normalizeConfidence, parseJson, safePercent } from "./deals.utils";
 
 @Injectable()
 export class DealsTriageService {
   constructor(private readonly prisma: PrismaService) {}
 
-  computeOperationalDecision(input: {
-    deal: {
-      assetType?: string | null; propertyUseCode?: string | null; parcelId?: string | null;
-      address?: string | null; mailingAddress?: string | null; nextEventDate?: Date | null;
-      contactabilityScore?: number | null; isNoise?: boolean | null; noiseReason?: string | null;
-    };
-    owners: Array<{ name?: string | null; phone?: string | null; email?: string | null }>;
-    distressSignals: Array<{ metadata?: string | null }>;
-    events: Array<{ eventType?: string | null; eventDate?: Date | null; source?: string | null }>;
-    classification: DealClassification;
-    completenessScore: number;
-    spreadToAskPct: number | null;
-    comparableCount: number;
-  }): OperationalDecision {
-    const ownerNames = input.owners.map((o) => toCleanText(o.name ?? null)).filter((n): n is string => Boolean(n));
-    const ownerType = inferOwnerType(ownerNames);
-    const noiseReason = (input.deal.noiseReason as import("./deals.types").NoiseReason | null) ?? detectNoiseReason(input.deal.assetType, input.deal.propertyUseCode);
-    const isNoise = Boolean(input.deal.isNoise) || Boolean(noiseReason);
-
-    const haystack = `${input.deal.assetType ?? ""} ${input.deal.propertyUseCode ?? ""}`.toUpperCase();
-    const isGov = ownerType === "GOV" || haystack.includes("GOVERNMENTAL") || haystack.includes("COUNTY") || haystack.includes("CITY") || haystack.includes("STATE");
-
-    const distressStage = input.distressSignals.length
-      ? inferDistressStage(input.distressSignals)
-      : isGov ? "GOVERNMENT_LAND" : "NONE";
-
-    const todayMs = Date.now();
-    const nextEventFromEvents = input.events
-      .map((e) => parseEventDate(e.eventDate))
-      .filter((d): d is Date => Boolean(d))
-      .filter((d) => d.getTime() >= todayMs)
-      .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
-    const nextEventDate = nextEventFromEvents ?? input.deal.nextEventDate ?? null;
-
-    const hasDispositionEvidence = input.events.some((e) => {
-      const t = (e.eventType ?? "").toUpperCase();
-      const s = (e.source ?? "").toUpperCase();
-      return t.includes("RFP") || t.includes("RFQ") || t.includes("IFB") || t.includes("SURPLUS") ||
-        t.includes("PUBLIC_AUCTION") || s.includes("GOVDEALS") || s.includes("SAM.GOV");
-    });
-
-    const hasDistress = input.distressSignals.length > 0;
-    const hasPhone = input.owners.some((o) => Boolean(toCleanText(o.phone ?? null)));
-    const hasEmail = input.owners.some((o) => Boolean(toCleanText(o.email ?? null)));
-    const rawContactability = (input.deal.contactabilityScore ?? 0) > 0
-      ? Number(input.deal.contactabilityScore)
-      : clamp((input.deal.mailingAddress ? 35 : 0) + (input.deal.address ? 15 : 0) + (hasPhone ? 30 : 0) + (hasEmail ? 20 : 0), 0, 100);
-    const contactabilityScore = Number(rawContactability.toFixed(1));
-
-    const why: string[] = [], blockers: string[] = [];
-    let lane: DealLane, recommendedAction: RecommendedAction;
-
-    if (isNoise) {
-      lane = "NON_ACQUIRABLE_NOISE"; recommendedAction = "ARCHIVE";
-      why.push("Use category matches non-acquirable pattern.");
-      blockers.push("Non-acquirable asset category by policy.");
-    } else if (!input.deal.parcelId && !input.deal.address) {
-      lane = "RESEARCH_REQUIRED"; recommendedAction = "RESEARCH";
-      why.push("Missing property identifier for reliable actioning.");
-      blockers.push("Need parcel ID or confirmed situs address.");
-    } else if (isGov) {
-      lane = "GOV_LAND_P3"; recommendedAction = hasDispositionEvidence ? "GOV_PURSUE" : "MONITOR";
-      why.push("Government-owned/use parcel routed to Gov/P3 lane.");
-      if (!hasDispositionEvidence) blockers.push("No official disposition evidence yet (RFP/surplus/auction).");
-    } else if (hasDistress) {
-      if (distressStage === "AUCTION_SCHEDULED" || distressStage === "AUCTION_POSTPONED_OR_CANCELLED") {
-        lane = "AUCTION_MONITOR"; recommendedAction = "AUCTION_PREP";
-        why.push("Distress evidence indicates auction-stage workflow.");
-      } else {
-        lane = "DISTRESS_OWNER"; recommendedAction = "CONTACT_NOW";
-        why.push("Official distress evidence supports direct owner/trustee action.");
-      }
-    } else {
-      lane = "OFF_MARKET_STANDARD";
-      recommendedAction = input.classification === "TRUE_OPPORTUNITY" ? "CONTACT_NOW"
-        : input.classification === "WATCHLIST" ? "MONITOR"
-          : input.completenessScore < 40 ? "RESEARCH" : "MONITOR";
-      why.push("Off-market workflow selected from current data quality and opportunity gates.");
-    }
-
-    if (typeof input.spreadToAskPct === "number" && input.spreadToAskPct < 10) blockers.push("Spread below strict threshold (10%).");
-    if (input.comparableCount < 8) blockers.push("Comparable coverage below strict threshold (8).");
-    if (input.completenessScore < 70) blockers.push("Data completeness below strict threshold (70%).");
-    if (contactabilityScore < 50) blockers.push("Low contactability; enrich owner phone/email first.");
-
-    return {
-      lane, recommendedAction, distressStage: distressStage as DistressStage,
-      nextEventDate, contactabilityScore, isNoise, noiseReason, ownerType,
-      why: why.slice(0, 3), blockers: blockers.slice(0, 6),
-    };
+  computeOperationalDecision(input: EntradaDecision): OperationalDecision {
+    return decidirOperacion(input);
   }
 
   deriveOpportunitySignals(input: {

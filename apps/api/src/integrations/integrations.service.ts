@@ -1,3 +1,4 @@
+import { decidirDistress } from "../deals/distress-classification";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../shared/prisma.service";
@@ -517,23 +518,36 @@ export class IntegrationsService {
    * la que distingue un lien (alta) de una violacion abierta (baja).
    */
   private async rescoreDealsWithDistress(source: string) {
-    const signals = await this.prisma.dealDistressSignal.findMany({
+    // 28-sep-2026. Tres cosas cambian aca:
+    //  1) La etapa ya no se decide por el NOMBRE de la fuente. Antes, si la
+    //     fuente se llamaba broward-foreclosure, estampaba PRE_FORECLOSURE y 40
+    //     puntos a las 63 senales, incluidas las 32 de consorcios ejecutando
+    //     expensas. Ahora la decide decidirDistress leyendo el expediente.
+    //  2) Se GUARDA distressStage. Antes se calculaba, se sumaba al puntaje y se
+    //     tiraba: la columna decia UNKNOWN en los 360 deals mientras 237 tenian
+    //     un premio de distress metido en el score.
+    //  3) Se miran TODAS las senales del deal, no solo las de esta fuente, para
+    //     que dos sincronizaciones distintas no se pisen la clasificacion.
+    const afectados = await this.prisma.dealDistressSignal.findMany({
       where: { source },
-      select: { dealId: true, confidence: true },
+      select: { dealId: true },
     });
-    if (!signals.length) return 0;
+    const ids = [...new Set(afectados.map((s) => s.dealId))];
+    if (!ids.length) return 0;
 
-    const strongest = new Map<string, string>();
-    const rank: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-    for (const signal of signals) {
-      const current = strongest.get(signal.dealId);
-      if (!current || (rank[signal.confidence] ?? 0) > (rank[current] ?? 0)) {
-        strongest.set(signal.dealId, signal.confidence);
-      }
+    const signals = await this.prisma.dealDistressSignal.findMany({
+      where: { dealId: { in: ids } },
+      select: { dealId: true, source: true, metadata: true },
+    });
+    const porDeal = new Map<string, Array<{ source: string | null; metadata: string | null }>>();
+    for (const s of signals) {
+      const lista = porDeal.get(s.dealId) ?? [];
+      lista.push({ source: s.source, metadata: s.metadata });
+      porDeal.set(s.dealId, lista);
     }
 
     let updated = 0;
-    for (const [dealId, confidence] of strongest) {
+    for (const [dealId, senales] of porDeal) {
       const deal = await this.prisma.deal.findUnique({ where: { id: dealId } });
       if (!deal) continue;
 
@@ -542,12 +556,7 @@ export class IntegrationsService {
         select: { owner: { select: { name: true } } },
       });
 
-      const stage =
-          source === "broward-foreclosure" || source === "miami-dade-foreclosure"
-          ? "PRE_FORECLOSURE"
-          : confidence === "HIGH"
-            ? "CODE_ENFORCEMENT"
-            : "SIGNALS_ONLY";
+      const decision = decidirDistress(senales, deal.propertyUseCode);
 
       const triage = computeTriageScore({
         assetType: deal.assetType,
@@ -559,13 +568,23 @@ export class IntegrationsService {
         yearBuilt: deal.yearBuilt,
         lotSizeSqft: deal.lotSizeSqft,
         source: deal.source,
-        distressStage: stage,
+        distressStage: decision.stage,
       });
 
-      if (triage.score === deal.score && triage.isNoise === deal.isNoise) continue;
+      if (
+        triage.score === deal.score &&
+        triage.isNoise === deal.isNoise &&
+        deal.distressStage === decision.stage
+      ) continue;
+
       await this.prisma.deal.update({
         where: { id: dealId },
-        data: { score: triage.score, isNoise: triage.isNoise, noiseReason: triage.noiseReason },
+        data: {
+          score: triage.score,
+          isNoise: triage.isNoise,
+          noiseReason: triage.noiseReason,
+          distressStage: decision.stage,
+        },
       });
       updated += 1;
     }

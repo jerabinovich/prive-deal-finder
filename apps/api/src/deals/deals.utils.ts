@@ -1,3 +1,4 @@
+import { decidirDistress } from "./distress-classification";
 import {
   DealClassification,
   EARTH_RADIUS_MILES,
@@ -198,18 +199,18 @@ export function inferOwnerType(ownerNames: string[]) {
   return "PRIVATE" as const;
 }
 
-export function inferDistressStage(signals: Array<{ metadata?: string | null }>): import("./deals.types").DistressStage {
-  if (!signals.length) return "NONE";
-  const payload = signals
-    .map((s) => JSON.stringify(parseJson<Record<string, unknown>>(s.metadata ?? null) ?? {}).toUpperCase())
-    .join(" ");
-  if (payload.includes("AUCTION") || payload.includes("NOTICE OF SALE")) return "AUCTION_SCHEDULED";
-  if (payload.includes("POSTPONED") || payload.includes("CANCEL")) return "AUCTION_POSTPONED_OR_CANCELLED";
-  if (payload.includes("LIS PENDENS") || payload.includes("FORECLOS")) return "PRE_FORECLOSURE";
-  if (payload.includes("TAX")) return "TAX_SALE_PROCESS";
-  if (payload.includes("BANKRUPTCY")) return "BANKRUPTCY";
-  if (payload.includes("PROBATE")) return "PROBATE_ESTATE";
-  return "SIGNALS_ONLY";
+/**
+ * 28-sep-2026: la version anterior aplanaba TODO el payload y buscaba palabras.
+ * Medido sobre los expedientes reales, clasificaba mal 62 de 238 deals: mandaba
+ * a PRE_FORECLOSURE 28 violaciones de "Failure to Register Foreclosed Property"
+ * y no reconocia los 23 foreclosures serios, porque Broward abrevia "Fore".
+ * El detalle esta en distress-classification.ts, que lee campos con nombre.
+ */
+export function inferDistressStage(
+  signals: Array<{ source?: string | null; metadata?: string | null }>,
+  propertyUseCode?: string | null,
+): import("./deals.types").DistressStage {
+  return decidirDistress(signals, propertyUseCode).stage;
 }
 
 export function classifyOpportunity(input: {

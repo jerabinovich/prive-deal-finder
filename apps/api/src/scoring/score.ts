@@ -1,6 +1,6 @@
 import { detectNoiseReason, inferOwnerType } from "../deals/deals.utils";
 import type { NoiseReason } from "../deals/deals.types";
-import { isNonAcquirableDorCode } from "../integrations/dor-use-codes";
+import { isNonAcquirableDorCode, isGovP3DorCode } from "../integrations/dor-use-codes";
 
 /**
  * SCORE DE TRIAGE (ingesta) — 12-sep-2026
@@ -95,11 +95,13 @@ export function computeTriageScore(params: {
   /** Etapa de distress si ya hay senal oficial. Hoy siempre NONE: faltan las fuentes. */
   distressStage?: string | null;
 }): TriageScoreResult {
+  // 29-sep-2026: una sola definicion, y corta antes que los gates de texto.
+  const esTierraP3 = isGovP3DorCode(params.propertyUseCode) || isGovP3DorCode(params.assetType);
   const reasons: string[] = [];
 
   // --- GATE 0: codigo DOR no adquirible (gubernamental, servidumbre, pantano...) ---
   // Va ANTES del filtro por texto porque el codigo es univoco y el texto no.
-  if (isNonAcquirableDorCode(params.propertyUseCode) || isNonAcquirableDorCode(params.assetType)) {
+  if (!esTierraP3 && (isNonAcquirableDorCode(params.propertyUseCode) || isNonAcquirableDorCode(params.assetType))) {
     const porTexto = detectNoiseReason(params.assetType, params.propertyUseCode);
     return {
       score: 0, isNoise: true, noiseReason: porTexto ?? "UNKNOWN",
@@ -110,7 +112,7 @@ export function computeTriageScore(params: {
 
   // --- GATE 1: ruido no adquirible por texto (ferrocarril, calzada, area comun...) ---
   const noiseReason = detectNoiseReason(params.assetType, params.propertyUseCode);
-  if (noiseReason) {
+  if (noiseReason && !esTierraP3) {
     return {
       score: 0, isNoise: true, noiseReason,
       reasons: [`descartado: ${noiseReason.toLowerCase()} — no es adquirible`],
@@ -119,8 +121,11 @@ export function computeTriageScore(params: {
   }
 
   // --- GATE 2: el dueno no puede vender (gobierno, HOA, utility) ---
+  // 28-sep-2026: un dueno gubernamental sobre tierra P3 NO es ruido. Sin esto,
+  // sacar los codigos 80-89 del set no alcanza: este gate los tapaba igual y el
+  // carril GOV_LAND_P3 seguia vacio.
   const ownerType = inferOwnerType(params.ownerNames ?? []);
-  if (ownerType === "GOV" || ownerType === "UTILITY" || ownerType === "HOA") {
+  if ((ownerType === "GOV" && !esTierraP3) || ownerType === "UTILITY" || ownerType === "HOA") {
     return {
       score: 0, isNoise: true, noiseReason: ownerType === "UTILITY" ? "UTILITY" : "UNKNOWN",
       reasons: [`descartado: propietario ${ownerType} — no transacciona`],
@@ -182,4 +187,36 @@ export function computeTriageScore(params: {
 /** Compatibilidad: los ingests solo guardan el numero. El detalle vive en computeTriageScore. */
 export function computeScore(params: Parameters<typeof computeTriageScore>[0]): number {
   return computeTriageScore(params).score;
+}
+
+/**
+ * Los tres gates de ruido, como funcion propia — 28-sep-2026.
+ *
+ * POR QUE. deals-triage.service.ts calculaba el ruido por su cuenta con
+ * `Boolean(input.deal.isNoise) || detectNoiseReason(...)`. Eso es un pestillo:
+ * una vez marcado ruido, un deal no se podia desmarcar nunca, ni aunque la
+ * regla cambiara. Y no miraba el gate del propietario. Ahora los dos lados
+ * preguntan lo mismo, y el test de abajo verifica que no se separen.
+ */
+export function evaluarRuido(params: {
+  assetType?: string | null;
+  propertyUseCode?: string | null;
+  ownerNames?: string[];
+}): { isNoise: boolean; noiseReason: NoiseReason | null; esTierraP3: boolean } {
+  const esTierraP3 = isGovP3DorCode(params.propertyUseCode) || isGovP3DorCode(params.assetType);
+  // 29-sep-2026: corta ANTES de los filtros de texto. detectNoiseReason marca
+  // "VACANT GOVERNMENTAL" como ruido generico, y eso tapaba 6 parcelas que van
+  // al carril P3. El codigo DOR es univoco; el texto no. Mismo argumento que
+  // dor-use-codes.ts ya dejaba escrito para el pantano del DOR 96.
+  if (esTierraP3) return { isNoise: false, noiseReason: null, esTierraP3: true };
+  const porTexto = detectNoiseReason(params.assetType, params.propertyUseCode);
+  if (isNonAcquirableDorCode(params.propertyUseCode) || isNonAcquirableDorCode(params.assetType)) {
+    return { isNoise: true, noiseReason: porTexto ?? "UNKNOWN", esTierraP3 };
+  }
+  if (porTexto) return { isNoise: true, noiseReason: porTexto, esTierraP3 };
+  const ownerType = inferOwnerType(params.ownerNames ?? []);
+  if ((ownerType === "GOV" && !esTierraP3) || ownerType === "UTILITY" || ownerType === "HOA") {
+    return { isNoise: true, noiseReason: ownerType === "UTILITY" ? "UTILITY" : "UNKNOWN", esTierraP3 };
+  }
+  return { isNoise: false, noiseReason: null, esTierraP3 };
 }

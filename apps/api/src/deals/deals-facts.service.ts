@@ -11,6 +11,7 @@ import {
   toNumber,
 } from "./deals.utils";
 import { MIAMI_DADE_FALLBACK_LAYER } from "./deals.types";
+import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, resolverZipDelSitio } from "../integrations/zip";
 
 type ExtractedFacts = {
   address?: string; mailingAddress?: string; city?: string; municipality?: string;
@@ -122,10 +123,10 @@ export class DealsFactsService {
 
       address = address ?? pickField(attrs, ["SITUS_ADDRESS","SITE_ADDR","SITE_ADDRESS","SITE_ADDR_STR","SITEADDRES","TRUE_SITE_ADDR","ADDRESS","PROP_ADDRESS"]);
       mailingAddress = mailingAddress ?? pickField(attrs, ["MAIL_ADDR","MAILING_ADDRESS","OWNER_MAILING_ADDRESS","OWNER_ADDRESS","PSTLADDRESS"]);
-      city = city ?? pickField(attrs, ["SITUS_CITY","CITY","MUNICIPALITY","TRUE_SITE_CITY","CITYNAME","PSTLCITY"]);
-      municipality = municipality ?? pickField(attrs, ["MUNICIPALITY","CITY","SITUS_CITY","CITYNAME"]);
+      city = city ?? pickField(attrs, CAMPOS_CIUDAD_DEL_SITIO);
+      municipality = municipality ?? pickField(attrs, ["MUNICIPALITY","CITY","SITUS_CITY"]);
       state = state ?? pickField(attrs, ["SITUS_STATE","STATE","PSTLSTATE"]);
-      zip = zip ?? pickField(attrs, ["SITUS_ZIP","ZIP","ZIPCODE","TRUE_SITE_ZIP_CODE","ZIP1","PSTLZIP5"]);
+      zip = zip ?? normalizarZip(pickField(attrs, CAMPOS_ZIP_DEL_SITIO)) ?? undefined;
       propertyUseCode = propertyUseCode ?? pickField(attrs, ["USE_CODE","PROPERTY_USE","DOR_UC","CLASS_CODE","PROPERTY_TYPE"]);
       assetType = assetType ?? pickField(attrs, ["PROPERTY_USE","USEDSCRP","PRPRTYDSCR","CLASSDSCRP","DOR_DESC"]);
       zoning = zoning ?? pickField(attrs, ["ZONING","ZONING_DESC","ZONINGCODE","CVTTXDSCRP","CLASSDSCRP","DOR_DESC"]);
@@ -220,7 +221,9 @@ export class DealsFactsService {
     if (!deal.city && facts.city) updateData.city = facts.city;
     if (!deal.municipality && (facts.municipality || facts.city)) updateData.municipality = facts.municipality ?? facts.city;
     if (!deal.state && facts.state) updateData.state = facts.state;
-    if (!deal.zip && facts.zip) updateData.zip = facts.zip;
+    // 12-oct-2026: el zip del sitio manda aunque ya hubiera uno (los de Palm Beach eran del dueno).
+    const zipSitio = await resolverZipDelSitio(facts.zip, facts.latitude ?? deal.latitude, facts.longitude ?? deal.longitude);
+    if (zipSitio && zipSitio !== deal.zip) updateData.zip = zipSitio;
     if (!deal.propertyUseCode && facts.propertyUseCode) updateData.propertyUseCode = facts.propertyUseCode;
     if (!deal.assetType) {
       const inferred = inferAssetTypeFromUse(facts.assetType ?? facts.propertyUseCode ?? deal.propertyUseCode);

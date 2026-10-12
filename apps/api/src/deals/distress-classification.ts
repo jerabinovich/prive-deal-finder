@@ -146,18 +146,22 @@ export type ResumenCodeEnforcement = {
 };
 
 export function resumirCodeEnforcement(signals: SenalCruda[]): ResumenCodeEnforcement {
-  let vigentes = 0;
+  // 12-oct-2026: un caso cuenta una vez. La ingesta guardaba la misma violacion una vez por dia,
+  // y contar filas convertia un solo caso en "tres violaciones vigentes". Sin numero de caso,
+  // cada senal cuenta por separado.
+  const vigentes = new Set<string>();
   let reoPosible = false;
   const tipos = new Set<string>();
-  for (const s of signals) {
+  signals.forEach((s, i) => {
     const raw = leerJson(s.metadata);
+    const caso = texto(raw, "CASE_NUM") || `sin-caso-${i}`;
     const estado = texto(raw, "STAT_DESC").toUpperCase();
     const problema = texto(raw, "PROBLEM_DESC").toUpperCase();
-    if (ESTADOS_VIGENTES.has(estado)) vigentes += 1;
+    if (ESTADOS_VIGENTES.has(estado)) vigentes.add(caso);
     if (/FAILURE TO REGISTER FORECLOSED/.test(problema)) reoPosible = true;
     if (problema) tipos.add(problema);
-  }
-  return { vigentes, reoPosible, tipos: [...tipos] };
+  });
+  return { vigentes: vigentes.size, reoPosible, tipos: [...tipos] };
 }
 
 export type DecisionDistress = {

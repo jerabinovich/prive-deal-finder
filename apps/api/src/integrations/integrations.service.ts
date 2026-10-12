@@ -398,9 +398,33 @@ export class IntegrationsService {
   }
 
   private parseObservedAt(value: string | null) {
-    if (!value) return new Date();
-    const parsed = new Date(value);
-    return Number.isFinite(parsed.getTime()) ? parsed : new Date();
+    return this.parseFechaReal(value) ?? new Date();
+  }
+
+  /**
+   * La fecha que trae el registro, o null si no trae una que se pueda leer.
+   * 12-oct-2026: ArcGIS manda las fechas en milisegundos (CASE_DATE = 1781150400000).
+   * new Date("1781150400000") da Invalid Date, y el codigo caia en "ahora": cada corrida de code
+   * enforcement guardaba la misma violacion con otra fecha (9.283 filas para 279 casos).
+   */
+  private parseFechaReal(value: string | null): Date | null {
+    if (!value) return null;
+    const parsed = /^\d{12,14}$/.test(value) ? new Date(Number(value)) : new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  /**
+   * Identidad estable de la senal en su fuente: el numero de caso. Con ella la senal se actualiza
+   * (cambia de estado, por ejemplo de referida a lien) en vez de guardarse otra vez.
+   */
+  private distressExternalId(source: string, record: Record<string, unknown>): string | null {
+    if (source === "miami-dade-code-enforcement") {
+      const caso = this.extractDistressField(record, ["CASE_NUM"]);
+      if (!caso) return null;
+      const problema = this.extractDistressField(record, ["PROBLEM"]);
+      return problema ? `${caso}:${problema}` : caso;
+    }
+    return this.extractDistressField(record, ["externalId", "caseNumber", "CASE_NUM", "Case_Number", "CFN", "cfn"]);
   }
 
   /**
@@ -629,9 +653,10 @@ export class IntegrationsService {
       const confidence = this.normalizeDistressConfidence(
         this.extractDistressField(record, ["confidence", "CONFIDENCE", "quality"]),
       );
-      const observedAt = this.parseObservedAt(
+      const fechaReal = this.parseFechaReal(
         this.extractDistressField(record, ["observedAt", "observed_at", "saleDate", "eventDate", "date"]),
       );
+      const observedAt = fechaReal ?? new Date();
 
       const deal = parcelId
         ? await this.prisma.deal.findFirst({ where: { parcelId } })
@@ -643,30 +668,29 @@ export class IntegrationsService {
         continue;
       }
 
-      const where = {
-        dealId_source_observedAt: {
-          dealId: deal.id,
-          source,
-          observedAt,
-        },
-      };
-      const existing = await this.prisma.dealDistressSignal.findUnique({ where });
-      await this.prisma.dealDistressSignal.upsert({
-        where,
-        update: {
-          status,
-          confidence,
-          metadata: JSON.stringify(record),
-        },
-        create: {
-          dealId: deal.id,
-          status,
-          source,
-          observedAt,
-          confidence,
-          metadata: JSON.stringify(record),
-        },
-      });
+      // 12-oct-2026: la senal se identifica por su caso (externalId), no por la fecha de la corrida.
+      const externalId = this.distressExternalId(source, record);
+      const datos = { status, confidence, metadata: JSON.stringify(record) };
+      let existing: { id: string } | null;
+      if (externalId) {
+        const where = { dealId_source_externalId: { dealId: deal.id, source, externalId } };
+        existing = await this.prisma.dealDistressSignal.findUnique({ where, select: { id: true } });
+        await this.prisma.dealDistressSignal.upsert({
+          where,
+          update: { ...datos, ...(fechaReal ? { observedAt: fechaReal } : {}) },
+          create: { ...datos, dealId: deal.id, source, externalId, observedAt },
+        });
+      } else {
+        existing = await this.prisma.dealDistressSignal.findFirst({
+          where: { dealId: deal.id, source, observedAt },
+          select: { id: true },
+        });
+        if (existing) {
+          await this.prisma.dealDistressSignal.update({ where: { id: existing.id }, data: datos });
+        } else {
+          await this.prisma.dealDistressSignal.create({ data: { ...datos, dealId: deal.id, source, observedAt } });
+        }
+      }
       if (existing) updated += 1;
       else created += 1;
     }

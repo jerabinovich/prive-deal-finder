@@ -6,6 +6,7 @@ import { parse as parseSync } from "csv-parse/sync";
 import { PrismaService } from "../shared/prisma.service";
 import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
+import { normalizarZip } from "./zip";
 
 export type MdpaDatasetType =
   | "MUNICIPAL_ROLLS"
@@ -335,7 +336,7 @@ export class MdpaIngestService {
       const city = pickField(record, HEADER_MAP.city);
       const municipality = pickField(record, HEADER_MAP.municipality) ?? city;
       const state = pickField(record, HEADER_MAP.state) || "FL";
-      const zip = pickField(record, HEADER_MAP.zip);
+      const zip = normalizarZip(pickField(record, HEADER_MAP.zip)) ?? undefined;
       const mailingAddress = pickField(record, HEADER_MAP.mailingAddress);
       const ownerName = pickField(record, HEADER_MAP.owner);
       const propertyUseCode = pickField(record, HEADER_MAP.propertyUseCode);

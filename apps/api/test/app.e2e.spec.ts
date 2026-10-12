@@ -4,7 +4,24 @@ import * as request from "supertest";
 import * as path from "path";
 import { AppModule } from "../src/app.module";
 
-describe("App (e2e)", () => {
+/**
+ * 12-oct-2026: esta prueba levanta la app entera y ESCRIBE en la base: crea el usuario qa@, un deal de
+ * MDPA, fotos, documentos, tareas, sesiones de chat y corridas de integracion. Corrida desde apps/api
+ * toma el .env de produccion, y el 11 y el 12 de octubre dejo esos restos en la base real (se borraron
+ * con respaldo). Ahora solo corre contra una base cuyo nombre termine en _test, _e2e o _copia; con
+ * cualquier otra, o sin DATABASE_URL, se saltea y lo dice.
+ */
+function nombreDeLaBase(url = process.env.DATABASE_URL || ""): string {
+  return url.split("?")[0].split("/").pop() || "";
+}
+const BASE = nombreDeLaBase();
+const BASE_DE_PRUEBA = /(_test|_e2e|_copia)$/.test(BASE);
+if (!BASE_DE_PRUEBA) {
+  // eslint-disable-next-line no-console
+  console.warn(`App (e2e) salteada: la base "${BASE || "sin DATABASE_URL"}" no es de prueba (_test, _e2e o _copia).`);
+}
+
+(BASE_DE_PRUEBA ? describe : describe.skip)("App (e2e)", () => {
   let app: INestApplication;
   let accessToken = "";
   let refreshToken = "";

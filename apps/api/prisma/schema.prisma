@@ -441,11 +441,15 @@ model DealDistressSignal {
   observedAt DateTime
   confidence String
   metadata   String?
+  /// 12-oct-2026: identidad de la senal en su fuente (numero de caso). Con ella una senal se
+  /// actualiza en vez de repetirse; ver la migracion 20261012120000_distress_signal_external_id.
+  externalId String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  @@unique([dealId, source, observedAt], map: "DealDistressSignal_dealId_source_observedAt_key")
+  @@unique([dealId, source, externalId], map: "DealDistressSignal_dealId_source_externalId_key")
+  @@index([dealId, source, observedAt])
   @@index([dealId, observedAt])
   @@index([status, observedAt])
 }

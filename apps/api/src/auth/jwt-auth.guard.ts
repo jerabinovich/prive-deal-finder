@@ -26,7 +26,19 @@ const API_KEY_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: "GET", pattern: /^\/api\/integrations\/runs\/?$/ },
   // Ultimo paso del mismo cron: enriquece los deals recien ingeridos.
   { method: "POST", pattern: /^\/api\/deals\/backfill-facts\/?$/ },
+  // 12-oct-2026: la alerta diaria (prive-deal-finder-ops/scripts/alerta) recalcula el triage antes
+  // de leer la base. Hasta hoy lo hacia logueandose como admin@ solo con el email.
+  { method: "POST", pattern: /^\/api\/deals\/recompute-triage\/?$/ },
+  // y lee la deuda registrada de cada candidato antes de avisar (solo lectura, un deal por vez).
+  { method: "GET", pattern: /^\/api\/deals\/[^/]+\/recorded-debt\/?$/ },
 ];
+
+/** Si la cuenta de servicio puede usar esta ruta. Pura, para poder probarla. */
+export function rutaHabilitadaParaServicio(method: string, path: string): boolean {
+  const metodo = String(method || "").toUpperCase();
+  const ruta = String(path || "").split("?")[0];
+  return API_KEY_ROUTES.some((r) => r.method === metodo && r.pattern.test(ruta));
+}
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard("jwt") {
@@ -63,7 +75,7 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
 
     const method = String(req.method || "").toUpperCase();
     const path = String(req.originalUrl || req.url || "").split("?")[0];
-    const allowed = API_KEY_ROUTES.some((r) => r.method === method && r.pattern.test(path));
+    const allowed = rutaHabilitadaParaServicio(method, path);
     if (!allowed) {
       this.logger.warn(`x-api-key valida pero la ruta no esta habilitada: ${method} ${path}`);
       return false;

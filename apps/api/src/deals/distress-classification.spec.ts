@@ -11,6 +11,8 @@ const BANCO = "Ages Mortgage Llc         Plaintiff vs.  Keith Reginald Timmons, 
 
 const violacion = (estado: string, problema: string) =>
   ({ source: "miami-dade-code-enforcement", metadata: JSON.stringify({ STAT_DESC: estado, PROBLEM_DESC: problema }) });
+const violacionDeCaso = (caso: string, estado: string) =>
+  ({ source: "miami-dade-code-enforcement", metadata: JSON.stringify({ CASE_NUM: caso, STAT_DESC: estado, PROBLEM_DESC: "Junk and trash" }) });
 
 describe("clase de caso, sobre los textos reales de Broward", () => {
   it("distingue comercial, homestead y no homestead", () => {
@@ -144,6 +146,18 @@ describe("la decision final, que es la que veran el carril y el puntaje", () => 
     const tres = [violacion("Lien", "Graffiti"), violacion("Lien", "Graffiti"), violacion("Open", "Graffiti")];
     expect(decidirDistress(tres, null).stage).toBe("SIGNALS_ONLY");
     expect(decidirDistress(tres.slice(0, 2), null).codeEnforcementVigentes).toBe(2);
+  });
+
+  it("la misma violacion guardada varias veces cuenta una sola vez", () => {
+    const repetida = Array.from({ length: 5 }, () => violacionDeCaso("202609000123", "Lien"));
+    expect(resumirCodeEnforcement(repetida).vigentes).toBe(1);
+    expect(decidirDistress(repetida, null).motivo).toBe("violaciones de codigo aisladas");
+  });
+
+  it("tres casos distintos vigentes si son senal blanda", () => {
+    const tres = ["202601000001", "202602000002", "202603000003"].map((c) => violacionDeCaso(c, "Lien"));
+    expect(resumirCodeEnforcement(tres).vigentes).toBe(3);
+    expect(decidirDistress(tres, null).motivo).toBe("3 violaciones de codigo vigentes");
   });
 
   it("sin senales, NONE", () => {

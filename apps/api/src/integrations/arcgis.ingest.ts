@@ -2,6 +2,7 @@ import { PrismaService } from "../shared/prisma.service";
 import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 import { resolveDorUseCode } from "./dor-use-codes";
+import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip } from "./zip";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -15,10 +16,10 @@ const HEADER_MAP: Record<string, string[]> = {
     "ADDRESS",
     "PROP_ADDRESS",
   ],
-  city: ["SITUS_CITY", "CITY", "MUNICIPALITY", "TRUE_SITE_CITY", "CITYNAME", "PSTLCITY"],
+  city: CAMPOS_CIUDAD_DEL_SITIO,
   mailingAddress: ["MAIL_ADDR", "MAILING_ADDRESS", "OWNER_MAILING_ADDRESS", "PSTLADDRESS"],
   state: ["SITUS_STATE", "STATE", "PSTLSTATE"],
-  zip: ["SITUS_ZIP", "ZIP", "ZIPCODE", "TRUE_SITE_ZIP_CODE", "ZIP1", "PSTLZIP5", "SITUS_ZIP_CODE"],
+  zip: CAMPOS_ZIP_DEL_SITIO,
   owner: ["OWNER_NAME1", "OWNER_NAME2", "OWNER_NAME", "OWNERNME1", "OWNERNME2", "OWNER", "OWN_NAME", "NAME", "CNVYNAME", "NAME_LINE_1"],
   assetType: ["PROPERTY_USE", "USEDSCRP", "PRPRTYDSCR", "CLASSDSCRP", "DOR_DESC"],
   lotSizeSqft: ["LOT_SIZE_SQFT", "LOT_SQFT", "LOTSQFT", "LAND_SQFT", "LANDSQFT", "LOTSIZE", "LOT_SIZE", "LAND_GROSS"],
@@ -216,7 +217,7 @@ export async function ingestArcgisRecords(
     const municipality = pickField(attrs, ["MUNICIPALITY", "CITY"]) ?? city;
     const mailingAddress = pickField(attrs, HEADER_MAP.mailingAddress);
     const state = pickField(attrs, HEADER_MAP.state) || "FL";
-    const zip = pickField(attrs, HEADER_MAP.zip);
+    const zip = normalizarZip(pickField(attrs, HEADER_MAP.zip)) ?? undefined;
     const ownerName = pickField(attrs, HEADER_MAP.owner);
     // 13-sep-2026: Broward manda USE_CODE numerico (codigo DOR de Florida) en vez
     // de descripcion; el resto de los condados manda texto. resolveDorUseCode

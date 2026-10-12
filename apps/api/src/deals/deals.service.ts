@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../shared/prisma.service";
 import { fetchArcgisWhere } from "../integrations/connectors/arcgis";
 import { readRecordedDebt } from "../integrations/miami-dade-clerk.debt";
+import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, resolverZipDelSitio } from "../integrations/zip";
 import { CreateDealDto } from "./dto/create-deal.dto";
 import { CreateDealDocumentDto } from "./dto/create-deal-document.dto";
 import { CreateDealMediaDto } from "./dto/create-deal-media.dto";
@@ -497,10 +498,10 @@ export class DealsService {
       mailingAddress =
         mailingAddress ??
         pickField(attrs, ["MAIL_ADDR", "MAILING_ADDRESS", "OWNER_MAILING_ADDRESS", "OWNER_ADDRESS", "PSTLADDRESS"]);
-      city = city ?? pickField(attrs, ["SITUS_CITY", "CITY", "MUNICIPALITY", "TRUE_SITE_CITY", "CITYNAME", "PSTLCITY"]);
-      municipality = municipality ?? pickField(attrs, ["MUNICIPALITY", "CITY", "SITUS_CITY", "CITYNAME"]);
+      city = city ?? pickField(attrs, CAMPOS_CIUDAD_DEL_SITIO);
+      municipality = municipality ?? pickField(attrs, ["MUNICIPALITY", "CITY", "SITUS_CITY"]);
       state = state ?? pickField(attrs, ["SITUS_STATE", "STATE", "PSTLSTATE"]);
-      zip = zip ?? pickField(attrs, ["SITUS_ZIP", "ZIP", "ZIPCODE", "TRUE_SITE_ZIP_CODE", "ZIP1", "PSTLZIP5"]);
+      zip = zip ?? normalizarZip(pickField(attrs, CAMPOS_ZIP_DEL_SITIO)) ?? undefined;
       propertyUseCode =
         propertyUseCode ?? pickField(attrs, ["USE_CODE", "PROPERTY_USE", "DOR_UC", "CLASS_CODE", "PROPERTY_TYPE"]);
       assetType =
@@ -717,7 +718,9 @@ export class DealsService {
       updateData.municipality = facts.municipality ?? facts.city;
     }
     if (!deal.state && facts.state) updateData.state = facts.state;
-    if (!deal.zip && facts.zip) updateData.zip = facts.zip;
+    // 12-oct-2026: el zip del sitio manda aunque ya hubiera uno (los de Palm Beach eran del dueno).
+    const zipSitio = await resolverZipDelSitio(facts.zip, facts.latitude ?? deal.latitude, facts.longitude ?? deal.longitude);
+    if (zipSitio && zipSitio !== deal.zip) updateData.zip = zipSitio;
     if (!deal.propertyUseCode && facts.propertyUseCode) updateData.propertyUseCode = facts.propertyUseCode;
     if (!deal.assetType) {
       const inferredFromFacts = inferAssetTypeFromUse(facts.assetType ?? facts.propertyUseCode ?? deal.propertyUseCode);
@@ -1857,7 +1860,8 @@ export class DealsService {
     };
   }
 
-  async create(data: CreateDealDto) {
+  async create(input: CreateDealDto) {
+    const data = input.zip === undefined ? input : { ...input, zip: normalizarZip(input.zip) ?? undefined };
     const dataCompletenessScore = computeDealCompletenessScore({
       parcelId: data.parcelId,
       address: data.address,
@@ -1876,7 +1880,8 @@ export class DealsService {
     return this.prisma.deal.create({ data: { ...data, dataCompletenessScore } });
   }
 
-  async update(id: string, data: UpdateDealDto) {
+  async update(id: string, input: UpdateDealDto) {
+    const data = input.zip === undefined ? input : { ...input, zip: normalizarZip(input.zip) ?? undefined };
     const current = await this.ensureDeal(id);
     const dataCompletenessScore = computeDealCompletenessScore({
       parcelId: data.parcelId ?? current.parcelId,

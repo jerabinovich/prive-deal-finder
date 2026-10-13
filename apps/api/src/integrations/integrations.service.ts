@@ -1,4 +1,6 @@
-import { decidirDistress } from "../deals/distress-classification";
+import { clasificarClaseCaso } from "../deals/distress-classification";
+import { demandanteDeCaratula, resolverDemandadoBroward } from "./broward-demandado";
+import { recalcularDistressYPuntaje } from "./rescore-distress";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../shared/prisma.service";
@@ -16,7 +18,6 @@ import { MiamiDadeCodeEnforcementConnector } from "./connectors/miami-dade-code-
 import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector";
 import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
 import { fetchArcgisWhere } from "./connectors/arcgis";
-import { computeTriageScore } from "../scoring/score";
 import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
 import { IntegrationRunsQueryDto } from "./dto/integration-runs-query.dto";
 import { IntegrationStatusQueryDto } from "./dto/integration-status-query.dto";
@@ -375,6 +376,16 @@ export class IntegrationsService {
     return null;
   }
 
+  /** Los folios de un registro: parcelIds (varios) o parcelId (uno), normalizados y sin repetir. */
+  private foliosDelRegistro(record: Record<string, unknown>, parcelId: string | null): string[] {
+    const lista = Array.isArray(record.parcelIds) ? record.parcelIds : [];
+    const normalizados = lista
+      .map((valor) => this.normalizeParcelId(String(valor ?? "")))
+      .filter((valor): valor is string => Boolean(valor));
+    if (normalizados.length) return [...new Set(normalizados)];
+    return parcelId ? [parcelId] : [];
+  }
+
   private normalizeParcelId(value: string | null) {
     if (!value) return null;
     const digits = value.replace(/[^\d]/g, "");
@@ -436,15 +447,18 @@ export class IntegrationsService {
    * ?where= — por eso aca no se usa esa.
    */
   /**
-   * Resuelve el demandado de un expediente de foreclosure contra el catastro de
-   * Broward, escribe el folio encontrado EN EL PROPIO REGISTRO (para que el
-   * pipeline generico de señales pueda cruzarlo) y crea el deal.
+   * Resuelve el demandado de un expediente de foreclosure contra el catastro de Broward, escribe los
+   * folios encontrados EN EL PROPIO REGISTRO (para que el pipeline generico de senales pueda cruzarlos)
+   * y crea los deals.
    *
-   * POR QUE ASI: un expediente judicial no trae folio ni direccion — trae la
-   * caratula. El demandado es el dueño, y el catastro guarda los nombres como
-   * "APELLIDO,NOMBRE". Medido sobre los 11 expedientes del 11-sep: resuelve 7.
-   * Los 4 restantes son apellidos compuestos, empresas y una caratula que
-   * arranca con "THE TRUSTEES OF THE".
+   * POR QUE ASI: un expediente judicial no trae folio ni direccion, trae la caratula. El demandado es el
+   * dueño, y el catastro guarda los nombres como "APELLIDO,NOMBRE".
+   *
+   * 13-oct-2026: la busqueda era por la primera palabra del nombre y se quedaba con el primer folio, y
+   * pegaba expedientes a propiedades de otros (Andrews Ave Retail LLC, dos locales en Wilton Manors,
+   * quedo en una casa de Parkland). Ahora el dueño tiene que ser el demandado; si no se puede distinguir,
+   * el expediente queda sin enganchar y el motivo queda en el registro (resolucionFolio). Ver
+   * broward-demandado.ts.
    *
    * Es GRATIS: el catastro de Broward es ArcGIS abierto, no consume unidades.
    */
@@ -453,40 +467,31 @@ export class IntegrationsService {
     if (!url) return 0;
 
     const features: unknown[] = [];
-
     for (const item of records) {
       const record = item as Record<string, unknown>;
-      const raw = String(record?.defendantName ?? "").trim();
-      if (!raw) continue;
-
-      const parts = raw
-        .split(/\s+/)
-        .map((piece) => piece.replace(/[.,]/g, "").trim())
-        .filter((piece) => piece && !["the", "of", "et", "al"].includes(piece.toLowerCase()));
-      if (parts.length < 2) continue;
-
-      // Persona: "Veronica Laingor" -> LAINGOR,VERONICA
-      // Empresa: se busca por la primera palabra distintiva, que el catastro
-      //          guarda al principio de la razon social.
-      const esEmpresa = /\b(inc|llc|corp|trust|ltd|company|association|assn)\b/i.test(raw);
-      const clave = esEmpresa
-        ? `${parts[0].toUpperCase()}%`
-        : `${parts[parts.length - 1].toUpperCase()},${parts[0].toUpperCase()}%`;
-
+      const demandado = String(record?.defendantName ?? "").trim();
+      if (!demandado) continue;
+      const interno = (record.metadata && typeof record.metadata === "object" ? record.metadata : {}) as Record<
+        string,
+        unknown
+      >;
+      const clase = clasificarClaseCaso(String(record.caseTypeCode ?? interno.Case_Type ?? ""));
+      const demandante = demandanteDeCaratula(String(record.caption ?? interno.Caption ?? ""));
       try {
-        const found = await fetchArcgisWhere(
-          url, `NAME_LINE_1 LIKE '${clave.replace(/'/g, "''")}'`, 1, "FOLIO_NUMBER",
-        );
-        if (!found.length) continue;
-        const attrs = (found[0] as { attributes?: Record<string, unknown> })?.attributes ?? {};
-        const folio = String(attrs.FOLIO_NUMBER ?? "").trim();
-        if (!folio) continue;
-
-        // La clave del cruce: el registro de la señal se lleva el folio.
-        record.parcelId = folio;
-        features.push(found[0]);
-      } catch {
-        // Un nombre que no resuelve no frena al resto.
+        const { resolucion, features: elegidos } = await resolverDemandadoBroward(url, demandado, { clase, demandante });
+        record.resolucionFolio = resolucion;
+        if (!resolucion.folios.length) continue;
+        // La clave del cruce: el registro de la senal se lleva sus folios.
+        record.parcelId = resolucion.folios[0];
+        record.parcelIds = resolucion.folios;
+        features.push(...elegidos);
+      } catch (error) {
+        // Un nombre que no resuelve no frena al resto; la proxima corrida (7 dias hacia atras) lo reintenta.
+        record.resolucionFolio = {
+          estado: "ERROR",
+          folios: [],
+          motivo: error instanceof Error ? error.message : String(error),
+        };
       }
     }
 
@@ -552,67 +557,12 @@ export class IntegrationsService {
     //     un premio de distress metido en el score.
     //  3) Se miran TODAS las senales del deal, no solo las de esta fuente, para
     //     que dos sincronizaciones distintas no se pisen la clasificacion.
+    //  4) 13-oct-2026: la cuenta vive en rescore-distress.ts, compartida con la reparacion de folios.
     const afectados = await this.prisma.dealDistressSignal.findMany({
       where: { source },
       select: { dealId: true },
     });
-    const ids = [...new Set(afectados.map((s) => s.dealId))];
-    if (!ids.length) return 0;
-
-    const signals = await this.prisma.dealDistressSignal.findMany({
-      where: { dealId: { in: ids } },
-      select: { dealId: true, source: true, metadata: true },
-    });
-    const porDeal = new Map<string, Array<{ source: string | null; metadata: string | null }>>();
-    for (const s of signals) {
-      const lista = porDeal.get(s.dealId) ?? [];
-      lista.push({ source: s.source, metadata: s.metadata });
-      porDeal.set(s.dealId, lista);
-    }
-
-    let updated = 0;
-    for (const [dealId, senales] of porDeal) {
-      const deal = await this.prisma.deal.findUnique({ where: { id: dealId } });
-      if (!deal) continue;
-
-      const owners = await this.prisma.dealOwner.findMany({
-        where: { dealId },
-        select: { owner: { select: { name: true } } },
-      });
-
-      const decision = decidirDistress(senales, deal.propertyUseCode);
-
-      const triage = computeTriageScore({
-        assetType: deal.assetType,
-        propertyUseCode: deal.propertyUseCode,
-        ownerNames: owners.map((item) => item.owner?.name).filter((name): name is string => Boolean(name)),
-        city: deal.city,
-        municipality: deal.municipality,
-        state: deal.state,
-        yearBuilt: deal.yearBuilt,
-        lotSizeSqft: deal.lotSizeSqft,
-        source: deal.source,
-        distressStage: decision.stage,
-      });
-
-      if (
-        triage.score === deal.score &&
-        triage.isNoise === deal.isNoise &&
-        deal.distressStage === decision.stage
-      ) continue;
-
-      await this.prisma.deal.update({
-        where: { id: dealId },
-        data: {
-          score: triage.score,
-          isNoise: triage.isNoise,
-          noiseReason: triage.noiseReason,
-          distressStage: decision.stage,
-        },
-      });
-      updated += 1;
-    }
-    return updated;
+    return recalcularDistressYPuntaje(this.prisma, afectados.map((s) => s.dealId));
   }
 
   private async ingestDistressRecords(source: string, records: unknown[]) {
@@ -658,12 +608,22 @@ export class IntegrationsService {
       );
       const observedAt = fechaReal ?? new Date();
 
-      const deal = parcelId
-        ? await this.prisma.deal.findFirst({ where: { parcelId } })
-        : address
-          ? await this.prisma.deal.findFirst({ where: { address: { contains: address } } })
-          : null;
-      if (!deal) {
+      // 13-oct-2026: un expediente de Broward puede caer en mas de un folio del mismo dueño (locales
+      // contiguos); vienen en parcelIds. Una senal por deal, con la misma identidad de caso.
+      const folios = this.foliosDelRegistro(record, parcelId);
+      const deals: Array<{ id: string }> = [];
+      for (const folio of folios) {
+        const encontrado = await this.prisma.deal.findFirst({ where: { parcelId: folio }, select: { id: true } });
+        if (encontrado) deals.push(encontrado);
+      }
+      if (!folios.length && address) {
+        const encontrado = await this.prisma.deal.findFirst({
+          where: { address: { contains: address } },
+          select: { id: true },
+        });
+        if (encontrado) deals.push(encontrado);
+      }
+      if (!deals.length) {
         unmatched += 1;
         continue;
       }
@@ -671,28 +631,30 @@ export class IntegrationsService {
       // 12-oct-2026: la senal se identifica por su caso (externalId), no por la fecha de la corrida.
       const externalId = this.distressExternalId(source, record);
       const datos = { status, confidence, metadata: JSON.stringify(record) };
-      let existing: { id: string } | null;
-      if (externalId) {
-        const where = { dealId_source_externalId: { dealId: deal.id, source, externalId } };
-        existing = await this.prisma.dealDistressSignal.findUnique({ where, select: { id: true } });
-        await this.prisma.dealDistressSignal.upsert({
-          where,
-          update: { ...datos, ...(fechaReal ? { observedAt: fechaReal } : {}) },
-          create: { ...datos, dealId: deal.id, source, externalId, observedAt },
-        });
-      } else {
-        existing = await this.prisma.dealDistressSignal.findFirst({
-          where: { dealId: deal.id, source, observedAt },
-          select: { id: true },
-        });
-        if (existing) {
-          await this.prisma.dealDistressSignal.update({ where: { id: existing.id }, data: datos });
+      for (const deal of deals) {
+        let existing: { id: string } | null;
+        if (externalId) {
+          const where = { dealId_source_externalId: { dealId: deal.id, source, externalId } };
+          existing = await this.prisma.dealDistressSignal.findUnique({ where, select: { id: true } });
+          await this.prisma.dealDistressSignal.upsert({
+            where,
+            update: { ...datos, ...(fechaReal ? { observedAt: fechaReal } : {}) },
+            create: { ...datos, dealId: deal.id, source, externalId, observedAt },
+          });
         } else {
-          await this.prisma.dealDistressSignal.create({ data: { ...datos, dealId: deal.id, source, observedAt } });
+          existing = await this.prisma.dealDistressSignal.findFirst({
+            where: { dealId: deal.id, source, observedAt },
+            select: { id: true },
+          });
+          if (existing) {
+            await this.prisma.dealDistressSignal.update({ where: { id: existing.id }, data: datos });
+          } else {
+            await this.prisma.dealDistressSignal.create({ data: { ...datos, dealId: deal.id, source, observedAt } });
+          }
         }
+        if (existing) updated += 1;
+        else created += 1;
       }
-      if (existing) updated += 1;
-      else created += 1;
     }
 
     return {

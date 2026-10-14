@@ -19,6 +19,7 @@ import { MiamiDadeCodeEnforcementConnector } from "./connectors/miami-dade-code-
 import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector";
 import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
 import { fetchArcgisWhere } from "./connectors/arcgis";
+import { completarDomiciliosPostales } from "./domicilio-postal";
 import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
 import { IntegrationRunsQueryDto } from "./dto/integration-runs-query.dto";
 import { IntegrationStatusQueryDto } from "./dto/integration-status-query.dto";
@@ -510,7 +511,20 @@ export class IntegrationsService {
     // 13-oct-2026: ciudad con nombre y coordenadas del poligono de la parcela (broward-parcelas.ts).
     const normalizadas = await normalizarRegistrosBroward(url, features);
     const ingested = await ingestArcgisRecords(this.prisma, "broward-parcels", "Broward", normalizadas);
+    await this.completarDomicilios("broward-parcels");
     return ingested.createdDeals + ingested.updatedDeals;
+  }
+
+  /**
+   * 13-oct-2026: domicilio postal del dueno desde el rol estatal (domicilio-postal.ts), para los deals de
+   * esa fuente que no lo tienen. Un fallo no frena el sync: queda vacio y la proxima corrida reintenta.
+   */
+  private async completarDomicilios(source: string): Promise<number> {
+    try {
+      return (await completarDomiciliosPostales(this.prisma, source)).escritos;
+    } catch {
+      return 0;
+    }
   }
 
   private async seedDealsFromDistressFolios(source: string, records: unknown[]) {
@@ -543,6 +557,7 @@ export class IntegrationsService {
 
     if (!features.length) return 0;
     const ingested = await ingestArcgisRecords(this.prisma, "miami-dade-parcels", "Miami-Dade", features);
+    await this.completarDomicilios("miami-dade-parcels");
     return ingested.createdDeals + ingested.updatedDeals;
   }
 
@@ -1384,12 +1399,14 @@ export class IntegrationsService {
       }
 
       const ingestMetrics = await ingestArcgisRecords(this.prisma, source, market, result.records);
+      const domiciliosPostales = await this.completarDomicilios(source);
       return this.finishRun(run.id, source, {
         status: IntegrationStatus.OK,
         message: result.message ?? "Sync completed",
         metrics: {
           sampledRecords: result.records.length,
           ...ingestMetrics,
+          domiciliosPostales,
         },
       });
     } catch (error) {

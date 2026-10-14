@@ -79,9 +79,10 @@ export function decidirOperacion(input: EntradaDecision): OperationalDecision {
     const hasDistress = ETAPAS_ACCIONABLES.has(String(distressStage));
     const hasPhone = input.owners.some((o) => Boolean(toCleanText(o.phone ?? null)));
     const hasEmail = input.owners.some((o) => Boolean(toCleanText(o.email ?? null)));
-    const rawContactability = (input.deal.contactabilityScore ?? 0) > 0
-      ? Number(input.deal.contactabilityScore)
-      : clamp((input.deal.mailingAddress ? 35 : 0) + (input.deal.address ? 15 : 0) + (hasPhone ? 30 : 0) + (hasEmail ? 20 : 0), 0, 100);
+    // 13-oct-2026: siempre desde los datos de hoy. Antes el primer valor calculado quedaba para siempre
+    // (nadie lo carga a mano), y un domicilio postal, un telefono o un correo nuevos no cambiaban nada.
+    const rawContactability =
+      clamp((input.deal.mailingAddress ? 35 : 0) + (input.deal.address ? 15 : 0) + (hasPhone ? 30 : 0) + (hasEmail ? 20 : 0), 0, 100);
     const contactabilityScore = Number(rawContactability.toFixed(1));
 
     const why: string[] = [], blockers: string[] = [];

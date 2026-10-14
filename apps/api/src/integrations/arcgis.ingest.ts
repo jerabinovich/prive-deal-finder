@@ -3,6 +3,7 @@ import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 import { resolveDorUseCode } from "./dor-use-codes";
 import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipPorCoordenadas } from "./zip";
+import { domicilioDeLaCapa } from "./domicilio-postal";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -215,7 +216,8 @@ export async function ingestArcgisRecords(
     const address = pickField(attrs, HEADER_MAP.address) || composeAddress(attrs);
     const city = pickField(attrs, HEADER_MAP.city);
     const municipality = pickField(attrs, ["MUNICIPALITY", "CITY"]) ?? city;
-    const mailingAddress = pickField(attrs, HEADER_MAP.mailingAddress);
+    // 13-oct-2026: Palm Beach trae el domicilio postal del dueno en PADDR1 a PADDR3 (domicilio-postal.ts).
+    const mailingAddress = pickField(attrs, HEADER_MAP.mailingAddress) ?? domicilioDeLaCapa(attrs);
     const state = pickField(attrs, HEADER_MAP.state) || "FL";
     const zipDeLaCapa = normalizarZip(pickField(attrs, HEADER_MAP.zip)) ?? undefined;
     const ownerName = pickField(attrs, HEADER_MAP.owner);

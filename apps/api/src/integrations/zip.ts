@@ -35,19 +35,21 @@ const CAPA_ZCTA = "2020 Census ZIP Code Tabulation Areas";
 const cachePorPunto = new Map<string, string | null>();
 
 /**
- * El codigo postal (ZCTA del Census) del punto. null si no hay respuesta util; nunca tira. Las
- * fallas de red no se guardan en cache: la proxima corrida vuelve a intentar.
+ * La respuesta del Census para el punto: si contesto y, si contesto, el zip (null si el punto no cae en
+ * ninguna ZCTA, como pasa en zonas sin poblacion de los Everglades). Nunca tira. Las fallas de red no se
+ * guardan en cache: la proxima corrida vuelve a intentar. 13-oct-2026: separa "no contesto" de "no hay
+ * ZCTA", que zipPorCoordenadas devolvia igual (null).
  */
-export async function zipPorCoordenadas(
+export async function consultarZcta(
   lat: number | null | undefined,
   lon: number | null | undefined,
   timeoutMs = 8000,
-): Promise<string | null> {
+): Promise<{ respondio: boolean; zip: string | null }> {
   if (typeof lat !== "number" || typeof lon !== "number" || !Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return null;
+    return { respondio: false, zip: null };
   }
   const clave = `${lat.toFixed(6)},${lon.toFixed(6)}`;
-  if (cachePorPunto.has(clave)) return cachePorPunto.get(clave) ?? null;
+  if (cachePorPunto.has(clave)) return { respondio: true, zip: cachePorPunto.get(clave) ?? null };
   const url =
     `${CENSUS}?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current` +
     `&layers=${encodeURIComponent(CAPA_ZCTA)}&format=json`;
@@ -55,20 +57,30 @@ export async function zipPorCoordenadas(
   const reloj = setTimeout(() => control.abort(), timeoutMs);
   try {
     const respuesta = await fetch(url, { signal: control.signal });
-    if (!respuesta.ok) return null;
+    if (!respuesta.ok) return { respondio: false, zip: null };
     const cuerpo = (await respuesta.json()) as {
       result?: { geographies?: Record<string, Array<Record<string, unknown>>> };
     };
-    const capas = cuerpo.result?.geographies ?? {};
+    if (!cuerpo.result?.geographies) return { respondio: false, zip: null };
+    const capas = cuerpo.result.geographies;
     const zcta = Object.entries(capas).find(([nombre]) => /ZIP Code Tabulation/i.test(nombre))?.[1] ?? [];
     const zip = normalizarZip(zcta[0]?.ZCTA5 ?? zcta[0]?.BASENAME);
     cachePorPunto.set(clave, zip);
-    return zip;
+    return { respondio: true, zip };
   } catch {
-    return null;
+    return { respondio: false, zip: null };
   } finally {
     clearTimeout(reloj);
   }
+}
+
+/** El codigo postal (ZCTA del Census) del punto. null si no hay respuesta util; nunca tira. */
+export async function zipPorCoordenadas(
+  lat: number | null | undefined,
+  lon: number | null | undefined,
+  timeoutMs = 8000,
+): Promise<string | null> {
+  return (await consultarZcta(lat, lon, timeoutMs)).zip;
 }
 
 /** El zip del sitio: el de la capa si es valido; si no, el de las coordenadas; si no, null. */

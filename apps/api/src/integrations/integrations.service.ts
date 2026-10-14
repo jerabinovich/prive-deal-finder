@@ -1,5 +1,6 @@
 import { clasificarClaseCaso } from "../deals/distress-classification";
 import { demandanteDeCaratula, resolverDemandadoBroward } from "./broward-demandado";
+import { normalizarRegistrosBroward } from "./broward-parcelas";
 import { recalcularDistressYPuntaje } from "./rescore-distress";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
@@ -496,7 +497,9 @@ export class IntegrationsService {
     }
 
     if (!features.length) return 0;
-    const ingested = await ingestArcgisRecords(this.prisma, "broward-parcels", "Broward", features);
+    // 13-oct-2026: ciudad con nombre y coordenadas del poligono de la parcela (broward-parcelas.ts).
+    const normalizadas = await normalizarRegistrosBroward(url, features);
+    const ingested = await ingestArcgisRecords(this.prisma, "broward-parcels", "Broward", normalizadas);
     return ingested.createdDeals + ingested.updatedDeals;
   }
 

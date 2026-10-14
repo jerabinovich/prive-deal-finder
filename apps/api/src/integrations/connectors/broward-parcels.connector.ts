@@ -1,3 +1,4 @@
+import { normalizarRegistrosBroward } from "../broward-parcelas";
 import { fetchArcgisSample } from "./arcgis";
 import {
   HealthStatus,
@@ -27,7 +28,9 @@ export class BrowardParcelsConnector implements IntegrationConnector {
       const records = await fetchArcgisSample(
         url, limit, "FOLIO_NUMBER IS NOT NULL AND SITUS_CITY IS NOT NULL", "FOLIO_NUMBER",
       );
-      return { status: IntegrationStatus.OK, message: "Broward parcels reachable", records };
+      // 13-oct-2026: la tabla no trae geometria y la ciudad viene en codigo; se normaliza aca, en la fuente.
+      const normalizados = await normalizarRegistrosBroward(url, records);
+      return { status: IntegrationStatus.OK, message: "Broward parcels reachable", records: normalizados };
     } catch (_error) {
       return { status: IntegrationStatus.ERROR, message: "Broward parcels fetch failed" };
     }

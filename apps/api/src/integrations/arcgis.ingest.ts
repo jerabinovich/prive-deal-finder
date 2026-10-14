@@ -2,7 +2,7 @@ import { PrismaService } from "../shared/prisma.service";
 import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 import { resolveDorUseCode } from "./dor-use-codes";
-import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip } from "./zip";
+import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipPorCoordenadas } from "./zip";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -217,7 +217,7 @@ export async function ingestArcgisRecords(
     const municipality = pickField(attrs, ["MUNICIPALITY", "CITY"]) ?? city;
     const mailingAddress = pickField(attrs, HEADER_MAP.mailingAddress);
     const state = pickField(attrs, HEADER_MAP.state) || "FL";
-    const zip = normalizarZip(pickField(attrs, HEADER_MAP.zip)) ?? undefined;
+    const zipDeLaCapa = normalizarZip(pickField(attrs, HEADER_MAP.zip)) ?? undefined;
     const ownerName = pickField(attrs, HEADER_MAP.owner);
     // 13-sep-2026: Broward manda USE_CODE numerico (codigo DOR de Florida) en vez
     // de descripcion; el resto de los condados manda texto. resolveDorUseCode
@@ -245,12 +245,16 @@ export async function ingestArcgisRecords(
     let longitude = geometryPoint?.longitude ?? attributeLongitude;
 
     if ((latitude === undefined || longitude === undefined) && address) {
-      const geocoded = await geocodeAddress(address, city, state, zip);
+      const geocoded = await geocodeAddress(address, city, state, zipDeLaCapa);
       if (geocoded) {
         latitude = geocoded.latitude;
         longitude = geocoded.longitude;
       }
     }
+
+    // 13-oct-2026: si la capa no trae el zip del sitio (Palm Beach nunca, Broward a veces "0"), sale de las
+    // coordenadas de la parcela contra las ZCTA del Census. Sin coordenadas queda vacio: no se adivina.
+    const zip = zipDeLaCapa ?? (await zipPorCoordenadas(latitude, longitude)) ?? undefined;
 
     const name = address || (parcelId ? `Parcel ${parcelId}` : "Parcel Record");
 
@@ -274,6 +278,9 @@ export async function ingestArcgisRecords(
       state,
       yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
       lotSizeSqft,
+      // 13-oct-2026: un deal que ya existe conserva su etapa de distress. Sin esto, la resincronizacion
+      // diaria de parcelas le borraba el premio de distress del score hasta la proxima corrida judicial.
+      distressStage: deal?.distressStage,
     });
     const score = triage.score;
     const dataCompletenessScore = computeCompletenessScore({

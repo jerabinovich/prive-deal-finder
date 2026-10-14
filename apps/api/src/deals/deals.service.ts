@@ -973,114 +973,122 @@ export class DealsService {
   }
 
   async recomputeOperationalTriage(input: { limit?: number; onlyMissingLane?: boolean } = {}) {
-    const limit = Number.isFinite(input.limit) ? Math.min(Math.max(Math.round(input.limit ?? 500), 1), 5000) : 500;
+    // 14-oct-2026: el tope era 5000 y con el sync por corredores la base pasa de 5000 deals; el triage diario
+    // dejaba afuera, sin avisar, a los menos tocados. Tope 100000, en tandas de 500 sobre la misma seleccion.
+    const limit = Number.isFinite(input.limit) ? Math.min(Math.max(Math.round(input.limit ?? 500), 1), 100000) : 500;
     const where: Prisma.DealWhereInput = input.onlyMissingLane
       ? {
           OR: [{ lane: null }, { recommendedAction: null }, { laneUpdatedAt: null }],
         }
       : {};
-    const deals = await this.prisma.deal.findMany({
+    const seleccion = await this.prisma.deal.findMany({
       where,
       orderBy: { updatedAt: "desc" },
       take: limit,
-      include: {
-        insight: true,
-        owners: { include: { owner: true } },
-        distressSignals: {
-          where: { status: "CONFIRMED" },
-          orderBy: { observedAt: "desc" },
-          take: 10,
-        },
-        events: {
-          orderBy: { eventDate: "asc" },
-          take: 25,
-        },
-        _count: {
-          select: { comparables: true },
-        },
-      },
+      select: { id: true },
     });
-
     const summary = {
-      processed: deals.length,
+      processed: seleccion.length,
       updated: 0,
       skipped: 0,
       errors: 0,
     };
 
-    for (const deal of deals) {
-      try {
-        const derived = this.deriveOpportunitySignals({
-          askingPrice: deal.askingPrice,
-          completenessScore: deal.dataCompletenessScore,
-          valuationJson: deal.insight?.valuationJson ?? null,
-          fallbackComparableCount: deal._count.comparables,
-          distressConfirmed: deal.distressSignals.length > 0,
-        });
-        const decision = this.computeOperationalDecision({
-          deal,
-          owners: deal.owners.map((entry) => ({
-            name: entry.owner.name,
-            phone: entry.owner.phone,
-            email: entry.owner.email,
-          })),
-          distressSignals: deal.distressSignals,
-          events: deal.events,
-          classification: derived.classification.classification,
-          completenessScore: derived.completenessScore,
-          spreadToAskPct: derived.spreadToAskPct,
-          comparableCount: derived.comparableCount,
-        });
+    for (let tanda = 0; tanda < seleccion.length; tanda += 500) {
+      const deals = await this.prisma.deal.findMany({
+        where: { id: { in: seleccion.slice(tanda, tanda + 500).map((d) => d.id) } },
+        include: {
+          insight: true,
+          owners: { include: { owner: true } },
+          distressSignals: {
+            where: { status: "CONFIRMED" },
+            orderBy: { observedAt: "desc" },
+            take: 10,
+          },
+          events: {
+            orderBy: { eventDate: "asc" },
+            take: 25,
+          },
+          _count: {
+            select: { comparables: true },
+          },
+        },
+      });
 
-        const changed =
-          deal.lane !== decision.lane ||
-          deal.recommendedAction !== decision.recommendedAction ||
-          deal.distressStage !== decision.distressStage ||
-          deal.isNoise !== decision.isNoise ||
-          deal.noiseReason !== decision.noiseReason ||
-          Math.abs((deal.contactabilityScore ?? -1) - decision.contactabilityScore) >= 0.1 ||
-          (deal.nextEventDate?.getTime() ?? 0) !== (decision.nextEventDate?.getTime() ?? 0);
+      for (const deal of deals) {
+        try {
+          const derived = this.deriveOpportunitySignals({
+            askingPrice: deal.askingPrice,
+            completenessScore: deal.dataCompletenessScore,
+            valuationJson: deal.insight?.valuationJson ?? null,
+            fallbackComparableCount: deal._count.comparables,
+            distressConfirmed: deal.distressSignals.length > 0,
+          });
+          const decision = this.computeOperationalDecision({
+            deal,
+            owners: deal.owners.map((entry) => ({
+              name: entry.owner.name,
+              phone: entry.owner.phone,
+              email: entry.owner.email,
+            })),
+            distressSignals: deal.distressSignals,
+            events: deal.events,
+            classification: derived.classification.classification,
+            completenessScore: derived.completenessScore,
+            spreadToAskPct: derived.spreadToAskPct,
+            comparableCount: derived.comparableCount,
+          });
 
-        if (!changed) {
-          summary.skipped += 1;
-          continue;
+          const changed =
+            deal.lane !== decision.lane ||
+            deal.recommendedAction !== decision.recommendedAction ||
+            deal.distressStage !== decision.distressStage ||
+            deal.isNoise !== decision.isNoise ||
+            deal.noiseReason !== decision.noiseReason ||
+            Math.abs((deal.contactabilityScore ?? -1) - decision.contactabilityScore) >= 0.1 ||
+            (deal.nextEventDate?.getTime() ?? 0) !== (decision.nextEventDate?.getTime() ?? 0);
+
+          if (!changed) {
+            summary.skipped += 1;
+            continue;
+          }
+
+          await this.prisma.$transaction([
+            this.prisma.deal.update({
+              where: { id: deal.id },
+              data: {
+                lane: decision.lane,
+                recommendedAction: decision.recommendedAction,
+                distressStage: decision.distressStage,
+                nextEventDate: decision.nextEventDate,
+                contactabilityScore: decision.contactabilityScore,
+                isNoise: decision.isNoise,
+                noiseReason: decision.noiseReason,
+                laneUpdatedAt: new Date(),
+              },
+            }),
+            this.prisma.dealDecisionAudit.create({
+              data: {
+                dealId: deal.id,
+                classification: derived.classification.classification,
+                lane: decision.lane,
+                recommendedAction: decision.recommendedAction,
+                reasoningJson: JSON.stringify({
+                  why: decision.why,
+                  blockers: decision.blockers,
+                  gates: derived.classification.gates,
+                  spreadToAskPct: derived.spreadToAskPct,
+                  comparableCount: derived.comparableCount,
+                  completenessScore: derived.completenessScore,
+                }),
+                engineVersion: ENGINE_VERSION,
+              },
+            }),
+          ]);
+          summary.updated += 1;
+        } catch (_error) {
+          summary.errors += 1;
         }
-
-        await this.prisma.$transaction([
-          this.prisma.deal.update({
-            where: { id: deal.id },
-            data: {
-              lane: decision.lane,
-              recommendedAction: decision.recommendedAction,
-              distressStage: decision.distressStage,
-              nextEventDate: decision.nextEventDate,
-              contactabilityScore: decision.contactabilityScore,
-              isNoise: decision.isNoise,
-              noiseReason: decision.noiseReason,
-              laneUpdatedAt: new Date(),
-            },
-          }),
-          this.prisma.dealDecisionAudit.create({
-            data: {
-              dealId: deal.id,
-              classification: derived.classification.classification,
-              lane: decision.lane,
-              recommendedAction: decision.recommendedAction,
-              reasoningJson: JSON.stringify({
-                why: decision.why,
-                blockers: decision.blockers,
-                gates: derived.classification.gates,
-                spreadToAskPct: derived.spreadToAskPct,
-                comparableCount: derived.comparableCount,
-                completenessScore: derived.completenessScore,
-              }),
-              engineVersion: ENGINE_VERSION,
-            },
-          }),
-        ]);
-        summary.updated += 1;
-      } catch (_error) {
-        summary.errors += 1;
       }
     }
 

@@ -1,3 +1,5 @@
+import type { CursorParcelas } from "../parcelas-corredores";
+
 export enum IntegrationStatus {
   OK = "OK",
   DEGRADED = "DEGRADED",
@@ -16,6 +18,13 @@ export interface SyncResult {
   message?: string;
   records?: unknown[];
   metrics?: Record<string, unknown>;
+  /** 14-oct-2026: proxima posicion del recorrido de parcelas; el servicio la guarda despues de ingerir. */
+  cursor?: CursorParcelas;
+}
+
+/** 14-oct-2026: lo que el servicio le pasa al conector en cada sync. */
+export interface ContextoSync {
+  cursor?: CursorParcelas | null;
 }
 
 export interface HealthStatus {
@@ -31,6 +40,6 @@ export interface IntegrationConnector {
   authType: string;
   cadence: string;
   requiredEnv: string[];
-  sync(): Promise<SyncResult>;
+  sync(contexto?: ContextoSync): Promise<SyncResult>;
   getHealthStatus(): Promise<HealthStatus>;
 }

@@ -1,5 +1,7 @@
-import { fetchArcgisSample } from "./arcgis";
+import { fetchArcgisPagina } from "../arcgis-pagina";
+import { claveConsulta, parcelasPorCorrida, posicionDe, siguienteCursor, whereMiamiDade, zipsDeCorredores } from "../parcelas-corredores";
 import {
+  ContextoSync,
   HealthStatus,
   IntegrationAccessMethod,
   IntegrationConnector,
@@ -7,11 +9,17 @@ import {
   SyncResult,
 } from "./types";
 
-const FALLBACK_MIAMI_DADE_PARCELS_URL = "https://gisweb.miamidade.gov/arcgis/rest/services/MD_Emaps/MapServer/72";
-const DEFAULT_MIAMI_DADE_WHERE = "OBJECTID IS NOT NULL";
+/** Capa de parcelas de Miami-Dade que responde consultas (596.666 parcelas, pagina y ordena por folio). */
+export const CAPA_MIAMI_DADE = "https://gisweb.miamidade.gov/arcgis/rest/services/MD_Emaps/MapServer/72";
 
-function dedupe(values: string[]) {
-  return [...new Set(values)];
+/**
+ * 14-oct-2026: MIAMI_DADE_PARCELS_URL apuntaba a un enlace de descarga del portal de datos abiertos, que como
+ * consulta da 404; cada corrida fallaba ahi y caia a la capa de respaldo. Solo se usa si es una capa de consulta
+ * (MapServer o FeatureServer con numero de capa).
+ */
+export function capaMiamiDade(configurada = process.env.MIAMI_DADE_PARCELS_URL): string {
+  const url = (configurada ?? "").trim();
+  return /\/(MapServer|FeatureServer)\/\d+\/?$/i.test(url) ? url.replace(/\/+$/, "") : CAPA_MIAMI_DADE;
 }
 
 function describeError(error: unknown) {
@@ -28,46 +36,46 @@ export class MiamiDadeParcelsConnector implements IntegrationConnector {
   cadence = "Near real-time";
   requiredEnv = [];
 
-  async sync(): Promise<SyncResult> {
-    const configuredUrl = process.env.MIAMI_DADE_PARCELS_URL;
-    const whereCandidates = dedupe(
-      [process.env.MIAMI_DADE_PARCELS_WHERE, DEFAULT_MIAMI_DADE_WHERE, "FOLIO IS NOT NULL", "1=1"].filter(
-        Boolean
-      ) as string[]
-    );
-    const limit = Number(process.env.ARCGIS_MAX_ROWS || 50);
-    const candidateUrls = dedupe([configuredUrl, FALLBACK_MIAMI_DADE_PARCELS_URL].filter(Boolean) as string[]);
-
-    if (!candidateUrls.length) {
-      return { status: IntegrationStatus.NEEDS_CONFIG, message: "No Miami-Dade ArcGIS endpoint configured" };
+  /** Pagina siguiente de las parcelas del buy box en los corredores (parcelas-corredores.ts). */
+  async sync(contexto?: ContextoSync): Promise<SyncResult> {
+    const capa = capaMiamiDade();
+    let zips: string[];
+    try {
+      zips = zipsDeCorredores();
+    } catch (error) {
+      return { status: IntegrationStatus.ERROR, message: `Miami-Dade parcels: no corridors (${describeError(error)})` };
     }
-
-    const failures: string[] = [];
-
-    for (const url of candidateUrls) {
-      for (const whereClause of whereCandidates) {
-        try {
-          const records = await fetchArcgisSample(url, limit, whereClause);
-          const fallbackUsed = configuredUrl && configuredUrl !== url;
-          return {
-            status: IntegrationStatus.OK,
-            message: fallbackUsed ? "Miami-Dade parcels reachable (fallback endpoint)" : "Miami-Dade parcels reachable",
-            records,
-          };
-        } catch (error) {
-          failures.push(`${url} [${whereClause}]: ${describeError(error)}`);
-        }
+    const where = whereMiamiDade(zips);
+    const clave = claveConsulta(capa, where);
+    const cantidad = parcelasPorCorrida();
+    let { offset, vueltas } = posicionDe(contexto?.cursor, clave);
+    try {
+      let records = await fetchArcgisPagina(capa, where, { offset, cantidad, orden: "FOLIO" });
+      if (!records.length && offset > 0) {
+        // El recorrido termino justo en el borde de una pagina: se vuelve al principio en la misma corrida.
+        offset = 0;
+        vueltas += 1;
+        records = await fetchArcgisPagina(capa, where, { offset, cantidad, orden: "FOLIO" });
       }
+      return {
+        status: IntegrationStatus.OK,
+        message: `Miami-Dade parcels: corridor page of ${records.length} from ${offset}`,
+        records,
+        cursor: siguienteCursor(clave, offset, vueltas, records.length, cantidad),
+        metrics: { modo: "corredores", zipsCorredores: zips.length, offset, pedidos: cantidad, vuelta: vueltas },
+      };
+    } catch (error) {
+      return { status: IntegrationStatus.ERROR, message: `Miami-Dade parcels fetch failed: ${describeError(error)}` };
     }
-
-    return {
-      status: IntegrationStatus.ERROR,
-      message: `Miami-Dade parcels fetch failed: ${failures.join(" | ")}`,
-    };
   }
 
+  /** Liviano: una sola parcela y sin cursor. El estado de la integracion no mueve el recorrido. */
   async getHealthStatus(): Promise<HealthStatus> {
-    const result = await this.sync();
-    return { status: result.status, message: result.message };
+    try {
+      await fetchArcgisPagina(capaMiamiDade(), "FOLIO IS NOT NULL", { offset: 0, cantidad: 1, orden: "FOLIO" });
+      return { status: IntegrationStatus.OK, message: "Miami-Dade parcels reachable" };
+    } catch (error) {
+      return { status: IntegrationStatus.ERROR, message: `Miami-Dade parcels fetch failed: ${describeError(error)}` };
+    }
   }
 }

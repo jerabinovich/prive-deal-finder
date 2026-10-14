@@ -20,6 +20,7 @@ import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector
 import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
 import { fetchArcgisWhere } from "./connectors/arcgis";
 import { completarDomiciliosPostales } from "./domicilio-postal";
+import { guardarCursor, leerCursor } from "./parcelas-corredores";
 import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
 import { IntegrationRunsQueryDto } from "./dto/integration-runs-query.dto";
 import { IntegrationStatusQueryDto } from "./dto/integration-status-query.dto";
@@ -1329,7 +1330,8 @@ export class IntegrationsService {
         });
       }
 
-      const result = await connector.sync();
+      // 14-oct-2026: los conectores de parcelas siguen el recorrido donde quedo (parcelas-corredores.ts).
+      const result = await connector.sync({ cursor: await leerCursor(this.prisma, source) });
       if (result.status !== IntegrationStatus.OK || !result.records?.length) {
         return this.finishRun(run.id, source, {
           status: result.status,
@@ -1400,13 +1402,17 @@ export class IntegrationsService {
 
       const ingestMetrics = await ingestArcgisRecords(this.prisma, source, market, result.records);
       const domiciliosPostales = await this.completarDomicilios(source);
+      // 14-oct-2026: el recorrido avanza solo despues de una ingesta exitosa; si algo falla, se repite la pagina.
+      if (result.cursor) await guardarCursor(this.prisma, source, result.cursor);
       return this.finishRun(run.id, source, {
         status: IntegrationStatus.OK,
         message: result.message ?? "Sync completed",
         metrics: {
+          ...(result.metrics ?? {}),
           sampledRecords: result.records.length,
           ...ingestMetrics,
           domiciliosPostales,
+          ...(result.cursor ? { siguienteOffset: result.cursor.offset, vueltas: result.cursor.vueltas } : {}),
         },
       });
     } catch (error) {

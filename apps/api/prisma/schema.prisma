@@ -632,3 +632,12 @@ model ChatCitationLog {
   @@index([messageId])
   @@index([sourceType, sourceId])
 }
+
+/// 14-oct-2026: folios que JR pidio sacar del Deal Finder. La ingesta de parcelas no los vuelve a crear
+/// (src/integrations/descartados.ts).
+model FolioDescartado {
+  id        String   @id @default(uuid())
+  parcelId  String   @unique
+  motivo    String?
+  createdAt DateTime @default(now())
+}

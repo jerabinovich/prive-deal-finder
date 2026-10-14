@@ -4,6 +4,7 @@ import { geocodeAddress } from "./geocoding";
 import { resolveDorUseCode } from "./dor-use-codes";
 import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipPorCoordenadas } from "./zip";
 import { domicilioDeLaCapa } from "./domicilio-postal";
+import { foliosDescartados } from "./descartados";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -206,6 +207,16 @@ export async function ingestArcgisRecords(
   let updatedDeals = 0;
   let createdOwners = 0;
   let linkedOwners = 0;
+  // 14-oct-2026: los folios que JR pidio sacar no se crean ni se actualizan (descartados.ts).
+  const descartados = await foliosDescartados(
+    prisma,
+    features.map((f) => {
+      const o = (f || {}) as { attributes?: Record<string, unknown> };
+      const a = (o.attributes ?? f) as Record<string, unknown> | null;
+      return a && typeof a === "object" ? pickField(a, HEADER_MAP.parcelId) : undefined;
+    }),
+  );
+  let saltados = 0;
 
   for (const feature of features) {
     const featureObj = (feature || {}) as { attributes?: Record<string, unknown>; geometry?: Record<string, unknown> };
@@ -213,6 +224,10 @@ export async function ingestArcgisRecords(
     if (!attrs || typeof attrs !== "object") continue;
 
     const parcelId = pickField(attrs, HEADER_MAP.parcelId);
+    if (parcelId && descartados.has(parcelId)) {
+      saltados += 1;
+      continue;
+    }
     const address = pickField(attrs, HEADER_MAP.address) || composeAddress(attrs);
     const city = pickField(attrs, HEADER_MAP.city);
     const municipality = pickField(attrs, ["MUNICIPALITY", "CITY"]) ?? city;
@@ -385,5 +400,5 @@ export async function ingestArcgisRecords(
     }
   }
 
-  return { createdDeals, updatedDeals, createdOwners, linkedOwners };
+  return { createdDeals, updatedDeals, createdOwners, linkedOwners, descartados: saltados };
 }

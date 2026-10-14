@@ -18,23 +18,69 @@ export type UbicacionParcela = { x: number; y: number; fuente: "PARCELA" | "COND
 
 const capas = new Map<string, string>();
 
-/** La capa de poligonos del mismo servicio, buscada por nombre. null si no esta o si el servicio no responde. */
-export async function capaPoligonosBroward(urlTabla: string): Promise<string | null> {
+/** Una capa del mismo servicio, buscada por nombre exacto. null si no esta o si el servicio no responde. */
+async function capaDelServicio(urlTabla: string, nombre: string): Promise<string | null> {
   const base = urlTabla.replace(/\/+$/, "").replace(/\/\d+$/, "");
-  const guardada = capas.get(base);
+  const clave = `${base}|${nombre}`;
+  const guardada = capas.get(clave);
   if (guardada) return guardada;
   try {
     const respuesta = await fetch(`${base}?f=json`);
     if (!respuesta.ok) return null;
     const cuerpo = (await respuesta.json()) as { layers?: Array<{ id?: number; name?: string }> };
-    const capa = (cuerpo.layers ?? []).find((l) => String(l.name ?? "").trim().toUpperCase() === "PARCELS");
+    const capa = (cuerpo.layers ?? []).find((l) => String(l.name ?? "").trim().toUpperCase() === nombre.toUpperCase());
     if (!capa || typeof capa.id !== "number") return null;
     const url = `${base}/${capa.id}`;
-    capas.set(base, url);
+    capas.set(clave, url);
     return url;
   } catch {
     return null;
   }
+}
+
+/** La capa de poligonos del mismo servicio, buscada por nombre. null si no esta o si el servicio no responde. */
+export function capaPoligonosBroward(urlTabla: string): Promise<string | null> {
+  return capaDelServicio(urlTabla, "Parcels");
+}
+
+/**
+ * Nombre de la subdivision o del condominio de cada folio (capa "Subdiv. Name", campo LEGAL_LINE; la llave
+ * son las primeras 8 posiciones del folio). Sirve para reconocer a un consorcio que demanda sin decir
+ * "association" en el nombre: "Chapel Trail Trade Center Inc" en el condominio CHAPEL TRAIL TRADE CENTER.
+ * Un lote que falla deja esos folios sin nombre.
+ */
+export async function subdivisionesBroward(urlTabla: string, folios: string[]): Promise<Map<string, string>> {
+  const salida = new Map<string, string>();
+  const capa = await capaDelServicio(urlTabla, "Subdiv. Name");
+  if (!capa) return salida;
+  const porSub = new Map<string, string>();
+  const subs = [...new Set(folios.map((f) => String(f ?? "").trim().toUpperCase().slice(0, 8)).filter((s) => /^[0-9A-Z]{8}$/.test(s)))];
+  for (let i = 0; i < subs.length; i += 50) {
+    const lote = subs.slice(i, i + 50);
+    try {
+      // Esta capa no admite paginar (rechaza resultRecordCount), asi que va sin fetchArcgisWhere. Trae una
+      // fila por subdivision y el tope de la capa es 1000, lejos de los 50 por lote.
+      const where = encodeURIComponent(`SUB8 IN (${lote.map((s) => `'${s}'`).join(",")})`);
+      const respuesta = await fetch(`${capa}/query?where=${where}&outFields=SUB8,LEGAL_LINE&returnGeometry=false&f=json`);
+      if (!respuesta.ok) continue;
+      const cuerpo = (await respuesta.json()) as { error?: unknown; features?: unknown[] };
+      if (cuerpo.error || !Array.isArray(cuerpo.features)) continue;
+      for (const feature of cuerpo.features) {
+        const a = ((feature as { attributes?: Record<string, unknown> }).attributes ?? {}) as Record<string, unknown>;
+        const sub = String(a.SUB8 ?? "").trim().toUpperCase();
+        const nombre = String(a.LEGAL_LINE ?? "").trim();
+        if (sub && nombre && !porSub.has(sub)) porSub.set(sub, nombre);
+      }
+    } catch {
+      // sigue con el resto
+    }
+  }
+  for (const f of folios) {
+    const folio = String(f ?? "").trim().toUpperCase();
+    const nombre = porSub.get(folio.slice(0, 8));
+    if (nombre) salida.set(folio, nombre);
+  }
+  return salida;
 }
 
 /** "494111BA0640" (unidad de condominio) da "494111BA0000"; un folio comun o ya maestro da null. */

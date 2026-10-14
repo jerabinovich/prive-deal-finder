@@ -1,6 +1,6 @@
 import { clasificarClaseCaso } from "../deals/distress-classification";
 import { demandanteDeCaratula, resolverDemandadoBroward } from "./broward-demandado";
-import { normalizarRegistrosBroward } from "./broward-parcelas";
+import { normalizarRegistrosBroward, subdivisionesBroward } from "./broward-parcelas";
 import { recalcularDistressYPuntaje } from "./rescore-distress";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
@@ -497,6 +497,16 @@ export class IntegrationsService {
     }
 
     if (!features.length) return 0;
+    // 13-oct-2026: el nombre de la subdivision o del condominio viaja con el expediente; con el se reconoce
+    // al consorcio que demanda sin decir "association" (distress-classification.ts).
+    const conFolio = records.filter((r) => Array.isArray((r as Record<string, unknown>)?.parcelIds)) as Array<
+      Record<string, unknown>
+    >;
+    const subdivisiones = await subdivisionesBroward(url, conFolio.map((r) => String((r.parcelIds as string[])[0])));
+    for (const r of conFolio) {
+      const nombre = subdivisiones.get(String((r.parcelIds as string[])[0]).toUpperCase());
+      if (nombre) r.subdivision = nombre;
+    }
     // 13-oct-2026: ciudad con nombre y coordenadas del poligono de la parcela (broward-parcelas.ts).
     const normalizadas = await normalizarRegistrosBroward(url, features);
     const ingested = await ingestArcgisRecords(this.prisma, "broward-parcels", "Broward", normalizadas);

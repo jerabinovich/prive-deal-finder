@@ -43,6 +43,50 @@ export type CasoForeclosure = {
   textoCaso: string;
 };
 
+/**
+ * EL CONSORCIO QUE NO DICE "ASSOCIATION" (13-oct-2026). Muchos consorcios demandan con el nombre del
+ * edificio o del complejo: "Chapel Trail Trade Center Inc", "Hallandale Towers East, Inc.", "Haven House
+ * No 5". El nombre no alcanza, pero el catastro dice como se llama la subdivision o el condominio de la
+ * propiedad (subdivisionesBroward). Si el demandante lleva todas las palabras propias de ese nombre, es el
+ * consorcio de esa propiedad cobrando expensas. Nunca para un prestamista ni para un gobierno.
+ */
+const PALABRAS_GENERICAS_SUBDIVISION = new Set([
+  "CONDO", "CONDOMINIUM", "CONDOMINIUMS", "ASSOCIATION", "ASSN", "ASSOC", "PHASE", "PH", "NO", "NUMBER",
+  "UNIT", "UNITS", "BLDG", "BUILDING", "BLK", "BLOCK", "SEC", "SECTION", "ADD", "ADDITION", "REPLAT",
+  "AMENDED", "AMEND", "PLAT", "RESUB", "SUBDIVISION", "SUB", "THE", "OF", "AT", "A", "AN", "AND", "IN",
+  "ON", "PB", "PG", "INC", "LLC", "CORP", "LTD", "CO",
+]);
+const ROMANOS = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)$/;
+/** Palabras de negocio: si el demandante agrega una de estas al nombre del lugar, es una empresa, no el consorcio. */
+const PALABRAS_DE_NEGOCIO = new Set([
+  "CAPITAL", "INVEST", "INVESTMENT", "INVESTMENTS", "INVESTORS", "HOLDING", "HOLDINGS", "PARTNERS", "PARTNERSHIP",
+  "VENTURE", "VENTURES", "GROUP", "TRUST", "TRUSTEE", "EQUITY", "EQUITIES", "REALTY", "PROPERTIES", "DEVELOPMENT",
+  "DEVELOPERS", "DEVELOPER", "BUILDERS", "CONSTRUCTION", "HOMES", "ACQUISITION", "ACQUISITIONS", "ASSETS", "ENTERPRISES",
+  "FUND", "FUNDS", "LENDER", "LENDERS", "NOTE", "NOTES", "ESTATE", "BANCORP", "PRIVATE",
+]);
+
+function palabrasPropias(texto: string): string[] {
+  return (texto || "")
+    .toUpperCase()
+    .replace(/['’`]/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 1 && !/\d/.test(t) && !ROMANOS.test(t) && !PALABRAS_GENERICAS_SUBDIVISION.has(t));
+}
+
+export function demandanteEsDeLaSubdivision(demandante: string, subdivision?: string | null): boolean {
+  const propias = palabrasPropias(subdivision ?? "");
+  if (!propias.length) return false;
+  if (propias.length === 1 && propias[0].length < 6) return false;
+  const d = (demandante || "").toUpperCase();
+  if (RE_PRESTAMISTA.test(d) || /^\s*(CITY|TOWN|VILLAGE|COUNTY|STATE)\s+OF\b/.test(d)) return false;
+  const delDemandante = palabrasPropias(d);
+  const delLugar = new Set(propias);
+  if (delDemandante.some((p) => !delLugar.has(p) && PALABRAS_DE_NEGOCIO.has(p))) return false;
+  const conjunto = new Set(delDemandante);
+  return propias.every((p) => conjunto.has(p));
+}
+
 export type SenalCruda = { source?: string | null; metadata?: string | null };
 
 /** Codigos DOR que hacen interesante un caso "Other": tierra, multifamily, industrial. */
@@ -123,7 +167,9 @@ export function leerCasoForeclosure(metadata?: string | null): CasoForeclosure {
   return {
     clase: clasificarClaseCaso(textoCaso),
     banda: clasificarBanda(textoCaso),
-    demandanteEsConsorcio: esDemandanteConsorcio(demandante),
+    // 13-oct-2026: tambien es consorcio el que se llama como la subdivision o el condominio de la propiedad.
+    demandanteEsConsorcio:
+      esDemandanteConsorcio(demandante) || demandanteEsDeLaSubdivision(demandante, texto(raw, "subdivision")),
     textoCaso,
   };
 }

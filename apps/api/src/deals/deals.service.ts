@@ -14,6 +14,7 @@ import { DealsBackfillDto } from "./dto/deals-backfill.dto";
 import { ListDealsQueryDto } from "./dto/list-deals-query.dto";
 import { ProjectionScenarioDto } from "./dto/projection-scenario.dto";
 import { UpdateDealDto } from "./dto/update-deal.dto";
+import { normalizarMercado } from "./mercado";
 import { UpdateWorkflowTaskDto } from "./dto/update-workflow-task.dto";
 // 14-sep-2026: se eliminan las copias locales. Estos tipos, constantes y helpers ya
 // vivian en deals.types.ts y deals.utils.ts — eran DOS fuentes de verdad para lo
@@ -1861,7 +1862,9 @@ export class DealsService {
   }
 
   async create(input: CreateDealDto) {
-    const data = input.zip === undefined ? input : { ...input, zip: normalizarZip(input.zip) ?? undefined };
+    // 13-oct-2026: mercado canonico y el barrio a submarket (mercado.ts).
+    const conMercado = input.market === undefined ? input : { ...input, ...normalizarMercado(input.market, input.submarket) };
+    const data = conMercado.zip === undefined ? conMercado : { ...conMercado, zip: normalizarZip(conMercado.zip) ?? undefined };
     const dataCompletenessScore = computeDealCompletenessScore({
       parcelId: data.parcelId,
       address: data.address,
@@ -1881,7 +1884,9 @@ export class DealsService {
   }
 
   async update(id: string, input: UpdateDealDto) {
-    const data = input.zip === undefined ? input : { ...input, zip: normalizarZip(input.zip) ?? undefined };
+    // 13-oct-2026: mercado canonico y el barrio a submarket (mercado.ts).
+    const conMercado = input.market === undefined ? input : { ...input, ...normalizarMercado(input.market, input.submarket) };
+    const data = conMercado.zip === undefined ? conMercado : { ...conMercado, zip: normalizarZip(conMercado.zip) ?? undefined };
     const current = await this.ensureDeal(id);
     const dataCompletenessScore = computeDealCompletenessScore({
       parcelId: data.parcelId ?? current.parcelId,

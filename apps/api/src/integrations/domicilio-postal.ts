@@ -166,3 +166,77 @@ export async function completarDomiciliosPostales(
   }
   return resultado;
 }
+
+/**
+ * DUENO DEL ROL ESTATAL (15-oct-2026). La capa de parcelas de Miami-Dade (MD_Emaps/72) no trae el dueno: de los
+ * deals que trajo el sync por corredores, ninguno tenia. El rol estatal si lo tiene (OWN_NAME). Es el del ano
+ * anterior: si la propiedad se vendio despues, es el dueno anterior. Por eso solo se escribe en deals sin ningun
+ * dueno, y el vinculo queda marcado con role ROL_ESTATAL. Con dueno, el triage reconoce gobierno, consorcio y
+ * utility, igual que en Broward y Palm Beach, que lo traen en su capa.
+ */
+export const FUENTES_SIN_DUENO = new Set(["miami-dade-parcels"]);
+export const ROL_ESTATAL = "ROL_ESTATAL";
+
+/** Dueno del rol estatal por folio, aunque no tenga domicilio. Un lote que falla deja esos folios sin dueno. */
+export async function duenosEstatales(condado: number, folios: string[], url = CATASTRO_ESTATAL_URL): Promise<Map<string, string>> {
+  const salida = new Map<string, string>();
+  const ids = [...new Set(folios.map(folioNormalizado).filter((f) => f.length >= 8))];
+  for (let i = 0; i < ids.length; i += 50) {
+    const lote = ids.slice(i, i + 50);
+    const where = encodeURIComponent(`CO_NO = ${condado} AND PARCEL_ID IN (${lote.map((f) => `'${f}'`).join(",")})`);
+    try {
+      const respuesta = await fetch(`${url}/query?where=${where}&outFields=PARCEL_ID,OWN_NAME&returnGeometry=false&f=json`);
+      if (!respuesta.ok) continue;
+      const cuerpo = (await respuesta.json()) as { error?: unknown; features?: Array<{ attributes?: Record<string, unknown> }> };
+      if (cuerpo.error || !Array.isArray(cuerpo.features)) continue;
+      for (const feature of cuerpo.features) {
+        const a = feature.attributes ?? {};
+        const id = folioNormalizado(a.PARCEL_ID);
+        const nombre = limpio(a.OWN_NAME);
+        if (id && nombre && !salida.has(id)) salida.set(id, nombre);
+      }
+    } catch {
+      // sigue con el resto; la proxima corrida reintenta
+    }
+  }
+  return salida;
+}
+
+export type ResultadoDuenos = { revisados: number; vinculados: number; sinFila: number };
+
+/** Vincula el dueno del rol estatal a los deals sin dueno de una fuente que no lo publica. Tope por corrida. */
+export async function completarDuenosEstatales(
+  prisma: PrismaService,
+  source: string,
+  tope = 500,
+  url = CATASTRO_ESTATAL_URL,
+): Promise<ResultadoDuenos> {
+  const resultado: ResultadoDuenos = { revisados: 0, vinculados: 0, sinFila: 0 };
+  const condado = CONDADO_DOR[source];
+  if (!condado || !FUENTES_SIN_DUENO.has(source)) return resultado;
+  const deals = await prisma.deal.findMany({
+    where: { source, parcelId: { not: null }, owners: { none: {} } },
+    select: { id: true, parcelId: true },
+    orderBy: { updatedAt: "desc" },
+    take: tope,
+  });
+  resultado.revisados = deals.length;
+  if (!deals.length) return resultado;
+  const filas = await duenosEstatales(condado, deals.map((d) => String(d.parcelId)), url);
+  for (const d of deals) {
+    const nombre = filas.get(folioNormalizado(d.parcelId));
+    if (!nombre) {
+      resultado.sinFila += 1;
+      continue;
+    }
+    let owner = await prisma.owner.findFirst({ where: { name: nombre } });
+    if (!owner) owner = await prisma.owner.create({ data: { name: nombre } });
+    await prisma.dealOwner.upsert({
+      where: { dealId_ownerId: { dealId: d.id, ownerId: owner.id } },
+      update: {},
+      create: { dealId: d.id, ownerId: owner.id, role: ROL_ESTATAL },
+    });
+    resultado.vinculados += 1;
+  }
+  return resultado;
+}

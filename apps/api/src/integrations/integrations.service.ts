@@ -20,7 +20,7 @@ import { MiamiDadeCodeEnforcementConnector } from "./connectors/miami-dade-code-
 import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector";
 import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
 import { fetchArcgisWhere } from "./connectors/arcgis";
-import { completarDomiciliosPostales } from "./domicilio-postal";
+import { completarDomiciliosPostales, completarDuenosEstatales } from "./domicilio-postal";
 import { guardarCursor, leerCursor } from "./parcelas-corredores";
 import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
 import { IntegrationRunsQueryDto } from "./dto/integration-runs-query.dto";
@@ -529,6 +529,15 @@ export class IntegrationsService {
     }
   }
 
+  /** 15-oct-2026: los deals sin dueno de Miami-Dade toman el del rol estatal (domicilio-postal.ts). */
+  private async completarDuenos(source: string): Promise<number> {
+    try {
+      return (await completarDuenosEstatales(this.prisma, source)).vinculados;
+    } catch {
+      return 0;
+    }
+  }
+
   private async seedDealsFromDistressFolios(source: string, records: unknown[]) {
     if (source === "broward-foreclosure") return this.seedDealsFromForeclosureDefendants(records);
     if (source !== "miami-dade-code-enforcement") return 0;
@@ -560,6 +569,7 @@ export class IntegrationsService {
     if (!features.length) return 0;
     const ingested = await ingestArcgisRecords(this.prisma, "miami-dade-parcels", "Miami-Dade", features);
     await this.completarDomicilios("miami-dade-parcels");
+    await this.completarDuenos("miami-dade-parcels");
     return ingested.createdDeals + ingested.updatedDeals;
   }
 
@@ -1406,6 +1416,7 @@ export class IntegrationsService {
 
       const ingestMetrics = await ingestArcgisRecords(this.prisma, source, market, result.records);
       const domiciliosPostales = await this.completarDomicilios(source);
+      const duenosEstatales = await this.completarDuenos(source);
       // 14-oct-2026: el recorrido avanza solo despues de una ingesta exitosa; si algo falla, se repite la pagina.
       if (result.cursor) await guardarCursor(this.prisma, source, result.cursor);
       return this.finishRun(run.id, source, {
@@ -1416,6 +1427,7 @@ export class IntegrationsService {
           sampledRecords: result.records.length,
           ...ingestMetrics,
           domiciliosPostales,
+          duenosEstatales,
           ...(result.cursor ? { siguienteOffset: result.cursor.offset, vueltas: result.cursor.vueltas } : {}),
         },
       });

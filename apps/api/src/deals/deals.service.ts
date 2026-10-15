@@ -3,6 +3,8 @@ import type { EntradaDecision } from "./operational-decision";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../shared/prisma.service";
+import { urlTablaBroward } from "../integrations/broward-servicio";
+import { CAPA_PALM_BEACH } from "../integrations/parcelas-palm-beach";
 import { fetchArcgisWhere } from "../integrations/connectors/arcgis";
 import { readRecordedDebt } from "../integrations/miami-dade-clerk.debt";
 import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, resolverZipDelSitio } from "../integrations/zip";
@@ -355,13 +357,13 @@ export class DealsService {
     const attempts: Array<{ url: string; where: string; orderBy?: string }> = [];
 
     if (source === "palm-beach-parcels") {
-      const url = process.env.PALM_BEACH_PARCELS_URL;
+      const url = CAPA_PALM_BEACH; // 15-oct-2026: la capa del condado, la misma del conector (parcelas-palm-beach.ts); la de la ciudad de West Palm Beach no tiene Boca ni Jupiter
       if (url) {
         attempts.push({ url, where: `PARID = '${escaped}'` });
         attempts.push({ url, where: `PARCEL_NUMBER = '${escaped}'` });
       }
     } else if (source === "broward-parcels") {
-      const url = process.env.BROWARD_PARCELS_URL;
+      const url = await urlTablaBroward();
       if (url) {
         // 13-sep-2026: PARCELID y LOWPARCELI no existen en BCPA (Property
         // Appraiser de Broward); el campo es FOLIO_NUMBER. Y la tabla no tiene

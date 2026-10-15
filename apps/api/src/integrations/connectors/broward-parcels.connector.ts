@@ -1,4 +1,5 @@
 import { normalizarRegistrosBroward } from "../broward-parcelas";
+import { urlTablaBroward } from "../broward-servicio";
 import { fetchArcgisPagina } from "../arcgis-pagina";
 import { claveConsulta, parcelasPorCorrida, posicionDe, siguienteCursor, whereBroward, zipsDeCorredores } from "../parcelas-corredores";
 import {
@@ -24,7 +25,7 @@ export class BrowardParcelsConnector implements IntegrationConnector {
    * FOLIO_NUMBER: BCPA_INFO no tiene OID y sin orden rechaza la paginacion. Es una tabla, sin geometria.
    */
   async sync(contexto?: ContextoSync): Promise<SyncResult> {
-    const url = process.env.BROWARD_PARCELS_URL;
+    const url = await urlTablaBroward();
     if (!url) {
       return { status: IntegrationStatus.NEEDS_CONFIG, message: "BROWARD_PARCELS_URL missing" };
     }
@@ -54,7 +55,15 @@ export class BrowardParcelsConnector implements IntegrationConnector {
         message: `Broward parcels: corridor page of ${records.length} from ${offset}`,
         records: normalizados,
         cursor: siguienteCursor(clave, offset, vueltas, records.length, cantidad),
-        metrics: { modo: "corredores", zipsCorredores: zips.length, offset, pedidos: cantidad, vuelta: vueltas },
+        metrics: {
+          modo: "corredores",
+          zipsCorredores: zips.length,
+          offset,
+          pedidos: cantidad,
+          vuelta: vueltas,
+          // 15-oct-2026: el servicio del rol en uso (broward-servicio.ts); si cambia, el recorrido empieza de nuevo.
+          capa: url.split("/rest/services/")[1] ?? url,
+        },
       };
     } catch (_error) {
       return { status: IntegrationStatus.ERROR, message: "Broward parcels fetch failed" };
@@ -63,7 +72,7 @@ export class BrowardParcelsConnector implements IntegrationConnector {
 
   /** Liviano: una sola parcela y sin cursor. */
   async getHealthStatus(): Promise<HealthStatus> {
-    const url = process.env.BROWARD_PARCELS_URL;
+    const url = await urlTablaBroward();
     if (!url) return { status: IntegrationStatus.NEEDS_CONFIG, message: "BROWARD_PARCELS_URL missing" };
     try {
       await fetchArcgisPagina(url, "FOLIO_NUMBER IS NOT NULL", { offset: 0, cantidad: 1, orden: "FOLIO_NUMBER", geometria: false });

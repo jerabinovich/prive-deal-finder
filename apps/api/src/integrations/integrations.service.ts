@@ -1,6 +1,7 @@
 import { clasificarClaseCaso } from "../deals/distress-classification";
 import { demandanteDeCaratula, resolverDemandadoBroward } from "./broward-demandado";
 import { normalizarRegistrosBroward, subdivisionesBroward } from "./broward-parcelas";
+import { urlTablaBroward } from "./broward-servicio";
 import { recalcularDistressYPuntaje } from "./rescore-distress";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
@@ -466,7 +467,7 @@ export class IntegrationsService {
    * Es GRATIS: el catastro de Broward es ArcGIS abierto, no consume unidades.
    */
   private async seedDealsFromForeclosureDefendants(records: unknown[]) {
-    const url = process.env.BROWARD_PARCELS_URL;
+    const url = await urlTablaBroward();
     if (!url) return 0;
 
     const features: unknown[] = [];

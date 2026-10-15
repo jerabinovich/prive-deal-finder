@@ -1333,6 +1333,9 @@ export class IntegrationsService {
       // 14-oct-2026: los conectores de parcelas siguen el recorrido donde quedo (parcelas-corredores.ts).
       const result = await connector.sync({ cursor: await leerCursor(this.prisma, source) });
       if (result.status !== IntegrationStatus.OK || !result.records?.length) {
+        // 15-oct-2026: una pagina leida pero toda fuera del corredor (Palm Beach filtra West Palm Beach por zip)
+        // no tiene nada que ingerir y el recorrido igual avanza; si no, la proxima corrida pide la misma pagina.
+        if (result.status === IntegrationStatus.OK && result.cursor) await guardarCursor(this.prisma, source, result.cursor);
         return this.finishRun(run.id, source, {
           status: result.status,
           message: result.message ?? "Sync completed",

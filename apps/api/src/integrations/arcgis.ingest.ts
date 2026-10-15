@@ -20,7 +20,9 @@ const HEADER_MAP: Record<string, string[]> = {
   ],
   city: CAMPOS_CIUDAD_DEL_SITIO,
   mailingAddress: ["MAIL_ADDR", "MAILING_ADDRESS", "OWNER_MAILING_ADDRESS", "PSTLADDRESS"],
-  state: ["SITUS_STATE", "STATE", "PSTLSTATE"],
+  // 14-oct-2026: STATE y PSTLSTATE son el estado del domicilio postal del dueno (Palm Beach los trae asi), y un
+  // dueno de Michigan dejaba el deal en "MI". Las fuentes son condados de Florida: sin estado del sitio, queda FL.
+  state: ["SITUS_STATE"],
   zip: CAMPOS_ZIP_DEL_SITIO,
   owner: ["OWNER_NAME1", "OWNER_NAME2", "OWNER_NAME", "OWNERNME1", "OWNERNME2", "OWNER", "OWN_NAME", "NAME", "CNVYNAME", "NAME_LINE_1"],
   assetType: ["PROPERTY_USE", "USEDSCRP", "PRPRTYDSCR", "CLASSDSCRP", "DOR_DESC"],

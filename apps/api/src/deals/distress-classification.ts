@@ -40,6 +40,8 @@ export type CasoForeclosure = {
   clase: ClaseCaso;
   banda: BandaMonto;
   demandanteEsConsorcio: boolean;
+  /** 15-oct-2026: un municipio que ejecuta cobra multas de codigo o tasas (esDemandanteMunicipio). */
+  demandanteEsMunicipio?: boolean;
   textoCaso: string;
 };
 
@@ -117,6 +119,19 @@ export function esDemandanteConsorcio(demandante: string): boolean {
   if (RE_CONSORCIO_FUERTE.test(d)) return true;
   return RE_ASOCIACION.test(d) && !RE_PRESTAMISTA.test(d);
 }
+
+/**
+ * LA DEMANDA DE UN MUNICIPIO (15-oct-2026). JR: "las 3 demandas de la ciudad pasan a senal blanda". City of
+ * Wilton Manors contra Andrews Ave Retail y New Global Holdings ejecuta multas de codigo o tasas, no una hipoteca:
+ * es la misma senal blanda que el code enforcement. Vale para City of, Town of y Village of (Town of Davie). Un
+ * prestamista con "City" en el nombre (City National Bank of Florida) no dice "City of" y queda como estaba.
+ */
+const RE_MUNICIPIO = /\b(CITY|TOWN|VILLAGE) OF\b/;
+
+export function esDemandanteMunicipio(demandante: string): boolean {
+  const d = demandante.toUpperCase();
+  return RE_MUNICIPIO.test(d) && !RE_PRESTAMISTA.test(d);
+}
 const ESTADOS_VIGENTES = new Set(["LIEN", "OPEN", "REFERRED TO INTERNAL COMPLIANCE"]);
 export const MINIMO_VIOLACIONES_VIGENTES = 3;
 
@@ -170,6 +185,7 @@ export function leerCasoForeclosure(metadata?: string | null): CasoForeclosure {
     // 13-oct-2026: tambien es consorcio el que se llama como la subdivision o el condominio de la propiedad.
     demandanteEsConsorcio:
       esDemandanteConsorcio(demandante) || demandanteEsDeLaSubdivision(demandante, texto(raw, "subdivision")),
+    demandanteEsMunicipio: esDemandanteMunicipio(demandante),
     textoCaso,
   };
 }
@@ -178,6 +194,8 @@ export function leerCasoForeclosure(metadata?: string | null): CasoForeclosure {
 export function esForeclosureDeInteres(caso: CasoForeclosure, propertyUseCode?: string | null): boolean {
   if (!caso.textoCaso) return false;
   if (caso.demandanteEsConsorcio) return false;
+  // 15-oct-2026 (JR): la demanda de un municipio es senal blanda, como el code enforcement.
+  if (caso.demandanteEsMunicipio) return false;
   if (caso.banda === "DESCONOCIDA") return false;
   if (caso.clase === "COMERCIAL") return true;
   if (caso.clase === "RES_HOMESTEAD" || caso.clase === "RES_NO_HOMESTEAD") return caso.banda === "DESDE_250K";
@@ -237,8 +255,11 @@ export function decidirDistress(signals: SenalCruda[], propertyUseCode?: string 
   const codeEnf = signals.filter((s) => (s.source ?? "").includes("code-enforcement"));
 
   let deInteres = 0;
+  let deMunicipio = 0;
   for (const s of foreclosures) {
-    if (esForeclosureDeInteres(leerCasoForeclosure(s.metadata), propertyUseCode)) deInteres += 1;
+    const caso = leerCasoForeclosure(s.metadata);
+    if (esForeclosureDeInteres(caso, propertyUseCode)) deInteres += 1;
+    else if (caso.demandanteEsMunicipio) deMunicipio += 1;
   }
   const descartados = foreclosures.length - deInteres;
   const ce = resumirCodeEnforcement(codeEnf);
@@ -254,7 +275,9 @@ export function decidirDistress(signals: SenalCruda[], propertyUseCode?: string 
     motivo = `${ce.vigentes} violaciones de codigo vigentes`;
   } else if (descartados > 0 || ce.vigentes > 0) {
     stage = "SIGNALS_ONLY";
-    motivo = descartados > 0 ? `${descartados} foreclosure(s) fuera de criterio` : "violaciones de codigo aisladas";
+    motivo = descartados > 0
+      ? `${descartados} foreclosure(s) fuera de criterio${deMunicipio ? `, ${deMunicipio} de un municipio (senal blanda)` : ""}`
+      : "violaciones de codigo aisladas";
   }
 
   if (ORDEN[stage] === undefined) stage = "SIGNALS_ONLY";

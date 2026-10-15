@@ -125,7 +125,9 @@ export function computeTriageScore(params: {
   // sacar los codigos 80-89 del set no alcanza: este gate los tapaba igual y el
   // carril GOV_LAND_P3 seguia vacio.
   const ownerType = inferOwnerType(params.ownerNames ?? []);
-  if ((ownerType === "GOV" && !esTierraP3) || ownerType === "UTILITY" || ownerType === "HOA") {
+  // 15-oct-2026 (JR, "A P3"): un inmueble de un gobierno no es ruido: va al carril GOV_LAND_P3 (operational-decision).
+  // Parques, escuelas, hospitales, militar, calles y servicios siguen afuera por su codigo DOR o su texto, antes.
+  if (ownerType === "UTILITY" || ownerType === "HOA") {
     return {
       score: 0, isNoise: true, noiseReason: ownerType === "UTILITY" ? "UTILITY" : "UNKNOWN",
       reasons: [`descartado: propietario ${ownerType} — no transacciona`],
@@ -215,7 +217,9 @@ export function evaluarRuido(params: {
   }
   if (porTexto) return { isNoise: true, noiseReason: porTexto, esTierraP3 };
   const ownerType = inferOwnerType(params.ownerNames ?? []);
-  if ((ownerType === "GOV" && !esTierraP3) || ownerType === "UTILITY" || ownerType === "HOA") {
+  // 15-oct-2026 (JR, "A P3"): un inmueble de un gobierno no es ruido: va al carril GOV_LAND_P3 (operational-decision).
+  // Parques, escuelas, hospitales, militar, calles y servicios siguen afuera por su codigo DOR o su texto, antes.
+  if (ownerType === "UTILITY" || ownerType === "HOA") {
     return { isNoise: true, noiseReason: ownerType === "UTILITY" ? "UTILITY" : "UNKNOWN", esTierraP3 };
   }
   return { isNoise: false, noiseReason: null, esTierraP3 };

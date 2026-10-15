@@ -56,13 +56,21 @@ describe("computeTriageScore", () => {
       }
     });
 
-    it("descarta por propietario que no transacciona, aunque el activo sirva", () => {
+    it("descarta por propietario que no transacciona (HOA o utility), aunque el activo sirva", () => {
+      const r = computeTriageScore({
+        assetType: "VACANT COMMERCIAL LAND", city: "WEST PALM BEACH", state: "FL",
+        ownerNames: ["SUNRISE HOMEOWNERS ASSOCIATION"],
+      });
+      expect(r.score).toBe(0);
+      expect(r.isNoise).toBe(true);
+    });
+
+    it("15-oct-2026 (JR): un inmueble de un gobierno no es ruido; va al carril P3", () => {
       const r = computeTriageScore({
         assetType: "VACANT COMMERCIAL LAND", city: "WEST PALM BEACH", state: "FL",
         ownerNames: ["PALM BEACH COUNTY"],
       });
-      expect(r.score).toBe(0);
-      expect(r.isNoise).toBe(true);
+      expect(r.isNoise).toBe(false);
     });
   });
 

@@ -189,11 +189,25 @@ export function parseEventDate(value: unknown) {
   return null;
 }
 
+/**
+ * 15-oct-2026: gobierno por nombre, pero no una entidad privada que nombra un condado o una ciudad. "United Way
+ * of Broward County Inc" o "County Line Plaza LLC" contaban como gobierno por decir COUNTY. Un nombre con forma de
+ * empresa o de entidad privada no es gobierno, salvo "municipal corporation". Se suma Village of (Wellington).
+ */
+const RE_GOBIERNO = /COUNTY|CITY OF|STATE OF|TOWN OF|VILLAGE OF/;
+const RE_PRIVADO =
+  /\b(INC|INCORPORATED|LLC|L L C|LLP|LP|LTD|CORP|CORPORATION|COMPANY|FOUNDATION|ASSOCIATION|ASSN|ASSOC|CHURCH|MINISTRIES|BANK|CLUB|UNITED WAY|HOLDINGS|PROPERTIES|PARTNERS)\b/;
+
+export function esNombreDeGobierno(nombre: string): boolean {
+  const n = nombre.toUpperCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
+  if (!RE_GOBIERNO.test(n)) return false;
+  return !RE_PRIVADO.test(n) || /MUNICIPAL CORP/.test(n);
+}
+
 export function inferOwnerType(ownerNames: string[]) {
   const joined = ownerNames.join(" ").toUpperCase();
   if (!joined.trim()) return "UNKNOWN" as const;
-  if (joined.includes("COUNTY") || joined.includes("CITY OF") || joined.includes("STATE OF") || joined.includes("TOWN OF"))
-    return "GOV" as const;
+  if (ownerNames.some((n) => esNombreDeGobierno(String(n ?? "")))) return "GOV" as const;
   if (joined.includes("HOA") || joined.includes("HOMEOWNERS")) return "HOA" as const;
   if (joined.includes("UTILITY") || joined.includes("WATER") || joined.includes("ELECTRIC")) return "UTILITY" as const;
   return "PRIVATE" as const;

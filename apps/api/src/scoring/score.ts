@@ -54,7 +54,8 @@ function assetFitPoints(haystack: string): { points: number; label: string } {
 }
 
 /** Fuentes cuyo condado ES core por definicion, sin depender del nombre de ciudad. */
-const CORE_SOURCES = ["miami-dade", "broward", "palm-beach", "mdpa"];
+// 15-oct-2026: Martin (geografia core desde el 11 oct) y Monroe (los Keys, core desde el 20 jun) suman sus fuentes.
+const CORE_SOURCES = ["miami-dade", "broward", "palm-beach", "mdpa", "martin", "monroe"];
 
 function marketFitPoints(city?: string, municipality?: string, state?: string, source?: string) {
   // 13-sep-2026: Broward devuelve SITUS_CITY como codigo de 2 letras ("PA" =

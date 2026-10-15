@@ -16,6 +16,8 @@ import { MdpaConnector } from "./connectors/mdpa.connector";
 import { MiamiDadeForeclosureConnector } from "./connectors/miami-dade-foreclosure.connector";
 import { MiamiDadeParcelsConnector } from "./connectors/miami-dade-parcels.connector";
 import { PalmBeachParcelsConnector } from "./connectors/palm-beach-parcels.connector";
+import { CatastroEstatalParcelsConnector } from "./connectors/parcelas-estatales.connector";
+import { CONDADOS_ESTATALES } from "./parcelas-estatales";
 import { MiamiDadeCodeEnforcementConnector } from "./connectors/miami-dade-code-enforcement.connector";
 import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector";
 import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
@@ -73,6 +75,8 @@ export class IntegrationsService {
     new MiamiDadeParcelsConnector(),
     new BrowardParcelsConnector(),
     new PalmBeachParcelsConnector(),
+    // 15-oct-2026: Martin y Monroe por el catastro estatal (parcelas-estatales.ts).
+    ...CONDADOS_ESTATALES.map((c) => new CatastroEstatalParcelsConnector(c)),
     new MiamiDadeCodeEnforcementConnector(),
     new MiamiDadeClerkConnector(),
   ];
@@ -1401,6 +1405,7 @@ export class IntegrationsService {
         "miami-dade-parcels": "Miami-Dade",
         "broward-parcels": "Broward",
         "palm-beach-parcels": "Palm Beach",
+        ...Object.fromEntries(CONDADOS_ESTATALES.map((c) => [c.source, c.market])),
       };
 
       const market = marketMap[source];

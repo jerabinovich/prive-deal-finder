@@ -40,6 +40,7 @@ export function decidirOperacion(input: EntradaDecision): OperationalDecision {
       assetType: input.deal.assetType,
       propertyUseCode: input.deal.propertyUseCode,
       ownerNames,
+      mailingAddress: input.deal.mailingAddress,
     });
     const noiseReason = gates.noiseReason as import("./deals.types").NoiseReason | null;
     const isNoise = gates.isNoise;
@@ -90,7 +91,9 @@ export function decidirOperacion(input: EntradaDecision): OperationalDecision {
 
     if (isNoise) {
       lane = "NON_ACQUIRABLE_NOISE"; recommendedAction = "ARCHIVE";
-      why.push("Use category matches non-acquirable pattern.");
+      why.push(noiseReason === "CONSERVATION"
+        ? "Conservation land (wildlife refuge or conservancy owner): not acquirable."
+        : "Use category matches non-acquirable pattern.");
       blockers.push("Non-acquirable asset category by policy.");
     } else if (!input.deal.parcelId && !input.deal.address) {
       lane = "RESEARCH_REQUIRED"; recommendedAction = "RESEARCH";

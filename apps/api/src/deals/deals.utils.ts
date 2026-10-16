@@ -204,6 +204,31 @@ export function esNombreDeGobierno(nombre: string): boolean {
   return !RE_PRIVADO.test(n) || /MUNICIPAL CORP/.test(n);
 }
 
+/**
+ * TIERRA DE CONSERVACION (16-oct-2026, JR: "Quita P3"). En Jupiter Island, 59 parcelas federales del refugio de
+ * fauna (el dueno figura como UNITED STATES OF AMERICA y el domicilio es "C/O FISH & WILDLIFE SERVICE") entraban a
+ * GOV_LAND_P3 por su codigo DOR 88, y 2 de Nature Conservancy tambien. No es tierra que un gobierno vaya a licitar
+ * ni que un dueno privado venda: es conservacion. Se reconoce por el dueno (una entidad de conservacion) o por el
+ * domicilio postal de una agencia de conservacion. El domicilio solo cuenta con el nombre completo de la agencia:
+ * una calle "Conservancy Dr" o "Audubon Ave" no es una agencia. Un consorcio con "Conservancy" en el nombre sigue
+ * siendo consorcio. El rol corta el nombre del dueno en 30 a 33 letras ("OCEAN REEF CONSERVATION ASSOCI"): la
+ * palabra que sigue a CONSERVATION puede venir cortada.
+ */
+const RE_DUENO_CONSERVACION =
+  /\b(FISH (AND|&) WILDLIFE|WILDLIFE REFUGE|CONSERVANCY|NATIONAL PARK SERVICE|AUDUBON SOCIETY|CONSERVATION (FUND|ASSOC\w*|ASSN|COMMISSION|DISTRICT|FOUNDATION|TRUST|SOCIETY|LANDS?))\b/;
+const RE_DOMICILIO_CONSERVACION =
+  /\b(FISH (AND|&) WILDLIFE SERVICE|FISH AND WILDLIFE CONSERVATION COMMISSION|NATIONAL PARK SERVICE|WILDLIFE REFUGE)\b/;
+const RE_CONSORCIO = /\b(HOMEOWNERS|HOA|CONDOMINIUM|CONDO|PROPERTY OWNERS|MASTER ASSOCIATION|COMMUNITY ASSOCIATION)\b/;
+
+export function esConservacion(ownerNames: string[], mailingAddress?: string | null): boolean {
+  const limpio = (t: string) => t.toUpperCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
+  const porDueno = ownerNames.some((n) => {
+    const t = limpio(String(n ?? ""));
+    return RE_DUENO_CONSERVACION.test(t) && !RE_CONSORCIO.test(t);
+  });
+  return porDueno || RE_DOMICILIO_CONSERVACION.test(limpio(String(mailingAddress ?? "")));
+}
+
 export function inferOwnerType(ownerNames: string[]) {
   const joined = ownerNames.join(" ").toUpperCase();
   if (!joined.trim()) return "UNKNOWN" as const;

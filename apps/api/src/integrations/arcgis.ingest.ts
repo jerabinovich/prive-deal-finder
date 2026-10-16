@@ -291,6 +291,7 @@ export async function ingestArcgisRecords(
       assetType,
       propertyUseCode,
       ownerNames: ownerName ? [ownerName] : [],
+      mailingAddress,
       source,
       city,
       municipality,

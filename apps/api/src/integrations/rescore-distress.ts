@@ -46,6 +46,7 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
       assetType: deal.assetType,
       propertyUseCode: deal.propertyUseCode,
       ownerNames: owners.map((item) => item.owner?.name).filter((name): name is string => Boolean(name)),
+      mailingAddress: deal.mailingAddress,
       city: deal.city,
       municipality: deal.municipality,
       state: deal.state,

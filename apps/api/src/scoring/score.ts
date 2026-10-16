@@ -1,4 +1,4 @@
-import { detectNoiseReason, inferOwnerType } from "../deals/deals.utils";
+import { detectNoiseReason, esConservacion, inferOwnerType } from "../deals/deals.utils";
 import type { NoiseReason } from "../deals/deals.types";
 import { isNonAcquirableDorCode, isGovP3DorCode } from "../integrations/dor-use-codes";
 
@@ -86,6 +86,8 @@ export function computeTriageScore(params: {
   assetType?: string | null;
   propertyUseCode?: string | null;
   ownerNames?: string[];
+  /** 16-oct-2026: el domicilio postal del dueno; una agencia de conservacion se reconoce ahi. */
+  mailingAddress?: string | null;
   city?: string | null;
   municipality?: string | null;
   state?: string | null;
@@ -99,6 +101,15 @@ export function computeTriageScore(params: {
   // 29-sep-2026: una sola definicion, y corta antes que los gates de texto.
   const esTierraP3 = isGovP3DorCode(params.propertyUseCode) || isGovP3DorCode(params.assetType);
   const reasons: string[] = [];
+
+  // --- GATE C (16-oct-2026, JR: "Quita P3"): tierra de conservacion, antes que P3 y que el codigo DOR ---
+  if (esConservacion(params.ownerNames ?? [], params.mailingAddress)) {
+    return {
+      score: 0, isNoise: true, noiseReason: "CONSERVATION",
+      reasons: ["descartado: tierra de conservacion (refugio de fauna o conservancy), no adquirible"],
+      version: TRIAGE_SCORE_VERSION,
+    };
+  }
 
   // --- GATE 0: codigo DOR no adquirible (gubernamental, servidumbre, pantano...) ---
   // Va ANTES del filtro por texto porque el codigo es univoco y el texto no.
@@ -205,8 +216,11 @@ export function evaluarRuido(params: {
   assetType?: string | null;
   propertyUseCode?: string | null;
   ownerNames?: string[];
+  mailingAddress?: string | null;
 }): { isNoise: boolean; noiseReason: NoiseReason | null; esTierraP3: boolean } {
   const esTierraP3 = isGovP3DorCode(params.propertyUseCode) || isGovP3DorCode(params.assetType);
+  // 16-oct-2026 (JR, "Quita P3"): la conservacion no es P3 aunque el codigo DOR sea de gobierno.
+  if (esConservacion(params.ownerNames ?? [], params.mailingAddress)) return { isNoise: true, noiseReason: "CONSERVATION", esTierraP3 };
   // 29-sep-2026: corta ANTES de los filtros de texto. detectNoiseReason marca
   // "VACANT GOVERNMENTAL" como ruido generico, y eso tapaba 6 parcelas que van
   // al carril P3. El codigo DOR es univoco; el texto no. Mismo argumento que

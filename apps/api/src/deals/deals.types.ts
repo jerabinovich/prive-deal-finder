@@ -49,6 +49,7 @@ export type NoiseReason =
   | "RAILROAD"
   | "CENTRALLY_ASSESSED"
   | "UTILITY"
+  | "CONSERVATION"
   | "UNKNOWN";
 
 export type OpportunityGateStatus = {

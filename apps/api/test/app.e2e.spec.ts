@@ -30,6 +30,10 @@ if (!BASE_DE_PRUEBA) {
 
   beforeAll(async () => {
     process.env.AUTH_ADMIN_EMAILS = "admin@privegroup.com";
+    // 19-oct-2026: desde C6 (e64deb8, 8-sep) el email del cuerpo vale solo con AUTH_ALLOW_BODY_EMAIL; con
+    // "loopback" (lo que corre en el Spark desde el 22-sep) y la peticion entrando por loopback sin
+    // cloudflared, que es lo que hace supertest. Sin esto, 18 de 20 casos daban 401 desde el 8-sep.
+    process.env.AUTH_ALLOW_BODY_EMAIL = "loopback";
     process.env.MDPA_MAX_ROWS = "25";
     process.env.MDPA_BULK_FILE_PATH = path.resolve(__dirname, "../resources/mdpa_bulk_seed.csv");
 

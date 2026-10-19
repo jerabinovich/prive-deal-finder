@@ -85,6 +85,7 @@ async function main() {
     const plan = [];
     const fallas = [];
     const cola = [...porCaso.entries()];
+    // eslint-disable-next-line no-inner-declarations -- script de un solo uso (13-oct), ya corrido: no se le cambia la logica
     async function trabajador() {
       while (cola.length) {
         const [caso, lista] = cola.shift();

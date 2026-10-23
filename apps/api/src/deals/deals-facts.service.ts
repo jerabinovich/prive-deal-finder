@@ -14,6 +14,7 @@ import {
 } from "./deals.utils";
 import { MIAMI_DADE_FALLBACK_LAYER } from "./deals.types";
 import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, resolverZipDelSitio } from "../integrations/zip";
+import { CAMPOS_ZONING } from "../integrations/zoning";
 
 type ExtractedFacts = {
   address?: string; mailingAddress?: string; city?: string; municipality?: string;
@@ -131,7 +132,7 @@ export class DealsFactsService {
       zip = zip ?? normalizarZip(pickField(attrs, CAMPOS_ZIP_DEL_SITIO)) ?? undefined;
       propertyUseCode = propertyUseCode ?? pickField(attrs, ["USE_CODE","PROPERTY_USE","DOR_UC","CLASS_CODE","PROPERTY_TYPE"]);
       assetType = assetType ?? pickField(attrs, ["PROPERTY_USE","USEDSCRP","PRPRTYDSCR","CLASSDSCRP","DOR_DESC"]);
-      zoning = zoning ?? pickField(attrs, ["ZONING","ZONING_DESC","ZONINGCODE","CVTTXDSCRP","CLASSDSCRP","DOR_DESC"]);
+      zoning = zoning ?? pickField(attrs, CAMPOS_ZONING);
 
       const lotSqft = toNumber(pickField(attrs, ["LOT_SIZE_SQFT","LOT_SQFT","LOTSQFT","LAND_SQFT","LANDSQFT","LOTSIZE","LOT_SIZE"]));
       const acres = toNumber(pickField(attrs, ["ACRES"]));

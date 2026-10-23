@@ -5,6 +5,7 @@ import { isGovP3DorCode, toDorCode } from "./dor-use-codes";
 import {
   USOS_BUY_BOX_PB,
   ZCTA_33401,
+  ZCTA_33404,
   corredoresPalmBeach,
   dentroDe,
   dentroDelCorredor,
@@ -45,6 +46,21 @@ describe("Palm Beach por corredores", () => {
     expect(c.prefijos).not.toContain("74");
     expect(c.parciales).toHaveLength(1);
     expect(c.sinSoporte).toEqual([]);
+  });
+
+  it("33404 (23-oct): Palm Beach Shores entera y Riviera Beach solo con el centro en el zip; Palm Beach House adentro", () => {
+    const c = corredoresPalmBeach(
+      buybox({ corredores_tier1: { ...CORREDORES, "Riviera Beach / Singer Island": { zips: ["33404"], municipios: ["Riviera Beach", "Palm Beach Shores"] } } }),
+    );
+    expect(c.prefijos).toContain("54");
+    expect(c.prefijos).not.toContain("56");
+    expect(c.prefijos.filter((p) => p.startsWith("56"))).toHaveLength(13);
+    expect(c.parciales).toHaveLength(2);
+    expect(c.sinSoporte).toEqual([]);
+    expect(dentroDe([-80.03259, 26.80001], ZCTA_33404)).toBe(true); // 5060 N Ocean Dr, Singer Island
+    expect(dentroDelCorredor(parcela("56434222270002040", [-80.03259, 26.80001]), c)).toBe(true);
+    expect(dentroDe([-80.10399, 26.77196], ZCTA_33404)).toBe(false); // 6500 N Military Trl, fuera de 33404
+    expect(dentroDelCorredor(parcela("54434222000000010"), c)).toBe(true); // Palm Beach Shores pasa entera
   });
 
   it("no adivina: un municipio sin codigo medido o un corredor parcial con otros zips quedan en sinSoporte", () => {

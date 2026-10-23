@@ -80,19 +80,19 @@ export type Buscar = (url: string, where: string) => Promise<unknown[]>;
  * de Miami-Dade); el mismo lote sin orden responde. Tope de 60 segundos por consulta (sin tope, una respuesta que
  * nunca llego colgo la corrida 30 minutos el 23-oct) y tres intentos antes de cortar.
  */
-export async function buscarEnCatastro(url: string, where: string): Promise<unknown[]> {
+export async function consultaArcgis(url: string, parametros: Record<string, string>): Promise<unknown[]> {
   let ultimo: unknown;
   for (let intento = 1; intento <= 3; intento += 1) {
     try {
       const respuesta = await fetch(`${url.replace(/\/+$/, "")}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ where, outFields: "*", returnGeometry: "false", f: "json" }).toString(),
+        body: new URLSearchParams({ outFields: "*", returnGeometry: "false", f: "json", ...parametros }).toString(),
         signal: AbortSignal.timeout(60_000),
       });
-      if (!respuesta.ok) throw new Error(`catastro ${respuesta.status}`);
+      if (!respuesta.ok) throw new Error(`ArcGIS ${respuesta.status}`);
       const cuerpo = (await respuesta.json()) as { error?: { message?: string }; features?: unknown[] };
-      if (cuerpo?.error) throw new Error(`catastro: ${cuerpo.error.message ?? "sin detalle"}`);
+      if (cuerpo?.error) throw new Error(`ArcGIS: ${cuerpo.error.message ?? "sin detalle"}`);
       return Array.isArray(cuerpo?.features) ? cuerpo.features : [];
     } catch (e) {
       ultimo = e;
@@ -101,6 +101,8 @@ export async function buscarEnCatastro(url: string, where: string): Promise<unkn
   }
   throw ultimo instanceof Error ? ultimo : new Error(String(ultimo));
 }
+
+export const buscarEnCatastro: Buscar = (url, where) => consultaArcgis(url, { where });
 
 export async function consultarCatastro(
   condado: number,

@@ -1,5 +1,5 @@
 /**
- * CAMPOS DE ZONIFICACION (23-oct-2026).
+ * CAMPOS DE ZONIFICACION (23-oct-2026). El zoning real de Miami-Dade sale por ubicacion: zoning-miami-dade.ts.
  *
  * Que estaba mal: la lista de zoning terminaba en CVTTXDSCRP, CLASSDSCRP y DOR_DESC, que son el
  * municipio y la descripcion del uso del suelo, no la zonificacion. Medido el 23-oct: los 241

@@ -88,4 +88,17 @@ describe("ingestArcgisRecords", () => {
       expect(CAMPOS_ZONING).not.toContain(uso);
     }
   });
+
+  it("el lote ya guardado (catastro estatal) cuenta en el score aunque la capa no lo traiga (23-oct)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const conLote = prismaFalso({ id: "viejo", distressStage: "NONE", lotSizeSqft: 12000 });
+    const sinLote = prismaFalso({ id: "viejo", distressStage: "NONE", lotSizeSqft: null });
+    await ingestArcgisRecords(conLote as never, "broward-parcels", "Broward", [LOCAL]);
+    await ingestArcgisRecords(sinLote as never, "broward-parcels", "Broward", [LOCAL]);
+    const con = conLote.deal.update.mock.calls[0][0].data;
+    const sin = sinLote.deal.update.mock.calls[0][0].data;
+    // lote de 10.000 sqft o mas suma 5 en computeTriageScore.
+    expect(con.score - sin.score).toBe(5);
+    expect(con.lotSizeSqft).toBe(12000);
+  });
 });

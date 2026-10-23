@@ -301,7 +301,8 @@ export async function ingestArcgisRecords(
       municipality,
       state,
       yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
-      lotSizeSqft,
+      // 23-oct-2026: Broward no trae lote en su capa; el que cargo el catastro estatal (catastro-valores.ts) cuenta.
+      lotSizeSqft: lotSizeSqft ?? deal?.lotSizeSqft ?? undefined,
       // 13-oct-2026: un deal que ya existe conserva su etapa de distress. Sin esto, la resincronizacion
       // diaria de parcelas le borraba el premio de distress del score hasta la proxima corrida judicial.
       distressStage: deal?.distressStage,

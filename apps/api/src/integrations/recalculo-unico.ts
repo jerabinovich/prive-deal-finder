@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { computeTriageScore } from "../scoring/score";
+import { entradaDeTriage } from "./rescore-distress";
 
 /**
  * RECALCULO UNICO DE SCORES (25-oct-2026, OK de JR).
@@ -24,19 +25,9 @@ type DealParaRecalculo = {
 };
 
 export function valoresDeHoy(d: DealParaRecalculo): Valores {
-  const t = computeTriageScore({
-    assetType: d.assetType,
-    propertyUseCode: d.propertyUseCode,
-    ownerNames: d.owners.map((o) => o.owner?.name).filter((n): n is string => Boolean(n)),
-    mailingAddress: d.mailingAddress,
-    city: d.city,
-    municipality: d.municipality,
-    state: d.state,
-    yearBuilt: d.yearBuilt,
-    lotSizeSqft: d.lotSizeSqft,
-    source: d.source,
-    distressStage: d.distressStage as never,
-  });
+  // La misma entrada que recalcularPuntaje (entradaDeTriage), con la etapa de distress guardada.
+  const nombres = d.owners.map((o) => o.owner?.name).filter((n): n is string => Boolean(n));
+  const t = computeTriageScore({ ...entradaDeTriage(d, nombres), distressStage: d.distressStage as never });
   return { score: t.score, isNoise: t.isNoise, noiseReason: t.noiseReason };
 }
 

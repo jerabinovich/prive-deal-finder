@@ -8,7 +8,7 @@ type DealGuardado = {
 };
 
 /** Lo que computeTriageScore lee de un deal guardado y sus duenos, salvo la etapa de distress. */
-function entradaDeTriage(deal: DealGuardado, ownerNames: string[]) {
+export function entradaDeTriage(deal: DealGuardado, ownerNames: string[]) {
   return {
     assetType: deal.assetType,
     propertyUseCode: deal.propertyUseCode,

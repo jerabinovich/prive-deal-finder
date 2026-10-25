@@ -41,6 +41,13 @@ describe("recalcularPuntaje (25-oct)", () => {
     expect(data).toEqual({ score: conLote.score, isNoise: conLote.isNoise, noiseReason: conLote.noiseReason });
   });
 
+  it("si solo cambia el motivo de ruido, tambien lo guarda (revision del PR 17)", async () => {
+    const e = esperado(12000, "NONE");
+    const prisma = prismaFalso({ ...deal, lotSizeSqft: 12000, distressStage: "NONE", score: e.score, isNoise: e.isNoise, noiseReason: "MOTIVO_VIEJO" });
+    expect(await recalcularPuntaje(prisma as never, ["d1"])).toBe(1);
+    expect(prisma.deal.update.mock.calls[0][0].data.noiseReason).toBe(e.noiseReason);
+  });
+
   it("si el score ya esta bien no escribe", async () => {
     const prisma = prismaFalso({ ...deal, lotSizeSqft: 12000, distressStage: "NONE", score: esperado(12000, "NONE").score });
     expect(await recalcularPuntaje(prisma as never, ["d1"])).toBe(0);

@@ -104,7 +104,7 @@ export async function recalcularPuntaje(prisma: Pick<PrismaClient, "deal" | "dea
     if (!deal) continue;
     const owners = await prisma.dealOwner.findMany({ where: { dealId }, select: { owner: { select: { name: true } } } });
     const triage = computeTriageScore({ ...entradaDeTriage(deal, nombresDe(owners)), distressStage: deal.distressStage });
-    if (triage.score === deal.score && triage.isNoise === deal.isNoise) continue;
+    if (triage.score === deal.score && triage.isNoise === deal.isNoise && triage.noiseReason === deal.noiseReason) continue;
     await prisma.deal.update({
       where: { id: dealId },
       data: { score: triage.score, isNoise: triage.isNoise, noiseReason: triage.noiseReason },

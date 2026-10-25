@@ -80,6 +80,20 @@ export type Buscar = (url: string, where: string) => Promise<unknown[]>;
  * de Miami-Dade); el mismo lote sin orden responde. Tope de 60 segundos por consulta (sin tope, una respuesta que
  * nunca llego colgo la corrida 30 minutos el 23-oct) y tres intentos antes de cortar.
  */
+/**
+ * LOTE CORTADO (25-oct-2026, cowork-pendientes-5oct, hallazgo 1 de la revision del PR 13). Una capa devuelve a lo sumo
+ * maxRecordCount filas (BCPA_SALES: 1.000; el catastro estatal: 2.000) y lo avisa con exceededTransferLimit. Antes se
+ * tomaba lo que vino como si fuera todo. Ahora consultaArcgis lo rechaza con LoteCortado, sin reintentar, y las
+ * consultas por lotes de folios lo parten en dos hasta que entra; si un solo folio no entra, falla. Medido el 25-oct:
+ * el lote mas grande de Broward trae 45 filas, asi que hoy no pasa.
+ */
+export class LoteCortado extends Error {
+  constructor(url: string) {
+    super(`ArcGIS corto la respuesta en su tope de filas (${url})`);
+    this.name = "LoteCortado";
+  }
+}
+
 export async function consultaArcgis(url: string, parametros: Record<string, string>): Promise<unknown[]> {
   let ultimo: unknown;
   for (let intento = 1; intento <= 3; intento += 1) {
@@ -91,10 +105,12 @@ export async function consultaArcgis(url: string, parametros: Record<string, str
         signal: AbortSignal.timeout(60_000),
       });
       if (!respuesta.ok) throw new Error(`ArcGIS ${respuesta.status}`);
-      const cuerpo = (await respuesta.json()) as { error?: { message?: string }; features?: unknown[] };
+      const cuerpo = (await respuesta.json()) as { error?: { message?: string }; features?: unknown[]; exceededTransferLimit?: boolean };
       if (cuerpo?.error) throw new Error(`ArcGIS: ${cuerpo.error.message ?? "sin detalle"}`);
+      if (cuerpo?.exceededTransferLimit) throw new LoteCortado(url);
       return Array.isArray(cuerpo?.features) ? cuerpo.features : [];
     } catch (e) {
+      if (e instanceof LoteCortado) throw e;
       ultimo = e;
       await new Promise((r) => setTimeout(r, 2000 * intento));
     }
@@ -104,6 +120,19 @@ export async function consultaArcgis(url: string, parametros: Record<string, str
 
 export const buscarEnCatastro: Buscar = (url, where) => consultaArcgis(url, { where });
 
+/** Pide un lote de folios; si la capa lo corta (LoteCortado), lo parte en dos hasta que entra. */
+async function buscarPartiendo(buscar: Buscar, url: string, folios: string[], armar: (lista: string) => string): Promise<unknown[]> {
+  const lista = folios.map((f) => `'${f.replace(/'/g, "''")}'`).join(",");
+  try {
+    return await buscar(url, armar(lista));
+  } catch (e) {
+    if (!(e instanceof LoteCortado) || folios.length <= 1) throw e;
+    const mitad = Math.ceil(folios.length / 2);
+    const primera = await buscarPartiendo(buscar, url, folios.slice(0, mitad), armar);
+    return [...primera, ...(await buscarPartiendo(buscar, url, folios.slice(mitad), armar))];
+  }
+}
+
 export async function consultarCatastro(
   condado: number,
   folios: string[],
@@ -112,8 +141,8 @@ export async function consultarCatastro(
 ): Promise<Map<string, ValoresCatastro>> {
   const salida = new Map<string, ValoresCatastro>();
   for (let i = 0; i < folios.length; i += FOLIOS_POR_CONSULTA) {
-    const lista = folios.slice(i, i + FOLIOS_POR_CONSULTA).map((f) => `'${f.replace(/'/g, "''")}'`).join(",");
-    const filas = await buscar(url, `CO_NO=${condado} AND PARCEL_ID IN (${lista})`);
+    const filas = await buscarPartiendo(buscar, url, folios.slice(i, i + FOLIOS_POR_CONSULTA),
+      (lista) => `CO_NO=${condado} AND PARCEL_ID IN (${lista})`);
     for (const fila of filas) {
       const v = valoresDeFila(((fila as { attributes?: Record<string, unknown> })?.attributes) ?? {});
       if (v) salida.set(v.parcelId, v);
@@ -220,8 +249,9 @@ export async function consultarVentasDelCondado(
   const salida = new Map<string, VentaCatastro[]>();
   if (!cfg) return salida;
   for (let i = 0; i < folios.length; i += FOLIOS_POR_CONSULTA) {
-    const lista = folios.slice(i, i + FOLIOS_POR_CONSULTA).map((f) => `'${f.replace(/'/g, "''")}'`).join(",");
-    for (const fila of await buscar(cfg.url, `${cfg.campoFolio} IN (${lista})`)) {
+    const filas = await buscarPartiendo(buscar, cfg.url, folios.slice(i, i + FOLIOS_POR_CONSULTA),
+      (lista) => `${cfg.campoFolio} IN (${lista})`);
+    for (const fila of filas) {
       const a = ((fila as { attributes?: Record<string, unknown> })?.attributes) ?? {};
       const folio = String(a[cfg.campoFolio] ?? "").trim();
       const venta = cfg.venta(a);

@@ -12,10 +12,15 @@
  */
 export const PLAZO_ARCGIS_MS = 120_000;
 
-/** fetch con plazo: si la capa no responde a tiempo, falla con un error que lo dice. */
-export async function fetchConPlazo(url: string, init: RequestInit, plazoMs = PLAZO_ARCGIS_MS): Promise<Response> {
+/**
+ * Pide y lee la respuesta JSON con plazo: si la capa no responde a tiempo (encabezados o cuerpo), falla con un error
+ * que lo dice. Revision del PR 18: el corte durante la lectura del cuerpo salia como el TimeoutError crudo de Node.
+ */
+export async function jsonConPlazo(url: string, init: RequestInit, plazoMs = PLAZO_ARCGIS_MS): Promise<unknown> {
   try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(plazoMs) });
+    const respuesta = await fetch(url, { ...init, signal: AbortSignal.timeout(plazoMs) });
+    if (!respuesta.ok) throw new Error(`ArcGIS query failed ${respuesta.status}`);
+    return await respuesta.json();
   } catch (e) {
     const nombre = (e as { name?: string })?.name;
     if (nombre === "TimeoutError" || nombre === "AbortError") {
@@ -41,13 +46,11 @@ export async function fetchArcgisPagina(
     returnGeometry: opciones.geometria === false ? "false" : "true",
   };
   if (opciones.geometria !== false) parametros.outSR = "4326";
-  const respuesta = await fetchConPlazo(`${capa}/query`, {
+  const cuerpo = (await jsonConPlazo(`${capa}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(parametros).toString(),
-  }, opciones.plazoMs);
-  if (!respuesta.ok) throw new Error(`ArcGIS query failed ${respuesta.status}`);
-  const cuerpo = (await respuesta.json()) as { error?: { message?: string }; features?: unknown[] };
+  }, opciones.plazoMs)) as { error?: { message?: string }; features?: unknown[] };
   if (cuerpo?.error) throw new Error(`ArcGIS query error: ${cuerpo.error.message ?? "sin detalle"}`);
   return Array.isArray(cuerpo?.features) ? cuerpo.features : [];
 }

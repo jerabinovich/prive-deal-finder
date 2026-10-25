@@ -1,4 +1,4 @@
-import { fetchConPlazo } from "../arcgis-pagina";
+import { jsonConPlazo } from "../arcgis-pagina";
 async function fetchArcgisQuery(
   serviceUrl: string,
   limit: number,
@@ -19,12 +19,8 @@ async function fetchArcgisQuery(
     `${layerUrl}/query?where=${encodeURIComponent(whereClause)}` +
     `&outFields=*&f=json&returnGeometry=true&outSR=4326&resultRecordCount=${limit}` +
     (orderByFields ? `&orderByFields=${encodeURIComponent(orderByFields)}` : "");
-  // 25-oct-2026: con plazo (fetchConPlazo, arcgis-pagina.ts); antes un pedido sin respuesta colgaba la corrida.
-  const resp = await fetchConPlazo(queryUrl, {}, plazoMs);
-  if (!resp.ok) {
-    throw new Error(`ArcGIS query failed ${resp.status}`);
-  }
-  const data = await resp.json();
+  // 25-oct-2026: con plazo (jsonConPlazo, arcgis-pagina.ts); antes un pedido sin respuesta colgaba la corrida.
+  const data = (await jsonConPlazo(queryUrl, {}, plazoMs)) as { error?: { message?: string }; features?: unknown[] };
   if (data?.error?.message) {
     throw new Error(`ArcGIS query error: ${data.error.message}`);
   }

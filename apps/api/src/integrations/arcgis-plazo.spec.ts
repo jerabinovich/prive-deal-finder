@@ -27,6 +27,26 @@ describe("plazo de los clientes ArcGIS del sync (25-oct)", () => {
     await expect(donde("https://capa/0", "1=1", 1, undefined, 50)).rejects.toThrow(/sin respuesta/);
   }, 3000);
 
+  it("si los encabezados llegan pero el cuerpo no, tambien corta con el mensaje claro (revision del PR 18)", async () => {
+    global.fetch = jest.fn(async (_u: string, init?: { signal?: AbortSignal }) => ({
+      ok: true,
+      json: () => new Promise((_ok, falla) => {
+        init?.signal?.addEventListener("abort", () => falla(init.signal?.reason ?? new Error("abort")));
+      }),
+    })) as never;
+    await expect(pagina("https://capa/0", "1=1", { offset: 0, cantidad: 1, orden: "OBJECTID", plazoMs: 50 })).rejects.toThrow(/sin respuesta/);
+    await expect(donde("https://capa/0", "1=1", 1, undefined, 50)).rejects.toThrow(/sin respuesta/);
+  }, 3000);
+
+  it("el plazo por defecto es exactamente 120 s", async () => {
+    const espia = jest.spyOn(AbortSignal, "timeout");
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ features: [] }) })) as never;
+    await pagina("https://capa/0", "1=1", { offset: 0, cantidad: 1, orden: "OBJECTID" });
+    await donde("https://capa/0", "1=1");
+    expect(espia.mock.calls).toEqual([[120_000], [120_000]]);
+    espia.mockRestore();
+  });
+
   it("por defecto el plazo es 120 s (la corrida mas larga medida en 14 dias fue de 82 s en total)", async () => {
     const vistos: Array<AbortSignal | undefined> = [];
     global.fetch = jest.fn(async (_u: string, init?: { signal?: AbortSignal }) => {

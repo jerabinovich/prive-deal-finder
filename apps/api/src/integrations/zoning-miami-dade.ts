@@ -15,7 +15,7 @@ export const CAPA_ZONING_CONDADO = "https://gisweb.miamidade.gov/arcgis/rest/ser
 
 type Consulta = (url: string, parametros: Record<string, string>) => Promise<unknown[]>;
 
-const limpiar = (v: unknown) => String(v ?? "").replace(/[ÿ ]/g, " ").replace(/\s+/g, " ").trim();
+const limpiar = (v: unknown) => String(v ?? "").replace(/[\u00ff\u00a0]/g, " ").replace(/\s+/g, " ").trim();
 
 export function textoZoning(zona: unknown, descripcion: unknown): string | null {
   const z = limpiar(zona);

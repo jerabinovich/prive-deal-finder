@@ -19,7 +19,7 @@ describe("recalculo unico de scores (25-oct)", () => {
     expect(cambios[0].antes.score).toBe(1);
     expect(cambios[0].despues.score).toBe(valoresDeHoy(viejo as never).score);
     expect(cambios[1].despues.score).toBe(valoresDeHoy(gob as never).score);
-    expect(prisma.deal.findMany.mock.calls[0][0].where).toEqual({ source: { endsWith: "-parcels" } });
+    expect(prisma.deal.findMany.mock.calls[0][0].where).toEqual({ OR: [{ source: { endsWith: "-parcels" } }, { source: "mdpa" }] });
   });
 
   it("planear con fuentes filtra por esas fuentes", async () => {
@@ -57,7 +57,6 @@ describe("revision de Codex del PR 22", () => {
   const c = (id: string) => ({ id, antes: { score: 31, isNoise: false, noiseReason: null }, despues: { score: 41, isNoise: false, noiseReason: null } });
   // Tipado explicito para que el mismo test corra contra la version sin estos parametros (prueba en rojo).
   const leer = (R as unknown as { leerArgumentos?: (a: string[]) => unknown }).leerArgumentos;
-  const aplicarCon = aplicar as unknown as (p: unknown, cs: unknown[], alEscribir?: (id: string) => void) => Promise<unknown>;
   const restaurarCon = restaurar as unknown as (p: unknown, cs: unknown[], aplicados?: string[]) => Promise<unknown>;
 
   it("--fuente, --respaldo o --restaurar sin valor es un error, nunca correr sobre todas las fuentes", () => {
@@ -73,7 +72,8 @@ describe("revision de Codex del PR 22", () => {
   it("aplicar avisa cada fila que escribio de verdad", async () => {
     const prisma = { deal: { updateMany: jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 }) } };
     const escritos: string[] = [];
-    await aplicarCon(prisma, [c("d1"), c("d2")], (id) => escritos.push(id));
+    await (aplicar as unknown as (p: unknown, cs: unknown[], reg?: { antes?: (id: string) => void; salteado?: (id: string) => void }) => Promise<unknown>)(
+      prisma, [c("d1"), c("d2")], { antes: (id) => escritos.push(id), salteado: (id) => escritos.splice(escritos.indexOf(id), 1) });
     expect(escritos).toEqual(["d1"]);
   });
 
@@ -82,5 +82,32 @@ describe("revision de Codex del PR 22", () => {
     await restaurarCon(prisma, [c("d1"), c("d2")], ["d1"]);
     expect(prisma.deal.updateMany).toHaveBeenCalledTimes(1);
     expect(prisma.deal.updateMany.mock.calls[0][0].where.id).toBe("d1");
+  });
+});
+
+describe("segunda revision de Codex del PR 22", () => {
+  const c = (id: string) => ({ id, antes: { score: 31, isNoise: false, noiseReason: null }, despues: { score: 41, isNoise: false, noiseReason: null } });
+  type Registro = { antes?: (id: string) => void; salteado?: (id: string) => void };
+  const aplicarCon = aplicar as unknown as (p: unknown, cs: unknown[], reg?: Registro) => Promise<unknown>;
+  const leer = (R as unknown as { leerArgumentos: (a: string[]) => unknown }).leerArgumentos;
+  const aRestaurar = (R as unknown as { filasARestaurar?: (lineas: string[]) => string[] }).filasARestaurar;
+
+  it("aplicar anota cada fila ANTES de escribirla y marca las salteadas", async () => {
+    const orden: string[] = [];
+    const prisma = { deal: { updateMany: jest.fn(async ({ where }: { where: { id: string } }) => {
+      orden.push(`db ${where.id}`);
+      return { count: where.id === "d1" ? 1 : 0 };
+    }) } };
+    await aplicarCon(prisma, [c("d1"), c("d2")], { antes: (id) => orden.push(`intento ${id}`), salteado: (id) => orden.push(`salteado ${id}`) });
+    expect(orden).toEqual(["intento d1", "db d1", "intento d2", "db d2", "salteado d2"]);
+  });
+
+  it("del registro se restauran los intentos menos los salteados", () => {
+    expect(typeof aRestaurar).toBe("function");
+    expect(aRestaurar!(["intento d1", "intento d2", "salteado d2", "intento d3", ""])).toEqual(["d1", "d3"]);
+  });
+
+  it("una opcion desconocida es un error (antes --fuent se ignoraba y tomaba todas las fuentes)", () => {
+    expect(() => leer(["--aplicar", "--respaldo", "r.json", "--fuent", "martin-parcels"])).toThrow(/--fuent/);
   });
 });

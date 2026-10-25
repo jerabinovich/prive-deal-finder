@@ -36,7 +36,8 @@ const iguales = (a: Valores, b: Valores) => a.score === b.score && a.isNoise ===
 /** Deals de las fuentes de parcelas (o de las indicadas) cuyo score guardado no coincide con la formula de hoy. */
 export async function planear(prisma: Pick<PrismaClient, "deal">, fuentes?: string[]): Promise<Cambio[]> {
   const deals = (await prisma.deal.findMany({
-    where: fuentes?.length ? { source: { in: fuentes } } : { source: { endsWith: "-parcels" } },
+    // Por defecto, las fuentes de parcelas (*-parcels) y mdpa, que tambien crea deals de parcelas (mdpa.ingest.ts).
+    where: fuentes?.length ? { source: { in: fuentes } } : { OR: [{ source: { endsWith: "-parcels" } }, { source: "mdpa" }] },
     select: {
       id: true, assetType: true, propertyUseCode: true, mailingAddress: true, city: true, municipality: true, state: true,
       yearBuilt: true, lotSizeSqft: true, source: true, distressStage: true, score: true, isNoise: true, noiseReason: true,
@@ -52,34 +53,46 @@ export async function planear(prisma: Pick<PrismaClient, "deal">, fuentes?: stri
   return cambios;
 }
 
+/**
+ * Registro de aplicar: antes(id) se llama ANTES de escribir la fila y salteado(id) despues, si la guarda no la dejo
+ * escribir. Asi, aunque el proceso se corte entre la escritura y el registro, toda fila que pudo quedar escrita esta
+ * anotada; restaurar la vuelve atras solo si sigue con el valor nuevo (revision de Codex del PR 22).
+ */
+export type RegistroAplicar = { antes?: (id: string) => void; salteado?: (id: string) => void };
+
 async function escribir(
   prisma: Pick<PrismaClient, "deal">,
   cambios: Cambio[],
   de: "antes" | "despues",
   a: "antes" | "despues",
-  alEscribir?: (id: string) => void,
+  registro: RegistroAplicar = {},
 ) {
   let escritos = 0;
   let saltados = 0;
   for (const c of cambios) {
+    registro.antes?.(c.id);
     const r = await prisma.deal.updateMany({
       where: { id: c.id, score: c[de].score, isNoise: c[de].isNoise, noiseReason: c[de].noiseReason as never },
       data: { score: c[a].score, isNoise: c[a].isNoise, noiseReason: c[a].noiseReason as never },
     });
-    if (r.count === 1) {
-      escritos += 1;
-      alEscribir?.(c.id);
-    } else saltados += 1;
+    if (r.count === 1) escritos += 1;
+    else {
+      saltados += 1;
+      registro.salteado?.(c.id);
+    }
   }
   return { escritos, saltados };
 }
 
-/**
- * Escribe los valores nuevos; un deal que cambio desde que se planeo se saltea (y se cuenta). alEscribir recibe cada
- * id escrito de verdad, para anotarlo en el registro que usa restaurar.
- */
-export const aplicar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], alEscribir?: (id: string) => void) =>
-  escribir(prisma, cambios, "antes", "despues", alEscribir);
+/** Del registro (lineas "intento <id>" y "salteado <id>"), las filas que restaurar puede tener que volver atras. */
+export function filasARestaurar(lineas: string[]): string[] {
+  const salteados = new Set(lineas.filter((l) => l.startsWith("salteado ")).map((l) => l.slice(9).trim()));
+  return lineas.filter((l) => l.startsWith("intento ")).map((l) => l.slice(8).trim()).filter((id) => id && !salteados.has(id));
+}
+
+/** Escribe los valores nuevos; un deal que cambio desde que se planeo se saltea (y se cuenta y se anota). */
+export const aplicar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], registro?: RegistroAplicar) =>
+  escribir(prisma, cambios, "antes", "despues", registro);
 
 /**
  * Vuelve a los valores de antes, SOLO en las filas que el aplicado escribio (aplicados, del registro): una fila que el
@@ -103,10 +116,17 @@ export function leerArgumentos(args: string[]): { aplicar: boolean; respaldo?: s
   const fuentes: string[] = [];
   let respaldo: string | undefined;
   let restaurar: string | undefined;
-  args.forEach((a, i) => {
-    if (a === "--fuente") fuentes.push(valorDe(i, a));
-    if (a === "--respaldo") respaldo = valorDe(i, a);
-    if (a === "--restaurar") restaurar = valorDe(i, a);
-  });
+  // Revision de Codex del PR 22: una opcion desconocida (por ejemplo --fuent) es un error, no un filtro que se pierde.
+  const conValor = new Set(["--fuente", "--respaldo", "--restaurar"]);
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--aplicar") continue;
+    if (!conValor.has(a)) throw new Error(`opcion desconocida: ${a}`);
+    const v = valorDe(i, a);
+    if (a === "--fuente") fuentes.push(v);
+    if (a === "--respaldo") respaldo = v;
+    if (a === "--restaurar") restaurar = v;
+    i += 1;
+  }
   return { aplicar: args.includes("--aplicar"), respaldo, restaurar, fuentes };
 }

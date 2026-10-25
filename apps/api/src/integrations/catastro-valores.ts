@@ -94,7 +94,14 @@ export class LoteCortado extends Error {
   }
 }
 
-export async function consultaArcgis(url: string, parametros: Record<string, string>): Promise<unknown[]> {
+const dormir = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** 25-oct-2026: espera 2 s y 4 s entre los tres intentos y ninguna despues del ultimo (antes sumaba 6 s antes de fallar). */
+export async function consultaArcgis(
+  url: string,
+  parametros: Record<string, string>,
+  esperar: (ms: number) => Promise<void> = dormir,
+): Promise<unknown[]> {
   let ultimo: unknown;
   for (let intento = 1; intento <= 3; intento += 1) {
     try {
@@ -112,7 +119,7 @@ export async function consultaArcgis(url: string, parametros: Record<string, str
     } catch (e) {
       if (e instanceof LoteCortado) throw e;
       ultimo = e;
-      await new Promise((r) => setTimeout(r, 2000 * intento));
+      if (intento < 3) await esperar(2000 * intento);
     }
   }
   throw ultimo instanceof Error ? ultimo : new Error(String(ultimo));

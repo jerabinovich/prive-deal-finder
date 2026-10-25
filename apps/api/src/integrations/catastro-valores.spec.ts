@@ -1,5 +1,5 @@
 import {
-  CONDADO_POR_FUENTE, VENTAS_DEL_CONDADO, aplicarValores, consultarCatastro, consultarVentasDelCondado, guardarVentas,
+  CONDADO_POR_FUENTE, VENTAS_DEL_CONDADO, aplicarValores, consultaArcgis, consultarCatastro, consultarVentasDelCondado, guardarVentas,
   valoresDeFila, ventaBroward, ventaPalmBeach,
 } from "./catastro-valores";
 
@@ -137,4 +137,28 @@ describe("ventas de los condados (23-oct)", () => {
       dealId: "d1", salePrice: 455000, saleDate: { gte: new Date(Date.UTC(2025, 6, 1)), lt: new Date(Date.UTC(2025, 7, 1)) },
     });
   });
+});
+
+describe("consultaArcgis reintentos (25-oct)", () => {
+  // Tipado explicito para que el mismo test corra contra la version sin el tercer parametro (prueba en rojo).
+  const conEspera = consultaArcgis as (url: string, p: Record<string, string>, esperar: (ms: number) => Promise<void>) => Promise<unknown[]>;
+  const original = global.fetch;
+  afterEach(() => { global.fetch = original; });
+
+  it("espera entre intentos pero no despues del ultimo, y lanza el ultimo error", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("caida")) as never;
+    const esperar = jest.fn().mockResolvedValue(undefined);
+    await expect(conEspera("https://capa/0", { where: "1=1" }, esperar)).rejects.toThrow("caida");
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(esperar.mock.calls).toEqual([[2000], [4000]]);
+  }, 20_000);
+
+  it("un exito en el segundo intento no espera de mas", async () => {
+    global.fetch = jest.fn()
+      .mockRejectedValueOnce(new Error("caida"))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ features: [{ attributes: { A: 1 } }] }) }) as never;
+    const esperar = jest.fn().mockResolvedValue(undefined);
+    expect(await conEspera("https://capa/0", { where: "1=1" }, esperar)).toHaveLength(1);
+    expect(esperar.mock.calls).toEqual([[2000]]);
+  }, 20_000);
 });

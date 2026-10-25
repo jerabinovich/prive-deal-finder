@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { decidirDistress } from "../deals/distress-classification";
+import { esInmuebleDeGobierno } from "../deals/operational-decision";
 import { computeTriageScore } from "../scoring/score";
 
 type DealGuardado = {
@@ -64,14 +65,20 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
       select: { owner: { select: { name: true } } },
     });
 
-    const decision = decidirDistress(senales, deal.propertyUseCode);
+    // 25-oct-2026: sin senales, un inmueble de un gobierno es GOVERNMENT_LAND, igual que en el triage
+    // (decidirOperacion). Antes quedaba en NONE hasta la proxima corrida del triage.
+    const nombres = nombresDe(owners);
+    const stage = senales.length
+      ? decidirDistress(senales, deal.propertyUseCode).stage
+      : esInmuebleDeGobierno(deal, nombres) ? "GOVERNMENT_LAND" : "NONE";
 
-    const triage = computeTriageScore({ ...entradaDeTriage(deal, nombresDe(owners)), distressStage: decision.stage });
+    const triage = computeTriageScore({ ...entradaDeTriage(deal, nombres), distressStage: stage });
 
     if (
       triage.score === deal.score &&
       triage.isNoise === deal.isNoise &&
-      deal.distressStage === decision.stage
+      triage.noiseReason === deal.noiseReason &&
+      deal.distressStage === stage
     ) continue;
 
     await prisma.deal.update({
@@ -80,7 +87,7 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
         score: triage.score,
         isNoise: triage.isNoise,
         noiseReason: triage.noiseReason,
-        distressStage: decision.stage,
+        distressStage: stage,
       },
     });
     updated += 1;

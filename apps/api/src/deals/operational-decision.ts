@@ -28,6 +28,25 @@ export type EntradaDecision = {
     comparableCount: number;
   };
 
+/**
+ * Inmueble de un gobierno (25-oct-2026): tierra P3 por codigo DOR o dueno de gobierno. Es la regla con la que
+ * decidirOperacion pone GOVERNMENT_LAND a un deal sin senales; la usa tambien recalcularDistressYPuntaje
+ * (rescore-distress.ts), que antes los pasaba a NONE (941 deals medidos el 25-oct).
+ */
+export function esInmuebleDeGobierno(
+  deal: { assetType?: string | null; propertyUseCode?: string | null; mailingAddress?: string | null },
+  nombres: Array<string | null | undefined>,
+): boolean {
+  const ownerNames = nombres.map((n) => toCleanText(n ?? null)).filter((n): n is string => Boolean(n));
+  const gates = evaluarRuido({
+    assetType: deal.assetType,
+    propertyUseCode: deal.propertyUseCode,
+    ownerNames,
+    mailingAddress: deal.mailingAddress,
+  });
+  return gates.esTierraP3 || inferOwnerType(ownerNames) === "GOV";
+}
+
 export function decidirOperacion(input: EntradaDecision): OperationalDecision {
     const ownerNames = input.owners.map((o) => toCleanText(o.name ?? null)).filter((n): n is string => Boolean(n));
     const ownerType = inferOwnerType(ownerNames);
@@ -44,7 +63,7 @@ export function decidirOperacion(input: EntradaDecision): OperationalDecision {
     });
     const noiseReason = gates.noiseReason as import("./deals.types").NoiseReason | null;
     const isNoise = gates.isNoise;
-    const isGov = gates.esTierraP3 || ownerType === "GOV";
+    const isGov = esInmuebleDeGobierno(input.deal, input.owners.map((o) => o.name));
 
     const distressStage = input.distressSignals.length
       ? inferDistressStage(input.distressSignals, input.deal.propertyUseCode)

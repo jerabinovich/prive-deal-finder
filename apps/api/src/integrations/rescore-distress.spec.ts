@@ -1,4 +1,5 @@
-import { recalcularPuntaje } from "./rescore-distress";
+import { recalcularDistressYPuntaje, recalcularPuntaje } from "./rescore-distress";
+import { decidirDistress } from "../deals/distress-classification";
 import { computeTriageScore } from "../scoring/score";
 
 // 25-oct-2026: el score de un deal al que catastro-valores le cargo el lote, con la etapa de distress GUARDADA.
@@ -52,5 +53,57 @@ describe("recalcularPuntaje (25-oct)", () => {
     const prisma = prismaFalso({ ...deal, lotSizeSqft: 12000, distressStage: "NONE", score: esperado(12000, "NONE").score });
     expect(await recalcularPuntaje(prisma as never, ["d1"])).toBe(0);
     expect(prisma.deal.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("recalcularDistressYPuntaje y GOVERNMENT_LAND (25-oct)", () => {
+  // Un inmueble de un gobierno sin senales es GOVERNMENT_LAND, la misma regla que el triage (decidirOperacion). Antes
+  // esta funcion lo pasaba a NONE: medido el 25-oct, 941 deals con GOVERNMENT_LAND y sin senales.
+  function prismaDistress(guardado: Record<string, unknown>, senales: unknown[] = [], duenos: string[] = []) {
+    return {
+      dealDistressSignal: { findMany: jest.fn().mockResolvedValue(senales) },
+      deal: { findUnique: jest.fn().mockResolvedValue(guardado), update: jest.fn().mockResolvedValue({}) },
+      dealOwner: { findMany: jest.fn().mockResolvedValue(duenos.map((name) => ({ owner: { name } }))) },
+    };
+  }
+  const base = { ...deal, score: -1, isNoise: false, noiseReason: null };
+
+  it("sin senales y con codigo de gobierno: sigue GOVERNMENT_LAND", async () => {
+    const prisma = prismaDistress({ ...base, propertyUseCode: "Vacant Governmental (DOR 80)", assetType: "Vacant Governmental (DOR 80)", distressStage: "GOVERNMENT_LAND" });
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.deal.update.mock.calls[0][0].data.distressStage).toBe("GOVERNMENT_LAND");
+  });
+
+  it("sin senales y con dueno de gobierno: GOVERNMENT_LAND", async () => {
+    const prisma = prismaDistress({ ...base, distressStage: "NONE" }, [], ["CITY OF POMPANO BEACH"]);
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.deal.update.mock.calls[0][0].data.distressStage).toBe("GOVERNMENT_LAND");
+  });
+
+  it("sin senales y sin gobierno: NONE", async () => {
+    const prisma = prismaDistress({ ...base, distressStage: "SIGNALS_ONLY" }, [], ["SEAVIEW HOLDINGS LLC"]);
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.deal.update.mock.calls[0][0].data.distressStage).toBe("NONE");
+  });
+
+  it("misma etapa y mismo score pero motivo de ruido viejo: tambien lo guarda (revision de Codex del PR 20)", async () => {
+    const guardado = { ...base, propertyUseCode: "Vacant Governmental (DOR 80)", assetType: "Vacant Governmental (DOR 80)", distressStage: "GOVERNMENT_LAND" };
+    const e = computeTriageScore({
+      assetType: guardado.assetType, propertyUseCode: guardado.propertyUseCode, ownerNames: [], mailingAddress: null, city: guardado.city,
+      municipality: guardado.municipality, state: guardado.state, yearBuilt: guardado.yearBuilt, lotSizeSqft: null,
+      source: guardado.source, distressStage: "GOVERNMENT_LAND",
+    });
+    const prisma = prismaDistress({ ...guardado, lotSizeSqft: null, score: e.score, isNoise: e.isNoise, noiseReason: "MOTIVO_VIEJO" });
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.deal.update).toHaveBeenCalledTimes(1);
+    expect(prisma.deal.update.mock.calls[0][0].data.noiseReason).toBe(e.noiseReason);
+  });
+
+  it("con senales manda la decision de las senales, como en el triage", async () => {
+    const senales = [{ dealId: "d1", source: "miami-dade-code-enforcement", metadata: JSON.stringify({ PROBLEM_DESC: "OVERGROWTH", STATUS: "OPEN" }) }];
+    const esperado = decidirDistress(senales, "Vacant Governmental (DOR 80)").stage;
+    const prisma = prismaDistress({ ...base, propertyUseCode: "Vacant Governmental (DOR 80)", distressStage: "GOVERNMENT_LAND" }, senales);
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.deal.update.mock.calls[0][0].data.distressStage).toBe(esperado);
   });
 });

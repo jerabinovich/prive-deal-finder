@@ -291,10 +291,20 @@ export async function ingestArcgisRecords(
     // 12-sep-2026: el ingest NUNCA llamaba a detectNoiseReason, por eso isNoise
     // quedaba en false para los 72 deals (default del schema) y parcelas de
     // ferrocarril / baldios del condado pasaban el filtro con nota alta.
+    // 25-oct-2026: si la capa no trae dueno (la de parcelas de Miami-Dade no lo trae), el score usa los duenos que el
+    // deal ya tiene guardados, como recalcularPuntaje y recalcularDistressYPuntaje. Antes la ingesta le sacaba el
+    // bono de dueno (+10 corporativo, +6 particular) en cada pasada: medido el 25-oct, 4.193 deals de Miami-Dade.
+    const ownerNames = ownerName
+      ? [ownerName]
+      : deal
+        ? (await prisma.dealOwner.findMany({ where: { dealId: deal.id }, select: { owner: { select: { name: true } } } }))
+            .map((item) => item.owner?.name)
+            .filter((name): name is string => Boolean(name))
+        : [];
     const triage = computeTriageScore({
       assetType,
       propertyUseCode,
-      ownerNames: ownerName ? [ownerName] : [],
+      ownerNames,
       mailingAddress,
       source,
       city,

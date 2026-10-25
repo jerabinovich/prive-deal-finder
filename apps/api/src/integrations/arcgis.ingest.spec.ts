@@ -13,7 +13,7 @@ function prismaFalso(existente: Record<string, unknown> | null) {
       update: jest.fn().mockResolvedValue({ id: "viejo" }),
     },
     owner: { findFirst: jest.fn(), create: jest.fn() },
-    dealOwner: { upsert: jest.fn() },
+    dealOwner: { upsert: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
   };
 }
 
@@ -87,6 +87,19 @@ describe("ingestArcgisRecords", () => {
     for (const uso of ["DOR_DESC", "CLASSDSCRP", "CVTTXDSCRP", "USEDSCRP", "PROPERTY_USE"]) {
       expect(CAMPOS_ZONING).not.toContain(uso);
     }
+  });
+
+  it("si la capa no trae dueno, el score usa los duenos ya guardados del deal (25-oct, Miami-Dade)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const conDuenos = prismaFalso({ id: "viejo", distressStage: "NONE", lotSizeSqft: null });
+    conDuenos.dealOwner.findMany.mockResolvedValue([{ owner: { name: "SEAVIEW HOLDINGS LLC" } }]);
+    const sinDuenos = prismaFalso({ id: "viejo", distressStage: "NONE", lotSizeSqft: null });
+    await ingestArcgisRecords(conDuenos as never, "miami-dade-parcels", "Miami-Dade", [LOCAL]);
+    await ingestArcgisRecords(sinDuenos as never, "miami-dade-parcels", "Miami-Dade", [LOCAL]);
+    const con = conDuenos.deal.update.mock.calls[0][0].data;
+    const sin = sinDuenos.deal.update.mock.calls[0][0].data;
+    // propietario corporativo identificable suma 10 en computeTriageScore; sin dueno, nada.
+    expect(con.score - sin.score).toBe(10);
   });
 
   it("el lote ya guardado (catastro estatal) cuenta en el score aunque la capa no lo traiga (23-oct)", async () => {

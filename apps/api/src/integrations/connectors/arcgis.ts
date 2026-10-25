@@ -1,8 +1,10 @@
+import { fetchConPlazo } from "../arcgis-pagina";
 async function fetchArcgisQuery(
   serviceUrl: string,
   limit: number,
   whereClause: string,
   orderByFields?: string,
+  plazoMs?: number,
 ) {
   const trimmed = serviceUrl.replace(/\/+$/, "");
   const layerUrl = /\/\d+$/.test(trimmed) ? trimmed : `${trimmed}/0`;
@@ -17,7 +19,8 @@ async function fetchArcgisQuery(
     `${layerUrl}/query?where=${encodeURIComponent(whereClause)}` +
     `&outFields=*&f=json&returnGeometry=true&outSR=4326&resultRecordCount=${limit}` +
     (orderByFields ? `&orderByFields=${encodeURIComponent(orderByFields)}` : "");
-  const resp = await fetch(queryUrl);
+  // 25-oct-2026: con plazo (fetchConPlazo, arcgis-pagina.ts); antes un pedido sin respuesta colgaba la corrida.
+  const resp = await fetchConPlazo(queryUrl, {}, plazoMs);
   if (!resp.ok) {
     throw new Error(`ArcGIS query failed ${resp.status}`);
   }
@@ -34,8 +37,9 @@ export async function fetchArcgisSample(
   limit = 50,
   whereClause = "1=1",
   orderByFields?: string,
+  plazoMs?: number,
 ) {
-  return fetchArcgisQuery(serviceUrl, limit, whereClause, orderByFields);
+  return fetchArcgisQuery(serviceUrl, limit, whereClause, orderByFields, plazoMs);
 }
 
 export async function fetchArcgisWhere(
@@ -43,6 +47,7 @@ export async function fetchArcgisWhere(
   whereClause: string,
   limit = 50,
   orderByFields?: string,
+  plazoMs?: number,
 ) {
-  return fetchArcgisQuery(serviceUrl, limit, whereClause, orderByFields);
+  return fetchArcgisQuery(serviceUrl, limit, whereClause, orderByFields, plazoMs);
 }

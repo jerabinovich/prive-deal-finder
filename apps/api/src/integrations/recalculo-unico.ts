@@ -58,7 +58,17 @@ export async function planear(prisma: Pick<PrismaClient, "deal">, fuentes?: stri
  * escribir. Asi, aunque el proceso se corte entre la escritura y el registro, toda fila que pudo quedar escrita esta
  * anotada; restaurar la vuelve atras solo si sigue con el valor nuevo (revision de Codex del PR 22).
  */
-export type RegistroAplicar = { antes?: (id: string) => void; salteado?: (id: string) => void };
+export type RegistroAplicar = {
+  antes?: (id: string) => void;
+  salteado?: (id: string) => void;
+  escrito?: (id: string) => void;
+  /**
+   * Valor de hoy de la fila, recalculado con las entradas del momento (tercera revision de Codex del PR 22): si no
+   * coincide con el que se va a escribir, la fila no se escribe (otro paso cambio una entrada, por ejemplo los duenos
+   * que suma completarDuenosEstatales) y queda para la proxima corrida. El script le pasa vigenteDe.
+   */
+  vigente?: (id: string) => Promise<Valores | null>;
+};
 
 async function escribir(
   prisma: Pick<PrismaClient, "deal">,
@@ -70,13 +80,23 @@ async function escribir(
   let escritos = 0;
   let saltados = 0;
   for (const c of cambios) {
+    if (registro.vigente) {
+      const hoy = await registro.vigente(c.id);
+      if (!hoy || !iguales(hoy, c[a])) {
+        saltados += 1;
+        registro.salteado?.(c.id);
+        continue;
+      }
+    }
     registro.antes?.(c.id);
     const r = await prisma.deal.updateMany({
       where: { id: c.id, score: c[de].score, isNoise: c[de].isNoise, noiseReason: c[de].noiseReason as never },
       data: { score: c[a].score, isNoise: c[a].isNoise, noiseReason: c[a].noiseReason as never },
     });
-    if (r.count === 1) escritos += 1;
-    else {
+    if (r.count === 1) {
+      escritos += 1;
+      registro.escrito?.(c.id);
+    } else {
       saltados += 1;
       registro.salteado?.(c.id);
     }
@@ -90,7 +110,23 @@ export function filasARestaurar(lineas: string[]): string[] {
   return lineas.filter((l) => l.startsWith("intento ")).map((l) => l.slice(8).trim()).filter((id) => id && !salteados.has(id));
 }
 
-/** Escribe los valores nuevos; un deal que cambio desde que se planeo se saltea (y se cuenta y se anota). */
+/** El valor que da hoy la formula para un deal, leido de la base en el momento (para RegistroAplicar.vigente). */
+export async function vigenteDe(prisma: Pick<PrismaClient, "deal">, id: string): Promise<Valores | null> {
+  const d = (await prisma.deal.findUnique({
+    where: { id },
+    select: {
+      id: true, assetType: true, propertyUseCode: true, mailingAddress: true, city: true, municipality: true, state: true,
+      yearBuilt: true, lotSizeSqft: true, source: true, distressStage: true, score: true, isNoise: true, noiseReason: true,
+      owners: { select: { owner: { select: { name: true } } } },
+    },
+  })) as unknown as DealParaRecalculo | null;
+  return d ? valoresDeHoy(d) : null;
+}
+
+/**
+ * Escribe los valores nuevos; una fila se saltea (y se cuenta y se anota) si su valor guardado ya no es el planeado o,
+ * con registro.vigente, si la formula con las entradas de hoy ya no da el valor planeado.
+ */
 export const aplicar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], registro?: RegistroAplicar) =>
   escribir(prisma, cambios, "antes", "despues", registro);
 
@@ -98,9 +134,17 @@ export const aplicar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], r
  * Vuelve a los valores de antes, SOLO en las filas que el aplicado escribio (aplicados, del registro): una fila que el
  * aplicado salteo porque otro proceso ya la habia puesto en el mismo valor no se toca (revision de Codex del PR 22).
  */
-export const restaurar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], aplicados: string[]) => {
+export const restaurar = (
+  prisma: Pick<PrismaClient, "deal">,
+  cambios: Cambio[],
+  aplicados: string[],
+  registro: { yaRestaurados?: string[]; alRestaurar?: (id: string) => void } = {},
+) => {
+  // Tercera revision de Codex del PR 22: una restauracion cortada y vuelta a correr no repite lo ya restaurado (que la
+  // ingesta pudo haber vuelto a poner al dia despues); cada fila restaurada se anota en su propio registro.
   const ids = new Set(aplicados);
-  return escribir(prisma, cambios.filter((c) => ids.has(c.id)), "despues", "antes");
+  const ya = new Set(registro.yaRestaurados ?? []);
+  return escribir(prisma, cambios.filter((c) => ids.has(c.id) && !ya.has(c.id)), "despues", "antes", { escrito: registro.alRestaurar });
 };
 
 /**

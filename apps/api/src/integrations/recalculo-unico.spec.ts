@@ -111,3 +111,30 @@ describe("segunda revision de Codex del PR 22", () => {
     expect(() => leer(["--aplicar", "--respaldo", "r.json", "--fuent", "martin-parcels"])).toThrow(/--fuent/);
   });
 });
+
+describe("tercera revision de Codex del PR 22", () => {
+  const c = (id: string) => ({ id, antes: { score: 31, isNoise: false, noiseReason: null }, despues: { score: 41, isNoise: false, noiseReason: null } });
+  type Registro = { antes?: (id: string) => void; salteado?: (id: string) => void; vigente?: (id: string) => Promise<unknown> };
+  const aplicarCon = aplicar as unknown as (p: unknown, cs: unknown[], reg?: Registro) => Promise<{ escritos: number; saltados: number }>;
+  type RegRest = { yaRestaurados?: string[]; alRestaurar?: (id: string) => void };
+  const restaurarCon = restaurar as unknown as (p: unknown, cs: unknown[], aplicados: string[], reg?: RegRest) => Promise<{ escritos: number; saltados: number }>;
+
+  it("aplicar no escribe una fila cuyo valor de hoy ya no es el planeado (cambio una entrada del score en el medio)", async () => {
+    const prisma = { deal: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) } };
+    const vigente = jest.fn(async (id: string) => (id === "d1" ? c("d1").despues : { score: 45, isNoise: false, noiseReason: null }));
+    const salteados: string[] = [];
+    const r = await aplicarCon(prisma, [c("d1"), c("d2")], { vigente, salteado: (id) => salteados.push(id) });
+    expect(r).toEqual({ escritos: 1, saltados: 1 });
+    expect(prisma.deal.updateMany).toHaveBeenCalledTimes(1);
+    expect(salteados).toEqual(["d2"]);
+  });
+
+  it("restaurar saltea lo ya restaurado y anota cada fila que restaura", async () => {
+    const prisma = { deal: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) } };
+    const anotados: string[] = [];
+    const r = await restaurarCon(prisma, [c("d1"), c("d2")], ["d1", "d2"], { yaRestaurados: ["d1"], alRestaurar: (id) => anotados.push(id) });
+    expect(r).toEqual({ escritos: 1, saltados: 0 });
+    expect(prisma.deal.updateMany.mock.calls[0][0].where.id).toBe("d2");
+    expect(anotados).toEqual(["d2"]);
+  });
+});

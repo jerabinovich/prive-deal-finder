@@ -7,12 +7,13 @@
  *                                                                       (no puede existir); anota cada fila en
  *                                                                       ARCHIVO.aplicados ANTES de escribirla
  *   node scripts/recalcular-puntajes.js --restaurar ARCHIVO              vuelve a los valores de antes, solo en las filas
- *                                                                       anotadas en ARCHIVO.aplicados
+ *                                                                       anotadas en ARCHIVO.aplicados; lo restaurado se
+ *                                                                       anota en ARCHIVO.restaurados (se puede retomar)
  *   --fuente X                                                           solo esa fuente (se puede repetir)
  */
 const fs = require("fs");
 const { PrismaClient } = require("@prisma/client");
-const { aplicar, filasARestaurar, leerArgumentos, planear, restaurar } = require("../dist/integrations/recalculo-unico");
+const { aplicar, filasARestaurar, leerArgumentos, planear, restaurar, vigenteDe } = require("../dist/integrations/recalculo-unico");
 
 const log = (...m) => console.log(new Date().toISOString(), ...m);
 
@@ -34,7 +35,18 @@ async function main() {
     if (op.restaurar) {
       const { cambios } = JSON.parse(fs.readFileSync(op.restaurar, "utf-8"));
       const aplicados = filasARestaurar(fs.readFileSync(`${op.restaurar}.aplicados`, "utf-8").split("\n"));
-      log("restaurado", JSON.stringify(await restaurar(prisma, cambios, aplicados)), "de", aplicados.length, "aplicados");
+      const rutaRest = `${op.restaurar}.restaurados`;
+      const yaRestaurados = fs.existsSync(rutaRest) ? fs.readFileSync(rutaRest, "utf-8").split("\n").filter(Boolean) : [];
+      const reg = fs.openSync(rutaRest, "a", 0o600);
+      try {
+        const r = await restaurar(prisma, cambios, aplicados, {
+          yaRestaurados,
+          alRestaurar: (id) => { fs.writeSync(reg, `${id}\n`); fs.fsyncSync(reg); },
+        });
+        log("restaurado", JSON.stringify(r), "de", aplicados.length, "aplicados;", yaRestaurados.length, "ya restaurados antes");
+      } finally {
+        fs.closeSync(reg);
+      }
       return;
     }
     const cambios = await planear(prisma, op.fuentes);
@@ -49,6 +61,7 @@ async function main() {
     log("respaldo", op.respaldo, cambios.length, "deals");
     try {
       log("aplicado", JSON.stringify(await aplicar(prisma, cambios, {
+        vigente: (id) => vigenteDe(prisma, id),
         antes: (id) => { fs.writeSync(registro, `intento ${id}\n`); fs.fsyncSync(registro); },
         salteado: (id) => fs.writeSync(registro, `salteado ${id}\n`),
       })));

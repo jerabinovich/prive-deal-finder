@@ -4,13 +4,15 @@
  * Uso, desde apps/api, despues del build y con el .env cargado:
  *   node scripts/recalcular-puntajes.js                                  prueba: cuenta y resume, no escribe
  *   node scripts/recalcular-puntajes.js --aplicar --respaldo ARCHIVO     guarda antes y despues de cada deal en ARCHIVO
- *                                                                       (no puede existir) y recien despues escribe
- *   node scripts/recalcular-puntajes.js --restaurar ARCHIVO              vuelve a los valores de antes desde el respaldo
+ *                                                                       (no puede existir), anota cada fila escrita en
+ *                                                                       ARCHIVO.aplicados y recien ahi escribe
+ *   node scripts/recalcular-puntajes.js --restaurar ARCHIVO              vuelve a los valores de antes, solo en las filas
+ *                                                                       anotadas en ARCHIVO.aplicados
  *   --fuente X                                                           solo esa fuente (se puede repetir)
  */
 const fs = require("fs");
 const { PrismaClient } = require("@prisma/client");
-const { aplicar, planear, restaurar } = require("../dist/integrations/recalculo-unico");
+const { aplicar, leerArgumentos, planear, restaurar } = require("../dist/integrations/recalculo-unico");
 
 const log = (...m) => console.log(new Date().toISOString(), ...m);
 
@@ -26,35 +28,31 @@ function resumen(cambios) {
 }
 
 async function main() {
-  const args = process.argv.slice(2);
-  const valor = (op) => {
-    const i = args.indexOf(op);
-    if (i < 0) return undefined;
-    const v = args[i + 1];
-    if (!v || v.startsWith("--")) throw new Error(`${op} necesita un archivo`);
-    return v;
-  };
-  const fuentes = args.flatMap((a, i) => (a === "--fuente" && args[i + 1] ? [args[i + 1]] : []));
-  const archivoRestaurar = valor("--restaurar");
-  const archivoRespaldo = valor("--respaldo");
+  const op = leerArgumentos(process.argv.slice(2));
   const prisma = new PrismaClient();
   try {
-    if (archivoRestaurar) {
-      const { cambios } = JSON.parse(fs.readFileSync(archivoRestaurar, "utf-8"));
-      log("restaurado", JSON.stringify(await restaurar(prisma, cambios)), "de", cambios.length);
+    if (op.restaurar) {
+      const { cambios } = JSON.parse(fs.readFileSync(op.restaurar, "utf-8"));
+      const aplicados = fs.readFileSync(`${op.restaurar}.aplicados`, "utf-8").split("\n").filter(Boolean);
+      log("restaurado", JSON.stringify(await restaurar(prisma, cambios, aplicados)), "de", aplicados.length, "aplicados");
       return;
     }
-    const cambios = await planear(prisma, fuentes);
+    const cambios = await planear(prisma, op.fuentes);
     log("plan", JSON.stringify(resumen(cambios)));
-    if (!args.includes("--aplicar")) {
+    if (!op.aplicar) {
       log("prueba (sin escribir)");
       return;
     }
-    if (!archivoRespaldo) throw new Error("--aplicar necesita --respaldo ARCHIVO (sin respaldo no se escribe nada)");
-    fs.writeFileSync(archivoRespaldo, JSON.stringify({ creado: new Date().toISOString(), fuentes, cambios }), { flag: "wx", mode: 0o600 });
-    log("respaldo", archivoRespaldo, cambios.length, "deals");
-    log("aplicado", JSON.stringify(await aplicar(prisma, cambios)));
-    log("quedan distintos", (await planear(prisma, fuentes)).length);
+    if (!op.respaldo) throw new Error("--aplicar necesita --respaldo ARCHIVO (sin respaldo no se escribe nada)");
+    fs.writeFileSync(op.respaldo, JSON.stringify({ creado: new Date().toISOString(), fuentes: op.fuentes, cambios }), { flag: "wx", mode: 0o600 });
+    const registro = fs.openSync(`${op.respaldo}.aplicados`, "wx", 0o600);
+    log("respaldo", op.respaldo, cambios.length, "deals");
+    try {
+      log("aplicado", JSON.stringify(await aplicar(prisma, cambios, (id) => fs.writeSync(registro, `${id}\n`))));
+    } finally {
+      fs.closeSync(registro);
+    }
+    log("quedan distintos", (await planear(prisma, op.fuentes)).length);
   } finally {
     await prisma.$disconnect();
   }

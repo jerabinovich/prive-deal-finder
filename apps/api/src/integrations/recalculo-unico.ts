@@ -52,7 +52,13 @@ export async function planear(prisma: Pick<PrismaClient, "deal">, fuentes?: stri
   return cambios;
 }
 
-async function escribir(prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], de: "antes" | "despues", a: "antes" | "despues") {
+async function escribir(
+  prisma: Pick<PrismaClient, "deal">,
+  cambios: Cambio[],
+  de: "antes" | "despues",
+  a: "antes" | "despues",
+  alEscribir?: (id: string) => void,
+) {
   let escritos = 0;
   let saltados = 0;
   for (const c of cambios) {
@@ -60,14 +66,47 @@ async function escribir(prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], d
       where: { id: c.id, score: c[de].score, isNoise: c[de].isNoise, noiseReason: c[de].noiseReason as never },
       data: { score: c[a].score, isNoise: c[a].isNoise, noiseReason: c[a].noiseReason as never },
     });
-    if (r.count === 1) escritos += 1;
-    else saltados += 1;
+    if (r.count === 1) {
+      escritos += 1;
+      alEscribir?.(c.id);
+    } else saltados += 1;
   }
   return { escritos, saltados };
 }
 
-/** Escribe los valores nuevos; un deal que cambio desde que se planeo se saltea (y se cuenta). */
-export const aplicar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[]) => escribir(prisma, cambios, "antes", "despues");
+/**
+ * Escribe los valores nuevos; un deal que cambio desde que se planeo se saltea (y se cuenta). alEscribir recibe cada
+ * id escrito de verdad, para anotarlo en el registro que usa restaurar.
+ */
+export const aplicar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], alEscribir?: (id: string) => void) =>
+  escribir(prisma, cambios, "antes", "despues", alEscribir);
 
-/** Vuelve a los valores de antes; un deal que cambio despues de aplicar se saltea (y se cuenta). */
-export const restaurar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[]) => escribir(prisma, cambios, "despues", "antes");
+/**
+ * Vuelve a los valores de antes, SOLO en las filas que el aplicado escribio (aplicados, del registro): una fila que el
+ * aplicado salteo porque otro proceso ya la habia puesto en el mismo valor no se toca (revision de Codex del PR 22).
+ */
+export const restaurar = (prisma: Pick<PrismaClient, "deal">, cambios: Cambio[], aplicados: string[]) => {
+  const ids = new Set(aplicados);
+  return escribir(prisma, cambios.filter((c) => ids.has(c.id)), "despues", "antes");
+};
+
+/**
+ * Opciones de scripts/recalcular-puntajes.js. Una opcion que pide valor y viene sin el (o seguida de otra opcion) es
+ * un error: antes "--fuente" al final quedaba sin filtro y la corrida tomaba todas las fuentes de parcelas.
+ */
+export function leerArgumentos(args: string[]): { aplicar: boolean; respaldo?: string; restaurar?: string; fuentes: string[] } {
+  const valorDe = (i: number, op: string) => {
+    const v = args[i + 1];
+    if (!v || v.startsWith("--")) throw new Error(`${op} necesita un valor`);
+    return v;
+  };
+  const fuentes: string[] = [];
+  let respaldo: string | undefined;
+  let restaurar: string | undefined;
+  args.forEach((a, i) => {
+    if (a === "--fuente") fuentes.push(valorDe(i, a));
+    if (a === "--respaldo") respaldo = valorDe(i, a);
+    if (a === "--restaurar") restaurar = valorDe(i, a);
+  });
+  return { aplicar: args.includes("--aplicar"), respaldo, restaurar, fuentes };
+}

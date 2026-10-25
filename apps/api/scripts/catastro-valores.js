@@ -27,7 +27,7 @@ async function main() {
       limite,
       log: (m) => console.log(new Date().toISOString(), m),
     });
-    const total = { deals: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0 };
+    const total = { deals: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0, puntajes: 0 };
     for (const x of r) for (const k of Object.keys(total)) total[k] += x[k];
     console.log(new Date().toISOString(), args.includes("--aplicar") ? "aplicado" : "prueba (sin escribir)", JSON.stringify(total));
   } finally {

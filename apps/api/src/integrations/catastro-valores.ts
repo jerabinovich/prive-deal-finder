@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { CAPA_CATASTRO_PUNTOS } from "./parcelas-estatales";
 import { CAPA_PALM_BEACH } from "./parcelas-palm-beach";
+import { recalcularPuntaje } from "./rescore-distress";
 
 /**
  * TASACION, ULTIMA VENTA Y LOTE DESDE EL CATASTRO ESTATAL (23-oct-2026, decision de JR).
@@ -271,7 +272,10 @@ export async function consultarVentasDelCondado(
 
 export type ResumenCatastro = {
   fuente: string; deals: number; encontrados: number; tasaciones: number; ventas: number; ventasCondado: number; lotes: number;
+  puntajes: number;
 };
+
+type Recalcular = (prisma: PrismaClient, ids: string[]) => Promise<number>;
 
 /**
  * Recorre los deals de parcelas que todavia no tienen tasacion del catastro (o todos, con `todos`) y les carga
@@ -279,7 +283,10 @@ export type ResumenCatastro = {
  */
 export async function enriquecerConCatastro(
   prisma: PrismaClient,
-  opciones: { aplicar: boolean; todos?: boolean; fuentes?: string[]; limite?: number; buscar?: Buscar; log?: (m: string) => void },
+  opciones: {
+    aplicar: boolean; todos?: boolean; fuentes?: string[]; limite?: number; buscar?: Buscar; log?: (m: string) => void;
+    recalcular?: Recalcular;
+  },
 ): Promise<ResumenCatastro[]> {
   const log = opciones.log ?? (() => undefined);
   const resumenes: ResumenCatastro[] = [];
@@ -307,7 +314,9 @@ export async function enriquecerConCatastro(
       orderBy: { createdAt: "asc" },
       ...(opciones.limite ? { take: opciones.limite } : {}),
     });
-    const resumen: ResumenCatastro = { fuente, deals: deals.length, encontrados: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0 };
+    const resumen: ResumenCatastro = {
+      fuente, deals: deals.length, encontrados: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0, puntajes: 0,
+    };
     const valores = await consultarCatastro(condado, deals.map((d) => d.parcelId as string), opciones.buscar);
     for (const deal of deals) {
       const v = valores.get(deal.parcelId as string);
@@ -322,7 +331,14 @@ export async function enriquecerConCatastro(
       const r = await aplicarValores(prisma, deal, v, await snapshotDe(v.taxYear));
       resumen.tasaciones += 1;
       resumen.ventas += r.ventasNuevas;
-      if (r.lote) resumen.lotes += 1;
+      if (r.lote) {
+        resumen.lotes += 1;
+        // 25-oct-2026: el lote cuenta en el score (+5 desde 10.000 sqft); antes el puntaje esperaba a que el sync volviera
+        // a pasar por ese folio, a veces semanas. Se recalcula EN EL MOMENTO, con la etapa de distress guardada
+        // (recalcularPuntaje): si la corrida se corta despues, ningun lote ya cargado queda con el score viejo (un
+        // reintento no lo volveria a elegir porque ya tiene tasacion; revision de Codex del PR 17).
+        resumen.puntajes += await (opciones.recalcular ?? recalcularPuntaje)(prisma, [deal.id]);
+      }
     }
     if (VENTAS_DEL_CONDADO[fuente]) {
       const ventas = await consultarVentasDelCondado(fuente, deals.map((d) => d.parcelId as string), opciones.buscar);

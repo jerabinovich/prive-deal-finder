@@ -2,6 +2,30 @@ import type { PrismaClient } from "@prisma/client";
 import { decidirDistress } from "../deals/distress-classification";
 import { computeTriageScore } from "../scoring/score";
 
+type DealGuardado = {
+  assetType: string | null; propertyUseCode: string | null; mailingAddress: string | null; city: string | null;
+  municipality: string | null; state: string | null; yearBuilt: number | null; lotSizeSqft: number | null; source: string | null;
+};
+
+/** Lo que computeTriageScore lee de un deal guardado y sus duenos, salvo la etapa de distress. */
+function entradaDeTriage(deal: DealGuardado, ownerNames: string[]) {
+  return {
+    assetType: deal.assetType,
+    propertyUseCode: deal.propertyUseCode,
+    ownerNames,
+    mailingAddress: deal.mailingAddress,
+    city: deal.city,
+    municipality: deal.municipality,
+    state: deal.state,
+    yearBuilt: deal.yearBuilt,
+    lotSizeSqft: deal.lotSizeSqft,
+    source: deal.source,
+  };
+}
+
+const nombresDe = (owners: Array<{ owner: { name: string | null } | null }>) =>
+  owners.map((item) => item.owner?.name).filter((name): name is string => Boolean(name));
+
 /**
  * Recalcula la etapa de distress y el score de los deals indicados mirando TODAS sus senales.
  *
@@ -42,19 +66,7 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
 
     const decision = decidirDistress(senales, deal.propertyUseCode);
 
-    const triage = computeTriageScore({
-      assetType: deal.assetType,
-      propertyUseCode: deal.propertyUseCode,
-      ownerNames: owners.map((item) => item.owner?.name).filter((name): name is string => Boolean(name)),
-      mailingAddress: deal.mailingAddress,
-      city: deal.city,
-      municipality: deal.municipality,
-      state: deal.state,
-      yearBuilt: deal.yearBuilt,
-      lotSizeSqft: deal.lotSizeSqft,
-      source: deal.source,
-      distressStage: decision.stage,
-    });
+    const triage = computeTriageScore({ ...entradaDeTriage(deal, nombresDe(owners)), distressStage: decision.stage });
 
     if (
       triage.score === deal.score &&
@@ -70,6 +82,32 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
         noiseReason: triage.noiseReason,
         distressStage: decision.stage,
       },
+    });
+    updated += 1;
+  }
+  return updated;
+}
+
+/**
+ * Recalcula SOLO el score (y el ruido) de los deals indicados, con la etapa de distress que ya tienen guardada
+ * (25-oct-2026). Es la misma cuenta que hace la ingesta de parcelas (arcgis.ingest.ts usa deal.distressStage), para
+ * cuando otro paso cambia un dato del score, como el lote que carga catastro-valores.ts.
+ *
+ * POR QUE NO recalcularDistressYPuntaje: esa decide la etapa solo con las senales; GOVERNMENT_LAND lo pone el triage
+ * (operational-decision.ts) por dueno o uso del suelo y no tiene senales. Medido el 25-oct: los 941 deals con
+ * GOVERNMENT_LAND y sin senales pasarian a NONE.
+ */
+export async function recalcularPuntaje(prisma: Pick<PrismaClient, "deal" | "dealOwner">, ids: string[]): Promise<number> {
+  let updated = 0;
+  for (const dealId of [...new Set(ids)]) {
+    const deal = await prisma.deal.findUnique({ where: { id: dealId } });
+    if (!deal) continue;
+    const owners = await prisma.dealOwner.findMany({ where: { dealId }, select: { owner: { select: { name: true } } } });
+    const triage = computeTriageScore({ ...entradaDeTriage(deal, nombresDe(owners)), distressStage: deal.distressStage });
+    if (triage.score === deal.score && triage.isNoise === deal.isNoise && triage.noiseReason === deal.noiseReason) continue;
+    await prisma.deal.update({
+      where: { id: dealId },
+      data: { score: triage.score, isNoise: triage.isNoise, noiseReason: triage.noiseReason },
     });
     updated += 1;
   }

@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { CAPA_CATASTRO_PUNTOS } from "./parcelas-estatales";
 import { CAPA_PALM_BEACH } from "./parcelas-palm-beach";
 import { recalcularPuntaje } from "./rescore-distress";
+import { LoteCortado, consultarCapa } from "./arcgis-pagina";
 
 /**
  * TASACION, ULTIMA VENTA Y LOTE DESDE EL CATASTRO ESTATAL (23-oct-2026, decision de JR).
@@ -88,42 +89,24 @@ export type Buscar = (url: string, where: string) => Promise<unknown[]>;
  * consultas por lotes de folios lo parten en dos hasta que entra; si un solo folio no entra, falla. Medido el 25-oct:
  * el lote mas grande de Broward trae 45 filas, asi que hoy no pasa.
  */
-export class LoteCortado extends Error {
-  constructor(url: string) {
-    super(`ArcGIS corto la respuesta en su tope de filas (${url})`);
-    this.name = "LoteCortado";
-  }
-}
+export { LoteCortado } from "./arcgis-pagina";
 
-const dormir = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-/** 25-oct-2026: espera 2 s y 4 s entre los tres intentos y ninguna despues del ultimo (antes sumaba 6 s antes de fallar). */
+/**
+ * 25-oct-2026: espera 2 s y 4 s entre los tres intentos y ninguna despues del ultimo. Desde el 25-oct (cliente unico)
+ * el pedido lo hace consultarCapa (arcgis-pagina.ts), por POST, con 60 s de plazo y LoteCortado si la capa corta.
+ */
 export async function consultaArcgis(
   url: string,
   parametros: Record<string, string>,
-  esperar: (ms: number) => Promise<void> = dormir,
+  esperar?: (ms: number) => Promise<void>,
 ): Promise<unknown[]> {
-  let ultimo: unknown;
-  for (let intento = 1; intento <= 3; intento += 1) {
-    try {
-      const respuesta = await fetch(`${url.replace(/\/+$/, "")}/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ outFields: "*", returnGeometry: "false", f: "json", ...parametros }).toString(),
-        signal: AbortSignal.timeout(60_000),
-      });
-      if (!respuesta.ok) throw new Error(`ArcGIS ${respuesta.status}`);
-      const cuerpo = (await respuesta.json()) as { error?: { message?: string }; features?: unknown[]; exceededTransferLimit?: boolean };
-      if (cuerpo?.error) throw new Error(`ArcGIS: ${cuerpo.error.message ?? "sin detalle"}`);
-      if (cuerpo?.exceededTransferLimit) throw new LoteCortado(url);
-      return Array.isArray(cuerpo?.features) ? cuerpo.features : [];
-    } catch (e) {
-      if (e instanceof LoteCortado) throw e;
-      ultimo = e;
-      if (intento < 3) await esperar(2000 * intento);
-    }
-  }
-  throw ultimo instanceof Error ? ultimo : new Error(String(ultimo));
+  return consultarCapa(url, { outFields: "*", returnGeometry: "false", f: "json", ...parametros }, {
+    metodo: "POST",
+    plazoMs: 60_000,
+    intentos: 3,
+    esperar,
+    topeCortado: true,
+  });
 }
 
 export const buscarEnCatastro: Buscar = (url, where) => consultaArcgis(url, { where });

@@ -187,6 +187,15 @@ describe("enriquecerConCatastro recalcula el score de los deals que recibieron l
     expect(recalcular.mock.calls[0][1]).toEqual(["d1"]);
   });
 
+  it("si la corrida falla despues de cargar un lote, ese deal ya quedo recalculado (revision de Codex del PR 17)", async () => {
+    const recalcular = jest.fn().mockResolvedValue(1);
+    const prisma = prismaEnriquecer();
+    prisma.deal.findMany.mockResolvedValue([{ id: "d1", parcelId: "494126380040", lotSizeSqft: null }, { id: "d2", parcelId: "OTRO", lotSizeSqft: null }]);
+    prisma.mdpaAssessment.create.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("base caida"));
+    await expect(enriquecerConCatastro(prisma as never, { aplicar: true, fuentes: ["monroe-parcels"], buscar, recalcular } as Opciones)).rejects.toThrow("base caida");
+    expect(recalcular.mock.calls).toEqual([[prisma, ["d1"]]]);
+  });
+
   it("en prueba (sin aplicar) no recalcula nada", async () => {
     const recalcular = jest.fn().mockResolvedValue(0);
     await enriquecerConCatastro(prismaEnriquecer() as never, { aplicar: false, fuentes: ["monroe-parcels"], buscar, recalcular } as Opciones);

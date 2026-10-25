@@ -317,7 +317,6 @@ export async function enriquecerConCatastro(
     const resumen: ResumenCatastro = {
       fuente, deals: deals.length, encontrados: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0, puntajes: 0,
     };
-    const conLote: string[] = [];
     const valores = await consultarCatastro(condado, deals.map((d) => d.parcelId as string), opciones.buscar);
     for (const deal of deals) {
       const v = valores.get(deal.parcelId as string);
@@ -334,12 +333,13 @@ export async function enriquecerConCatastro(
       resumen.ventas += r.ventasNuevas;
       if (r.lote) {
         resumen.lotes += 1;
-        conLote.push(deal.id);
+        // 25-oct-2026: el lote cuenta en el score (+5 desde 10.000 sqft); antes el puntaje esperaba a que el sync volviera
+        // a pasar por ese folio, a veces semanas. Se recalcula EN EL MOMENTO, con la etapa de distress guardada
+        // (recalcularPuntaje): si la corrida se corta despues, ningun lote ya cargado queda con el score viejo (un
+        // reintento no lo volveria a elegir porque ya tiene tasacion; revision de Codex del PR 17).
+        resumen.puntajes += await (opciones.recalcular ?? recalcularPuntaje)(prisma, [deal.id]);
       }
     }
-    // 25-oct-2026: el lote cuenta en el score (+5 desde 10.000 sqft); antes el puntaje esperaba a que el sync volviera
-    // a pasar por ese folio, a veces semanas. Se recalcula con la etapa de distress guardada (recalcularPuntaje).
-    if (conLote.length) resumen.puntajes = await (opciones.recalcular ?? recalcularPuntaje)(prisma, conLote);
     if (VENTAS_DEL_CONDADO[fuente]) {
       const ventas = await consultarVentasDelCondado(fuente, deals.map((d) => d.parcelId as string), opciones.buscar);
       for (const deal of deals) {

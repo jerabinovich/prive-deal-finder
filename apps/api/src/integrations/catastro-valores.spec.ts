@@ -1,5 +1,5 @@
 import {
-  CONDADO_POR_FUENTE, VENTAS_DEL_CONDADO, aplicarValores, consultaArcgis, consultarCatastro, consultarVentasDelCondado, guardarVentas,
+  CONDADO_POR_FUENTE, VENTAS_DEL_CONDADO, aplicarValores, consultaArcgis, enriquecerConCatastro, consultarCatastro, consultarVentasDelCondado, guardarVentas,
   valoresDeFila, ventaBroward, ventaPalmBeach,
 } from "./catastro-valores";
 
@@ -161,4 +161,35 @@ describe("consultaArcgis reintentos (25-oct)", () => {
     expect(await conEspera("https://capa/0", { where: "1=1" }, esperar)).toHaveLength(1);
     expect(esperar.mock.calls).toEqual([[2000]]);
   }, 20_000);
+});
+
+describe("enriquecerConCatastro recalcula el score de los deals que recibieron lote (25-oct)", () => {
+  function prismaEnriquecer() {
+    return {
+      deal: {
+        findMany: jest.fn().mockResolvedValue([{ id: "d1", parcelId: "494126380040", lotSizeSqft: null }, { id: "d2", parcelId: "OTRO", lotSizeSqft: 5000 }]),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      mdpaDatasetSnapshot: { findFirst: jest.fn().mockResolvedValue({ id: "snap" }), create: jest.fn() },
+      mdpaAssessment: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({}), update: jest.fn() },
+      mdpaSale: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({}) },
+    };
+  }
+  const buscar = jest.fn().mockResolvedValue([FILA, { attributes: { ...FILA.attributes, PARCEL_ID: "OTRO" } }]);
+  // Tipado explicito para que el mismo test corra contra la version sin la opcion recalcular (prueba en rojo).
+  type Opciones = Parameters<typeof enriquecerConCatastro>[1];
+
+  it("con aplicar: llama a recalcular solo con los deals a los que se les cargo el lote", async () => {
+    const recalcular = jest.fn().mockResolvedValue(1);
+    const prisma = prismaEnriquecer();
+    await enriquecerConCatastro(prisma as never, { aplicar: true, fuentes: ["monroe-parcels"], buscar, recalcular } as Opciones);
+    expect(recalcular).toHaveBeenCalledTimes(1);
+    expect(recalcular.mock.calls[0][1]).toEqual(["d1"]);
+  });
+
+  it("en prueba (sin aplicar) no recalcula nada", async () => {
+    const recalcular = jest.fn().mockResolvedValue(0);
+    await enriquecerConCatastro(prismaEnriquecer() as never, { aplicar: false, fuentes: ["monroe-parcels"], buscar, recalcular } as Opciones);
+    expect(recalcular).not.toHaveBeenCalled();
+  });
 });

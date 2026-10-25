@@ -5,6 +5,7 @@ import { resolveDorUseCode } from "./dor-use-codes";
 import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipPorCoordenadas } from "./zip";
 import { domicilioDeLaCapa } from "./domicilio-postal";
 import { foliosDescartados } from "./descartados";
+import { CAMPOS_ZONING } from "./zoning";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -26,7 +27,9 @@ const HEADER_MAP: Record<string, string[]> = {
   zip: CAMPOS_ZIP_DEL_SITIO,
   owner: ["OWNER_NAME1", "OWNER_NAME2", "OWNER_NAME", "OWNERNME1", "OWNERNME2", "OWNER", "OWN_NAME", "NAME", "CNVYNAME", "NAME_LINE_1"],
   assetType: ["PROPERTY_USE", "USEDSCRP", "PRPRTYDSCR", "CLASSDSCRP", "DOR_DESC"],
-  lotSizeSqft: ["LOT_SIZE_SQFT", "LOT_SQFT", "LOTSQFT", "LAND_SQFT", "LANDSQFT", "LOTSIZE", "LOT_SIZE", "LAND_GROSS"],
+  // 23-oct-2026: fuera LAND_GROSS. En Broward (BCPA capa 36) es un monto en dolares ("$163"), y se
+  // guardaba como superficie: el lote mediano de Broward daba 101 sqft. Esa capa no trae superficie.
+  lotSizeSqft: ["LOT_SIZE_SQFT", "LOT_SQFT", "LOTSQFT", "LAND_SQFT", "LANDSQFT", "LOTSIZE", "LOT_SIZE"],
   lotSizeAcres: ["ACRES"],
   buildingSizeSqft: [
     "BUILDING_SQFT",
@@ -44,6 +47,7 @@ const HEADER_MAP: Record<string, string[]> = {
     "GROSS_AREA",
     "GROSS_LIVING_AREA",
     "TOT_LVG_AREA",
+    "BLDG_ADJ_SQ_FOOTAGE",
   ],
   yearBuilt: [
     "YEAR_BUILT",
@@ -57,7 +61,7 @@ const HEADER_MAP: Record<string, string[]> = {
     "EFF_YR_BLT",
     "YEAR_ADDED",
   ],
-  zoning: ["ZONING", "ZONING_DESC", "ZONINGCODE", "ZONING_CODE", "CVTTXDSCRP", "CLASSDSCRP"],
+  zoning: CAMPOS_ZONING,
   askingPrice: [
     "MARKET_VALUE",
     "JUST_VALUE",
@@ -297,7 +301,8 @@ export async function ingestArcgisRecords(
       municipality,
       state,
       yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
-      lotSizeSqft,
+      // 23-oct-2026: Broward no trae lote en su capa; el que cargo el catastro estatal (catastro-valores.ts) cuenta.
+      lotSizeSqft: lotSizeSqft ?? deal?.lotSizeSqft ?? undefined,
       // 13-oct-2026: un deal que ya existe conserva su etapa de distress. Sin esto, la resincronizacion
       // diaria de parcelas le borraba el premio de distress del score hasta la proxima corrida judicial.
       distressStage: deal?.distressStage,

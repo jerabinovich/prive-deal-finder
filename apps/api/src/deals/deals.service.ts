@@ -8,6 +8,7 @@ import { CAPA_PALM_BEACH } from "../integrations/parcelas-palm-beach";
 import { fetchArcgisWhere } from "../integrations/connectors/arcgis";
 import { readRecordedDebt } from "../integrations/miami-dade-clerk.debt";
 import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, resolverZipDelSitio } from "../integrations/zip";
+import { CAMPOS_ZONING } from "../integrations/zoning";
 import { CreateDealDto } from "./dto/create-deal.dto";
 import { CreateDealDocumentDto } from "./dto/create-deal-document.dto";
 import { CreateDealMediaDto } from "./dto/create-deal-media.dto";
@@ -509,7 +510,7 @@ export class DealsService {
         propertyUseCode ?? pickField(attrs, ["USE_CODE", "PROPERTY_USE", "DOR_UC", "CLASS_CODE", "PROPERTY_TYPE"]);
       assetType =
         assetType ?? pickField(attrs, ["PROPERTY_USE", "USEDSCRP", "PRPRTYDSCR", "CLASSDSCRP", "DOR_DESC"]);
-      zoning = zoning ?? pickField(attrs, ["ZONING", "ZONING_DESC", "ZONINGCODE", "CVTTXDSCRP", "CLASSDSCRP", "DOR_DESC"]);
+      zoning = zoning ?? pickField(attrs, CAMPOS_ZONING);
 
       const lotSqft = toNumber(
         pickField(attrs, ["LOT_SIZE_SQFT", "LOT_SQFT", "LOTSQFT", "LAND_SQFT", "LANDSQFT", "LOTSIZE", "LOT_SIZE"])

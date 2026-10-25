@@ -1,5 +1,6 @@
 import { ingestArcgisRecords } from "./arcgis.ingest";
 import { zipPorCoordenadas } from "./zip";
+import { CAMPOS_ZONING } from "./zoning";
 
 jest.mock("./zip", () => ({ ...jest.requireActual("./zip"), zipPorCoordenadas: jest.fn() }));
 const zipMock = zipPorCoordenadas as jest.MockedFunction<typeof zipPorCoordenadas>;
@@ -59,5 +60,45 @@ describe("ingestArcgisRecords", () => {
     const sin = sinDistress.deal.update.mock.calls[0][0].data.score;
     // PRE_FORECLOSURE suma 40 en computeTriageScore; el resto del deal es identico.
     expect(con - sin).toBe(40);
+  });
+  it("Broward: LAND_GROSS es un monto en dolares y no la superficie del lote (23-oct)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const prisma = prismaFalso(null);
+    await ingestArcgisRecords(prisma as never, "broward-parcels", "Broward", [
+      { ...LOCAL, attributes: { ...LOCAL.attributes, LAND_GROSS: "$163", BLDG_ADJ_SQ_FOOTAGE: 1855 } },
+    ]);
+    const data = prisma.deal.create.mock.calls[0][0].data;
+    expect(data.lotSizeSqft ?? null).toBeNull();
+    expect(data.buildingSizeSqft).toBe(1855);
+  });
+
+  it("zoning solo de campos de zonificacion, nunca la descripcion del uso del suelo (23-oct)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const conUso = prismaFalso(null);
+    await ingestArcgisRecords(conUso as never, "miami-dade-parcels", "Miami-Dade", [
+      { ...LOCAL, attributes: { ...LOCAL.attributes, DOR_DESC: "RESIDENTIAL - SINGLE FAMILY : 1 UNIT", CLASSDSCRP: "SFR", CVTTXDSCRP: "MIAMI" } },
+    ]);
+    expect(conUso.deal.create.mock.calls[0][0].data.zoning ?? null).toBeNull();
+    const conZona = prismaFalso(null);
+    await ingestArcgisRecords(conZona as never, "miami-dade-parcels", "Miami-Dade", [
+      { ...LOCAL, attributes: { ...LOCAL.attributes, ZONING: "T6-8-O" } },
+    ]);
+    expect(conZona.deal.create.mock.calls[0][0].data.zoning).toBe("T6-8-O");
+    for (const uso of ["DOR_DESC", "CLASSDSCRP", "CVTTXDSCRP", "USEDSCRP", "PROPERTY_USE"]) {
+      expect(CAMPOS_ZONING).not.toContain(uso);
+    }
+  });
+
+  it("el lote ya guardado (catastro estatal) cuenta en el score aunque la capa no lo traiga (23-oct)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const conLote = prismaFalso({ id: "viejo", distressStage: "NONE", lotSizeSqft: 12000 });
+    const sinLote = prismaFalso({ id: "viejo", distressStage: "NONE", lotSizeSqft: null });
+    await ingestArcgisRecords(conLote as never, "broward-parcels", "Broward", [LOCAL]);
+    await ingestArcgisRecords(sinLote as never, "broward-parcels", "Broward", [LOCAL]);
+    const con = conLote.deal.update.mock.calls[0][0].data;
+    const sin = sinLote.deal.update.mock.calls[0][0].data;
+    // lote de 10.000 sqft o mas suma 5 en computeTriageScore.
+    expect(con.score - sin.score).toBe(5);
+    expect(con.lotSizeSqft).toBe(12000);
   });
 });

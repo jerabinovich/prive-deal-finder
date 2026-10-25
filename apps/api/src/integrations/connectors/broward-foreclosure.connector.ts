@@ -202,6 +202,26 @@ function formatBrowardDate(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/**
+ * 25-oct-2026 (JR: "hay que utilizarlas mejor"). Auditoria de 14 dias: el Clerk carga los expedientes con atraso.
+ * Consultar HOY a las 08:00 nunca trajo nada (20 de 48 unidades), el sabado y el lunes repetian al viernes, y un
+ * dia habil consultado al dia siguiente traia ~3 casos contra ~16 a los dos dias: se perdia la mayoria de las
+ * ejecuciones de lunes a jueves. Plan: UNA consulta por dia habil, de la fecha que quedo `lag` dias habiles atras
+ * (ya completa), y ninguna el fin de semana. Cada fecha habil se consulta una sola vez.
+ */
+export function planBrowardDates(now: Date, lagBusinessDays: number): Date[] {
+  const weekday = now.getDay();
+  if (weekday === 0 || weekday === 6) return [];
+  let date = new Date(now.getTime());
+  let left = lagBusinessDays;
+  while (left > 0) {
+    date = new Date(date.getTime() - 24 * 60 * 60 * 1000);
+    const day = date.getDay();
+    if (day !== 0 && day !== 6) left -= 1;
+  }
+  return [date];
+}
+
 function normalizeQuotedText(value: string) {
   const trimmed = value.trim();
   if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
@@ -357,6 +377,15 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     return Math.min(60, Math.round(parsed));
   }
 
+  // 25-oct-2026: dias habiles de atraso de la unica consulta diaria (default 2). 0 vuelve al plan anterior
+  // (hoy y hacia atras hasta encontrar foreclosures), para revertir sin desplegar codigo.
+  private lagBusinessDays() {
+    const raw = process.env.BROWARD_FORECLOSURE_LAG_BUSINESS_DAYS;
+    const parsed = Number(raw === undefined || raw === "" ? 2 : raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return 2;
+    return Math.min(10, Math.round(parsed));
+  }
+
   private maxRequests() {
     const parsed = Number(process.env.BROWARD_FORECLOSURE_MAX_REQUESTS || 200);
     if (!Number.isFinite(parsed) || parsed < 1) return 200;
@@ -407,12 +436,26 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     // (2 por llamada, compradas) para que la respuesta venga vacia siempre.
     // Detectado corriendo un domingo: con lookback=2 consulto sabado y domingo,
     // o sea los dos dias garantizados sin datos.
+    const lag = this.lagBusinessDays();
     const datesToQuery: string[] = [];
-    for (let offset = 0; datesToQuery.length < lookbackDays && offset < lookbackDays + 7; offset += 1) {
-      const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
-      const weekday = date.getDay();
-      if (weekday === 0 || weekday === 6) continue;
-      datesToQuery.push(formatBrowardDate(date));
+    if (lag > 0) {
+      for (const date of planBrowardDates(now, lag)) datesToQuery.push(formatBrowardDate(date));
+      if (!datesToQuery.length) {
+        // Fin de semana: no hay fecha nueva que consultar. OK explicito con 0 unidades (no "fallo").
+        return {
+          status: IntegrationStatus.OK,
+          message: "Broward foreclosure: weekend, no new business date to query (0 units)",
+          records: [],
+          metrics: { lagBusinessDays: lag, requestsMade: 0, maxRequests, queriedDates: [], successfulLookups: 0 },
+        };
+      }
+    } else {
+      for (let offset = 0; datesToQuery.length < lookbackDays && offset < lookbackDays + 7; offset += 1) {
+        const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
+        const weekday = date.getDay();
+        if (weekday === 0 || weekday === 6) continue;
+        datesToQuery.push(formatBrowardDate(date));
+      }
     }
 
     const caseTypes = this.caseTypes();

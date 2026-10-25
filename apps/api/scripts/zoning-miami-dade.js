@@ -10,16 +10,17 @@
  */
 const { PrismaClient } = require("@prisma/client");
 const { cargarZoningMiamiDade } = require("../dist/integrations/zoning-miami-dade");
+const { leerLimite } = require("../dist/integrations/argumentos");
 
 async function main() {
   const args = process.argv.slice(2);
-  const iLimite = args.indexOf("--limite");
+  const limite = leerLimite(args);
   const prisma = new PrismaClient();
   try {
     const r = await cargarZoningMiamiDade(prisma, {
       aplicar: args.includes("--aplicar"),
       todos: args.includes("--todos"),
-      limite: iLimite >= 0 ? Number(args[iLimite + 1]) : undefined,
+      limite,
     });
     console.log(new Date().toISOString(), args.includes("--aplicar") ? "aplicado" : "prueba (sin escribir)", JSON.stringify(r));
   } finally {

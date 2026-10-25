@@ -12,12 +12,12 @@
  */
 const { PrismaClient } = require("@prisma/client");
 const { enriquecerConCatastro } = require("../dist/integrations/catastro-valores");
+const { leerLimite } = require("../dist/integrations/argumentos");
 
 async function main() {
   const args = process.argv.slice(2);
   const fuentes = args.flatMap((a, i) => (a === "--fuente" && args[i + 1] ? [args[i + 1]] : []));
-  const iLimite = args.indexOf("--limite");
-  const limite = iLimite >= 0 ? Number(args[iLimite + 1]) : undefined;
+  const limite = leerLimite(args);
   const prisma = new PrismaClient();
   try {
     const r = await enriquecerConCatastro(prisma, {

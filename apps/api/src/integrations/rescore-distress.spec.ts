@@ -86,6 +86,19 @@ describe("recalcularDistressYPuntaje y GOVERNMENT_LAND (25-oct)", () => {
     expect(prisma.deal.update.mock.calls[0][0].data.distressStage).toBe("NONE");
   });
 
+  it("misma etapa y mismo score pero motivo de ruido viejo: tambien lo guarda (revision de Codex del PR 20)", async () => {
+    const guardado = { ...base, propertyUseCode: "Vacant Governmental (DOR 80)", assetType: "Vacant Governmental (DOR 80)", distressStage: "GOVERNMENT_LAND" };
+    const e = computeTriageScore({
+      assetType: guardado.assetType, propertyUseCode: guardado.propertyUseCode, ownerNames: [], mailingAddress: null, city: guardado.city,
+      municipality: guardado.municipality, state: guardado.state, yearBuilt: guardado.yearBuilt, lotSizeSqft: null,
+      source: guardado.source, distressStage: "GOVERNMENT_LAND",
+    });
+    const prisma = prismaDistress({ ...guardado, lotSizeSqft: null, score: e.score, isNoise: e.isNoise, noiseReason: "MOTIVO_VIEJO" });
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.deal.update).toHaveBeenCalledTimes(1);
+    expect(prisma.deal.update.mock.calls[0][0].data.noiseReason).toBe(e.noiseReason);
+  });
+
   it("con senales manda la decision de las senales, como en el triage", async () => {
     const senales = [{ dealId: "d1", source: "miami-dade-code-enforcement", metadata: JSON.stringify({ PROBLEM_DESC: "OVERGROWTH", STATUS: "OPEN" }) }];
     const esperado = decidirDistress(senales, "Vacant Governmental (DOR 80)").stage;

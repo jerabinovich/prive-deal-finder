@@ -77,6 +77,7 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
     if (
       triage.score === deal.score &&
       triage.isNoise === deal.isNoise &&
+      triage.noiseReason === deal.noiseReason &&
       deal.distressStage === stage
     ) continue;
 

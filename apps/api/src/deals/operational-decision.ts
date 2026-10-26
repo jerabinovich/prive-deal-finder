@@ -112,7 +112,9 @@ export function decidirOperacion(input: EntradaDecision): OperationalDecision {
       lane = "NON_ACQUIRABLE_NOISE"; recommendedAction = "ARCHIVE";
       why.push(noiseReason === "CONSERVATION"
         ? "Conservation land (wildlife refuge or conservancy owner): not acquirable."
-        : "Use category matches non-acquirable pattern.");
+        : noiseReason === "GOVERNMENT"
+          ? "Government-owned or government-use parcel: outside the acquisition search."
+          : "Use category matches non-acquirable pattern.");
       blockers.push("Non-acquirable asset category by policy.");
     } else if (!input.deal.parcelId && !input.deal.address) {
       lane = "RESEARCH_REQUIRED"; recommendedAction = "RESEARCH";

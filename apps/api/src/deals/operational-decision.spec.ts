@@ -24,10 +24,9 @@ function entrada(deal: EntradaDecision["deal"]): EntradaDecision {
 const TIERRA_PUBLICA = "VACANT GOVERNMENTAL : VACANT LAND";
 
 describe("decidirOperacion: una sola decision de carril, sin pestillo de ruido", () => {
-  it("tierra publica vacante marcada ruido por la regla vieja sale a GOV_LAND_P3", () => {
+  it("25-oct-2026 (JR): tierra publica vacante es ruido GOVERNMENT, con su motivo y no el guardado", () => {
     const d = decidirOperacion(entrada({ propertyUseCode: TIERRA_PUBLICA, assetType: TIERRA_PUBLICA, isNoise: true, noiseReason: "UNKNOWN" }));
-    expect(d.isNoise).toBe(false);
-    expect(d.lane).toBe("GOV_LAND_P3");
+    expect(d).toMatchObject({ isNoise: true, noiseReason: "GOVERNMENT", lane: "NON_ACQUIRABLE_NOISE", recommendedAction: "ARCHIVE" });
   });
 
   it("una calle sigue siendo ruido aunque no estuviera marcada", () => {

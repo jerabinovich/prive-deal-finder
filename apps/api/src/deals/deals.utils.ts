@@ -112,12 +112,26 @@ export function isSpreadOutlier(spreadToAskPct: number | null) {
   return spreadToAskPct < SPREAD_SANITY.minPct || spreadToAskPct > SPREAD_SANITY.maxPct;
 }
 
+/**
+ * 25-oct-2026 (decision de JR): askingPrice es el precio que pide alguien, y solo existe en listings y brokers. Una
+ * parcela del condado no tiene precio pedido: la tasacion y la ultima venta quedan como referencia, con su fuente, en
+ * MdpaAssessment y MdpaSale. Antes se copiaba la tasacion a askingPrice y el spread comparaba la valuacion contra la
+ * tasacion como si fuera un precio pedido.
+ */
+export function esFuenteDeParcelas(source?: string | null) {
+  const s = (source ?? "").trim().toLowerCase();
+  return s.endsWith("-parcels") || s === "mdpa";
+}
+
+/** La unica cuenta de completitud. En parcelas no cuentan askingPrice ni pricePerSqft, que alli no existen. */
 export function computeDealCompletenessScore(input: {
   parcelId?: string | null; address?: string | null; city?: string | null; zip?: string | null;
   propertyUseCode?: string | null; lotSizeSqft?: number | null; buildingSizeSqft?: number | null;
   yearBuilt?: number | null; zoning?: string | null; askingPrice?: number | null;
   pricePerSqft?: number | null; latitude?: number | null; longitude?: number | null;
+  source?: string | null;
 }) {
+  const conPrecio = !esFuenteDeParcelas(input.source);
   const checks = [
     Boolean(toCleanText(input.parcelId ?? null)),
     Boolean(toCleanText(input.address ?? null)),
@@ -128,8 +142,10 @@ export function computeDealCompletenessScore(input: {
     typeof input.buildingSizeSqft === "number" && input.buildingSizeSqft > 0,
     typeof input.yearBuilt === "number" && input.yearBuilt >= 1700,
     Boolean(toCleanText(input.zoning ?? null)),
-    typeof input.askingPrice === "number" && input.askingPrice > 0,
-    typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
+    ...(conPrecio ? [
+      typeof input.askingPrice === "number" && input.askingPrice > 0,
+      typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
+    ] : []),
     typeof input.latitude === "number",
     typeof input.longitude === "number",
   ];

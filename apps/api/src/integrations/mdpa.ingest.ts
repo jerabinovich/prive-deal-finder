@@ -7,6 +7,7 @@ import { PrismaService } from "../shared/prisma.service";
 import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 import { normalizarZip } from "./zip";
+import { computeDealCompletenessScore, esFuenteDeParcelas } from "../deals/deals.utils";
 
 export type MdpaDatasetType =
   | "MUNICIPAL_ROLLS"
@@ -223,43 +224,6 @@ function toRecord(headers: string[], row: string[]): Record<string, string> {
   return record;
 }
 
-function computeCompletenessScore(input: {
-  parcelId?: string;
-  address?: string;
-  city?: string;
-  zip?: string;
-  mailingAddress?: string;
-  propertyUseCode?: string;
-  lotSizeSqft?: number;
-  buildingSizeSqft?: number;
-  yearBuilt?: number;
-  zoning?: string;
-  askingPrice?: number;
-  pricePerSqft?: number;
-  latitude?: number;
-  longitude?: number;
-}) {
-  const checks = [
-    Boolean(input.parcelId),
-    Boolean(input.address),
-    Boolean(input.city),
-    Boolean(input.zip),
-    Boolean(input.mailingAddress),
-    Boolean(input.propertyUseCode),
-    typeof input.lotSizeSqft === "number" && input.lotSizeSqft > 0,
-    typeof input.buildingSizeSqft === "number" && input.buildingSizeSqft > 0,
-    typeof input.yearBuilt === "number" && input.yearBuilt >= 1700,
-    Boolean(input.zoning),
-    typeof input.askingPrice === "number" && input.askingPrice > 0,
-    typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
-    typeof input.latitude === "number",
-    typeof input.longitude === "number",
-  ];
-
-  const completed = checks.filter(Boolean).length;
-  return Number(((completed / checks.length) * 100).toFixed(1));
-}
-
 @Injectable()
 export class MdpaIngestService {
   constructor(private readonly prisma: PrismaService) {}
@@ -387,21 +351,27 @@ export class MdpaIngestService {
       });
       const score = triage.score;
 
-      const dataCompletenessScore = computeCompletenessScore({
-        parcelId,
-        address,
-        city,
-        zip,
-        mailingAddress,
-        propertyUseCode,
-        lotSizeSqft,
-        buildingSizeSqft,
-        yearBuilt,
-        zoning,
-        askingPrice,
-        pricePerSqft,
-        latitude,
-        longitude,
+      // 25-oct-2026: la completitud se calcula sobre lo que queda guardado (lo de la capa y, si falta, lo que el deal ya
+      // tenia, como el lote que cargo el catastro), no solo sobre la capa. En parcelas no hay precio pedido (esFuenteDeParcelas).
+      const fuenteDelDeal = deal?.source ?? "mdpa";
+      const sinPrecioPedido = esFuenteDeParcelas(fuenteDelDeal);
+      const precioPedido = sinPrecioPedido ? null : askingPrice ?? deal?.askingPrice ?? null;
+      const precioPorSqft = sinPrecioPedido ? null : pricePerSqft ?? deal?.pricePerSqft ?? null;
+      const dataCompletenessScore = computeDealCompletenessScore({
+        parcelId: parcelId ?? deal?.parcelId,
+        address: address ?? deal?.address,
+        city: city ?? deal?.city,
+        zip: zip ?? deal?.zip,
+        propertyUseCode: propertyUseCode ?? deal?.propertyUseCode,
+        lotSizeSqft: lotSizeSqft ?? deal?.lotSizeSqft,
+        buildingSizeSqft: buildingSizeSqft ?? deal?.buildingSizeSqft,
+        yearBuilt: yearBuilt ?? deal?.yearBuilt,
+        zoning: zoning ?? deal?.zoning,
+        askingPrice: precioPedido,
+        pricePerSqft: precioPorSqft,
+        latitude: latitude ?? deal?.latitude,
+        longitude: longitude ?? deal?.longitude,
+        source: fuenteDelDeal,
       });
 
       if (!deal) {
@@ -421,8 +391,8 @@ export class MdpaIngestService {
             buildingSizeSqft,
             yearBuilt,
             zoning,
-            askingPrice,
-            pricePerSqft,
+            askingPrice: precioPedido ?? undefined,
+            pricePerSqft: precioPorSqft ?? undefined,
             propertyUseCode,
             source: "mdpa",
             market: "Miami-Dade",
@@ -449,8 +419,8 @@ export class MdpaIngestService {
             buildingSizeSqft: buildingSizeSqft ?? deal.buildingSizeSqft,
             yearBuilt: yearBuilt ?? deal.yearBuilt,
             zoning: zoning ?? deal.zoning,
-            askingPrice: askingPrice ?? deal.askingPrice,
-            pricePerSqft: pricePerSqft ?? deal.pricePerSqft,
+            askingPrice: precioPedido,
+            pricePerSqft: precioPorSqft,
             propertyUseCode: propertyUseCode ?? deal.propertyUseCode,
             source: deal.source ?? "mdpa",
             market: deal.market ?? "Miami-Dade",

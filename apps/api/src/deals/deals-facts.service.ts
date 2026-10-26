@@ -5,7 +5,7 @@ import { urlTablaBroward } from "../integrations/broward-servicio";
 import { CAPA_PALM_BEACH } from "../integrations/parcelas-palm-beach";
 import { fetchArcgisWhere } from "../integrations/connectors/arcgis";
 import {
-  computeDealCompletenessScore,
+  computeDealCompletenessScore, esFuenteDeParcelas,
   extractGeometryPoint,
   inferAssetTypeFromUse,
   isReasonableSalePrice,
@@ -29,25 +29,26 @@ export class DealsFactsService {
 
   hasMissingFacts(deal: {
     lotSizeSqft: number | null; buildingSizeSqft: number | null; yearBuilt: number | null;
-    zoning: string | null; askingPrice: number | null; pricePerSqft: number | null;
+    zoning: string | null; askingPrice: number | null; pricePerSqft: number | null; source?: string | null;
   }) {
     return deal.lotSizeSqft === null || deal.buildingSizeSqft === null || deal.yearBuilt === null ||
-      deal.zoning === null || deal.askingPrice === null || deal.pricePerSqft === null;
+      deal.zoning === null || (!esFuenteDeParcelas(deal.source) && (deal.askingPrice === null || deal.pricePerSqft === null));
   }
 
   missingFactFields(deal: {
     parcelId: string | null; address: string | null; city: string | null; zip: string | null;
     propertyUseCode: string | null; lotSizeSqft: number | null; buildingSizeSqft: number | null;
     yearBuilt: number | null; zoning: string | null; askingPrice: number | null;
-    pricePerSqft: number | null; latitude: number | null; longitude: number | null;
+    pricePerSqft: number | null; latitude: number | null; longitude: number | null; source?: string | null;
   }) {
+    const conPrecio = !esFuenteDeParcelas(deal.source);
     return [
       deal.parcelId ? null : "parcelId", deal.address ? null : "address",
       deal.city ? null : "city", deal.zip ? null : "zip",
       deal.propertyUseCode ? null : "propertyUseCode",
       deal.lotSizeSqft ? null : "lotSizeSqft", deal.buildingSizeSqft ? null : "buildingSizeSqft",
       deal.yearBuilt ? null : "yearBuilt", deal.zoning ? null : "zoning",
-      deal.askingPrice ? null : "askingPrice", deal.pricePerSqft ? null : "pricePerSqft",
+      conPrecio && !deal.askingPrice ? "askingPrice" : null, conPrecio && !deal.pricePerSqft ? "pricePerSqft" : null,
       deal.latitude ? null : "latitude", deal.longitude ? null : "longitude",
     ].filter((f): f is string => Boolean(f));
   }
@@ -194,6 +195,13 @@ export class DealsFactsService {
         localUpdateData.askingPrice = fallback.askingPrice;
       if ((deal.pricePerSqft === null || deal.pricePerSqft <= 0) && typeof fallback.pricePerSqft === "number" && fallback.pricePerSqft > 0)
         localUpdateData.pricePerSqft = fallback.pricePerSqft;
+      // 25-oct-2026 (JR): una parcela no tiene precio pedido; la tasacion y la venta quedan en MdpaAssessment y MdpaSale.
+      if (esFuenteDeParcelas(deal.source)) {
+        delete localUpdateData.askingPrice;
+        delete localUpdateData.pricePerSqft;
+        if (deal.askingPrice !== null) localUpdateData.askingPrice = null;
+        if (deal.pricePerSqft !== null) localUpdateData.pricePerSqft = null;
+      }
 
       const completenessScore = computeDealCompletenessScore({
         parcelId: deal.parcelId, address: deal.address,
@@ -202,7 +210,7 @@ export class DealsFactsService {
         lotSizeSqft: deal.lotSizeSqft, buildingSizeSqft: deal.buildingSizeSqft,
         yearBuilt: deal.yearBuilt, zoning: deal.zoning,
         askingPrice: deal.askingPrice, pricePerSqft: deal.pricePerSqft,
-        latitude: deal.latitude, longitude: deal.longitude,
+        latitude: deal.latitude, longitude: deal.longitude, source: deal.source,
       });
       if (deal.dataCompletenessScore === null || Number.isNaN(deal.dataCompletenessScore) ||
           Math.abs(completenessScore - deal.dataCompletenessScore) >= 0.1)
@@ -254,6 +262,14 @@ export class DealsFactsService {
         typeof pricingFallback.pricePerSqft === "number" && pricingFallback.pricePerSqft > 0)
       updateData.pricePerSqft = pricingFallback.pricePerSqft;
 
+    // 25-oct-2026 (JR): una parcela no tiene precio pedido; la tasacion y la venta quedan en MdpaAssessment y MdpaSale.
+    if (esFuenteDeParcelas(deal.source)) {
+      delete updateData.askingPrice;
+      delete updateData.pricePerSqft;
+      if (deal.askingPrice !== null) updateData.askingPrice = null;
+      if (deal.pricePerSqft !== null) updateData.pricePerSqft = null;
+    }
+
     if (deal.latitude === null && typeof facts.latitude === "number") updateData.latitude = facts.latitude;
     if (deal.longitude === null && typeof facts.longitude === "number") updateData.longitude = facts.longitude;
 
@@ -271,6 +287,7 @@ export class DealsFactsService {
       pricePerSqft: (updateData.pricePerSqft as number | undefined) ?? deal.pricePerSqft,
       latitude: (updateData.latitude as number | undefined) ?? deal.latitude,
       longitude: (updateData.longitude as number | undefined) ?? deal.longitude,
+      source: deal.source,
     });
     if (deal.dataCompletenessScore === null || Number.isNaN(deal.dataCompletenessScore) ||
         Math.abs(completenessScore - deal.dataCompletenessScore) >= 0.1)

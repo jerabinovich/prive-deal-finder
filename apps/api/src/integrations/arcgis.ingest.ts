@@ -6,6 +6,7 @@ import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipPorCoo
 import { domicilioDeLaCapa } from "./domicilio-postal";
 import { foliosDescartados } from "./descartados";
 import { CAMPOS_ZONING } from "./zoning";
+import { computeDealCompletenessScore, esFuenteDeParcelas } from "../deals/deals.utils";
 
 const HEADER_MAP: Record<string, string[]> = {
   parcelId: ["PARCEL_ID", "PARCELID", "FOLIO", "PARID", "PARCELNO", "PARCEL_NO", "LOWPARCELI", "PARCEL_NUMBER", "FOLIO_NUMBER"],
@@ -92,40 +93,6 @@ function pickField(record: Record<string, unknown>, keys: string[]) {
     }
   }
   return undefined;
-}
-
-function computeCompletenessScore(input: {
-  parcelId?: string;
-  address?: string;
-  city?: string;
-  zip?: string;
-  propertyUseCode?: string;
-  lotSizeSqft?: number;
-  buildingSizeSqft?: number;
-  yearBuilt?: number;
-  zoning?: string;
-  askingPrice?: number;
-  pricePerSqft?: number;
-  latitude?: number;
-  longitude?: number;
-}) {
-  const checks = [
-    Boolean(input.parcelId),
-    Boolean(input.address),
-    Boolean(input.city),
-    Boolean(input.zip),
-    Boolean(input.propertyUseCode),
-    typeof input.lotSizeSqft === "number" && input.lotSizeSqft > 0,
-    typeof input.buildingSizeSqft === "number" && input.buildingSizeSqft > 0,
-    typeof input.yearBuilt === "number" && input.yearBuilt >= 1700,
-    Boolean(input.zoning),
-    typeof input.askingPrice === "number" && input.askingPrice > 0,
-    typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
-    typeof input.latitude === "number",
-    typeof input.longitude === "number",
-  ];
-  const completed = checks.filter(Boolean).length;
-  return Number(((completed / checks.length) * 100).toFixed(1));
 }
 
 function composeAddress(record: Record<string, unknown>) {
@@ -318,20 +285,27 @@ export async function ingestArcgisRecords(
       distressStage: deal?.distressStage,
     });
     const score = triage.score;
-    const dataCompletenessScore = computeCompletenessScore({
-      parcelId,
-      address,
-      city,
-      zip,
-      propertyUseCode,
-      lotSizeSqft,
-      buildingSizeSqft,
-      yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
-      zoning,
-      askingPrice,
-      pricePerSqft,
-      latitude,
-      longitude,
+    // 25-oct-2026: la completitud se calcula sobre lo que queda guardado (lo de la capa y, si falta, lo que el deal ya
+    // tenia, como el lote que cargo el catastro), no solo sobre la capa. En parcelas no hay precio pedido (esFuenteDeParcelas).
+    const fuenteDelDeal = deal?.source ?? source;
+    const sinPrecioPedido = esFuenteDeParcelas(fuenteDelDeal);
+    const precioPedido = sinPrecioPedido ? null : askingPrice ?? deal?.askingPrice ?? null;
+    const precioPorSqft = sinPrecioPedido ? null : pricePerSqft ?? deal?.pricePerSqft ?? null;
+    const dataCompletenessScore = computeDealCompletenessScore({
+      parcelId: parcelId ?? deal?.parcelId,
+      address: address ?? deal?.address,
+      city: city ?? deal?.city,
+      zip: zip ?? deal?.zip,
+      propertyUseCode: propertyUseCode ?? deal?.propertyUseCode,
+      lotSizeSqft: lotSizeSqft ?? deal?.lotSizeSqft,
+      buildingSizeSqft: buildingSizeSqft ?? deal?.buildingSizeSqft,
+      yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : deal?.yearBuilt,
+      zoning: zoning ?? deal?.zoning,
+      askingPrice: precioPedido,
+      pricePerSqft: precioPorSqft,
+      latitude: latitude ?? deal?.latitude,
+      longitude: longitude ?? deal?.longitude,
+      source: fuenteDelDeal,
     });
 
     if (!deal) {
@@ -353,8 +327,8 @@ export async function ingestArcgisRecords(
           buildingSizeSqft,
           yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : undefined,
           zoning,
-          askingPrice,
-          pricePerSqft,
+          askingPrice: precioPedido ?? undefined,
+          pricePerSqft: precioPorSqft ?? undefined,
           source,
           market,
           score,
@@ -384,8 +358,8 @@ export async function ingestArcgisRecords(
           buildingSizeSqft: buildingSizeSqft ?? deal.buildingSizeSqft,
           yearBuilt: typeof yearBuilt === "number" ? Math.round(yearBuilt) : deal.yearBuilt,
           zoning: zoning ?? deal.zoning,
-          askingPrice: askingPrice ?? deal.askingPrice,
-          pricePerSqft: pricePerSqft ?? deal.pricePerSqft,
+          askingPrice: precioPedido,
+          pricePerSqft: precioPorSqft,
           source: deal.source ?? source,
           market: deal.market ?? market,
           score,

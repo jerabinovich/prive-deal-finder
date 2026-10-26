@@ -16,7 +16,9 @@ describe("dueno gobierno (JR, 15 oct: a P3)", () => {
     }
     for (const n of ["UNITED WAY OF BROWARD COUNTY INC", "COUNTY LINE PLAZA LLC", "CITY OF MIAMI BEACH CHURCH INC", "VILLAGE OF KINGS CREEK CONDO ASSOC", "ACME HOLDINGS LLC",
       "3925 DESIGN DISTRICT LLC", "DESIGN DISTRICT ASSOC (DEL) LL", "7300 NORTH FEDERAL INVESTMENTS LLC", "FIRST STATE BANK OF THE FLORID",
-      "AUTHORITY PROPERTIES LLC", "ISLAND INSURANCE AGENCY INC"]) {
+      "AUTHORITY PROPERTIES LLC", "ISLAND INSURANCE AGENCY INC",
+      // segunda revision de Codex: una junta o un departamento privados no son gobierno
+      "BOARD OF TRUSTEES OF NOVA SOUTHEASTERN UNIVERSITY", "DEPARTMENT OF MEDICINE FACULTY PRACTICE"]) {
       expect([n, esNombreDeGobierno(n)]).toEqual([n, false]);
     }
   });

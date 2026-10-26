@@ -217,7 +217,11 @@ export function parseEventDate(value: unknown) {
 // Raton Beach & Park Dist y Lower Fl Keys Hospital Dist. El filtro de forma privada (LLC, INC...) sigue mandando.
 const RE_GOBIERNO = new RegExp([
   "COUNTY", "CITY OF", "STATE OF", "TOWN OF", "VILLAGE OF", "UNITED STATES",
-  "\\bDEPARTMENT OF\\b", "\\bDEPT OF\\b", "BOARD OF TRUSTEES", "INTERNAL IMPROVEMENT", "\\bAUTHORITY\\b",
+  // Segunda revision de Codex: "BOARD OF TRUSTEES" y "DEPARTMENT OF" solos tambien los usan entidades privadas
+  // (la junta de una universidad privada). Van atados al gobierno: el fondo estatal de tierras y los departamentos
+  // del estado o de la nacion, y transporte.
+  "\\b(FLORIDA|FLA|FL|U ?S|UNITED STATES) (DEPARTMENT|DEPT) OF\\b", "\\b(DEPARTMENT|DEPT) OF TRANSPORTATION\\b",
+  "INTERNAL IMPROVEMENT", "\\bAUTHORITY\\b",
   "\\b(PARK|HOSPITAL|WATER|DRAINAGE|SCHOOL|FIRE|SPECIAL|MGMT|MANAGEMENT|IMPROVEMENT|SOIL|MOSQUITO|INLET|PORT|TRANSIT|INDEPENDENT) (DIST|DISTRICT)\\b",
 ].join("|"));
 const RE_PRIVADO =

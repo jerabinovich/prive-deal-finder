@@ -56,11 +56,11 @@ describe("tierra de conservacion (JR, 16 oct: quita P3)", () => {
     expect(esConservacion([], null)).toBe(false);
   });
 
-  it("el refugio federal es ruido de conservacion aunque el codigo DOR sea de gobierno; otro inmueble federal sigue en P3", () => {
+  it("el refugio federal es ruido de conservacion aunque el codigo DOR sea de gobierno; otro inmueble federal es ruido GOVERNMENT", () => {
     const refugio = evaluarRuido({ propertyUseCode: FEDERAL, ownerNames: ["UNITED STATES OF AMERICA"], mailingAddress: FWS });
     expect(refugio).toEqual({ isNoise: true, noiseReason: "CONSERVATION", esTierraP3: true });
     const gsa = evaluarRuido({ propertyUseCode: FEDERAL, ownerNames: ["UNITED STATES OF AMERICA"], mailingAddress: "C/O GSA, WASHINGTON, DC" });
-    expect(gsa).toEqual({ isNoise: false, noiseReason: null, esTierraP3: true });
+    expect(gsa).toEqual({ isNoise: true, noiseReason: "GOVERNMENT", esTierraP3: true });
   });
 
   it("el score de la ingesta lo descarta con su motivo", () => {
@@ -70,12 +70,13 @@ describe("tierra de conservacion (JR, 16 oct: quita P3)", () => {
     expect(privado.isNoise).toBe(false);
   });
 
-  it("el carril: conservacion a ruido, el resto del gobierno sigue en P3", () => {
+  it("el carril: conservacion a ruido con su motivo, el resto del gobierno a ruido GOVERNMENT (25-oct)", () => {
     const refugio = decidirOperacion(entrada({ propertyUseCode: FEDERAL, mailingAddress: FWS }, [{ name: "UNITED STATES OF AMERICA" }]));
     expect(refugio).toMatchObject({ lane: "NON_ACQUIRABLE_NOISE", recommendedAction: "ARCHIVE", isNoise: true, noiseReason: "CONSERVATION" });
     expect(refugio.why[0]).toContain("Conservation land");
     const pueblo = decidirOperacion(entrada({ propertyUseCode: "Municipal, other than parks, recreational areas, colleges, hospitals (DOR 89)" }, [{ name: "TOWN OF JUPITER ISLAND" }]));
-    expect(pueblo.lane).toBe("GOV_LAND_P3");
+    expect(pueblo).toMatchObject({ lane: "NON_ACQUIRABLE_NOISE", recommendedAction: "ARCHIVE", isNoise: true, noiseReason: "GOVERNMENT" });
+    expect(pueblo.why[0]).toContain("Government-owned");
     expect(inferOwnerType(["TOWN OF JUPITER ISLAND"])).toBe("GOV");
   });
 });

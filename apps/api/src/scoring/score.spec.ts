@@ -28,7 +28,7 @@ describe("computeTriageScore", () => {
       expect(r.isNoise).toBe(true);
     });
 
-    it("la tierra publica vendible YA NO se descarta: va al carril P3", () => {
+    it("25-oct-2026 (JR): la tierra de gobierno se descarta, motivo GOVERNMENT (antes iba al carril P3)", () => {
       const r = computeTriageScore({
         assetType: "VACANT GOVERNMENTAL : VACANT LAND - GOVERNMENTAL",
         propertyUseCode: "VACANT GOVERNMENTAL : VACANT LAND - GOVERNMENTAL",
@@ -39,8 +39,8 @@ describe("computeTriageScore", () => {
       // no adquirible y van al carril GOV_LAND_P3, que existia vacio porque
       // este gate lo tapaba. Militar, parques, escuelas y hospitales publicos
       // siguen descartados, y eso se verifica en el caso de abajo.
-      expect(r.score).toBeGreaterThan(0);
-      expect(r.isNoise).toBe(false);
+      // 25-oct-2026: JR, "las parcelas del gov no aplican en nuestra busqueda, no merecen analisis".
+      expect(r).toMatchObject({ score: 0, isNoise: true, noiseReason: "GOVERNMENT" });
     });
 
     it("pero militar, parques, escuelas y hospitales publicos siguen descartados", () => {
@@ -65,12 +65,12 @@ describe("computeTriageScore", () => {
       expect(r.isNoise).toBe(true);
     });
 
-    it("15-oct-2026 (JR): un inmueble de un gobierno no es ruido; va al carril P3", () => {
+    it("25-oct-2026 (JR): un inmueble de un gobierno es ruido GOVERNMENT, aunque el activo sirva", () => {
       const r = computeTriageScore({
         assetType: "VACANT COMMERCIAL LAND", city: "WEST PALM BEACH", state: "FL",
         ownerNames: ["PALM BEACH COUNTY"],
       });
-      expect(r.isNoise).toBe(false);
+      expect(r).toMatchObject({ score: 0, isNoise: true, noiseReason: "GOVERNMENT" });
     });
   });
 

@@ -19,9 +19,12 @@ describe("dueno gobierno (JR, 15 oct: a P3)", () => {
     expect(inferOwnerType([])).toBe("UNKNOWN");
   });
 
-  it("un inmueble de un gobierno no es ruido; parques y calles siguen siendo ruido", () => {
-    expect(evaluarRuido({ propertyUseCode: "VACANT LAND - COMMERCIAL : VACANT LAND", ownerNames: ["MIAMI-DADE COUNTY"] }).isNoise).toBe(false);
-    expect(evaluarRuido({ propertyUseCode: "Golf courses, driving ranges (DOR 38)", ownerNames: ["CITY OF POMPANO BEACH"] }).isNoise).toBe(false);
+  it("25-oct-2026 (JR): un inmueble de un gobierno es ruido GOVERNMENT; parques y calles siguen siendo ruido", () => {
+    expect(evaluarRuido({ propertyUseCode: "VACANT LAND - COMMERCIAL : VACANT LAND", ownerNames: ["MIAMI-DADE COUNTY"] }))
+      .toMatchObject({ isNoise: true, noiseReason: "GOVERNMENT" });
+    expect(evaluarRuido({ propertyUseCode: "Golf courses, driving ranges (DOR 38)", ownerNames: ["CITY OF POMPANO BEACH"] }))
+      .toMatchObject({ isNoise: true, noiseReason: "GOVERNMENT" });
+    expect(evaluarRuido({ propertyUseCode: "Golf courses, driving ranges (DOR 38)", ownerNames: ["ACME GOLF LLC"] }).isNoise).toBe(false);
     expect(evaluarRuido({ propertyUseCode: "Forest, parks, recreational areas (DOR 82)", ownerNames: ["BROWARD COUNTY"] }).isNoise).toBe(true);
     expect(evaluarRuido({ propertyUseCode: "Right-of-way, streets, roads, irrigation channel, ditch (DOR 94)", ownerNames: ["BROWARD COUNTY"] }).isNoise).toBe(true);
   });

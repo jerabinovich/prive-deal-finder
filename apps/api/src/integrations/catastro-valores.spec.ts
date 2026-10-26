@@ -84,8 +84,19 @@ describe("aplicarValores", () => {
       dealId: "d1", taxYear: 2026, justValue: 368640, assessedValue: 124370, taxableValue: 99370, sourceSnapshotId: "snap",
     });
     expect(prisma.mdpaSale.create.mock.calls[0][0].data).toMatchObject({ dealId: "d1", salePrice: 455000, saleType: "FDOR 01", sourceSnapshotId: "snap" });
-    expect(prisma.deal.update).toHaveBeenCalledWith({ where: { id: "d1" }, data: { lotSizeSqft: 2262 } });
+    expect(prisma.deal.update).toHaveBeenCalledWith({ where: { id: "d1" }, data: { lotSizeSqft: 2262, dataCompletenessScore: 7.7 } });
     expect(r).toEqual({ tasacion: "nueva", ventasNuevas: 1, lote: true });
+  });
+
+  it("al cargar el lote recalcula la completitud de la parcela, sin precio pedido", async () => {
+    const prisma = prismaFalso();
+    const parcela = {
+      id: "d2", source: "broward-parcels", parcelId: "504201010010", address: "1 MAIN ST", city: "HOLLYWOOD", zip: "33020",
+      propertyUseCode: "01", lotSizeSqft: null, buildingSizeSqft: 1500, yearBuilt: 1960, zoning: "RS-5",
+      askingPrice: null, pricePerSqft: null, latitude: 26.01, longitude: -80.14,
+    };
+    await aplicarValores(prisma as never, parcela, v, "snap");
+    expect(prisma.deal.update).toHaveBeenCalledWith({ where: { id: "d2" }, data: { lotSizeSqft: 2262, dataCompletenessScore: 100 } });
   });
 
   it("repetir no duplica: actualiza la tasacion, saltea la venta y no pisa un lote existente", async () => {

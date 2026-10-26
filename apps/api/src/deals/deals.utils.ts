@@ -210,7 +210,16 @@ export function parseEventDate(value: unknown) {
  * of Broward County Inc" o "County Line Plaza LLC" contaban como gobierno por decir COUNTY. Un nombre con forma de
  * empresa o de entidad privada no es gobierno, salvo "municipal corporation". Se suma Village of (Wellington).
  */
-const RE_GOBIERNO = /COUNTY|CITY OF|STATE OF|TOWN OF|VILLAGE OF/;
+// 25-oct-2026 (revision de Codex del PR 26): con "gobierno es ruido", el dueno decide cuando el codigo de uso no es de
+// gobierno. Se suman el gobierno federal, los departamentos y juntas del estado, las autoridades publicas (aeropuerto,
+// vivienda, puerto) y los distritos especiales (parques, hospital, agua). Medido el 25-oct sobre las parcelas que no
+// eran ruido: Boca Raton Airport Authority, Boca Raton Housing Authority, Housing Authority of the City, Greater Boca
+// Raton Beach & Park Dist y Lower Fl Keys Hospital Dist. El filtro de forma privada (LLC, INC...) sigue mandando.
+const RE_GOBIERNO = new RegExp([
+  "COUNTY", "CITY OF", "STATE OF", "TOWN OF", "VILLAGE OF", "UNITED STATES",
+  "\\bDEPARTMENT OF\\b", "\\bDEPT OF\\b", "BOARD OF TRUSTEES", "INTERNAL IMPROVEMENT", "\\bAUTHORITY\\b",
+  "\\b(PARK|HOSPITAL|WATER|DRAINAGE|SCHOOL|FIRE|SPECIAL|MGMT|MANAGEMENT|IMPROVEMENT|SOIL|MOSQUITO|INLET|PORT|TRANSIT|INDEPENDENT) (DIST|DISTRICT)\\b",
+].join("|"));
 const RE_PRIVADO =
   /\b(INC|INCORPORATED|LLC|L L C|LLP|LP|LTD|CORP|CORPORATION|COMPANY|FOUNDATION|ASSOCIATION|ASSN|ASSOC|CHURCH|MINISTRIES|BANK|CLUB|UNITED WAY|HOLDINGS|PROPERTIES|PARTNERS)\b/;
 

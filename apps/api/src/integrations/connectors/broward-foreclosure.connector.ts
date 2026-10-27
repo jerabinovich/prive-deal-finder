@@ -3,6 +3,7 @@ import {
   IntegrationAccessMethod,
   IntegrationConnector,
   IntegrationStatus,
+  ContextoSync,
   SyncResult,
 } from "./types";
 
@@ -202,6 +203,103 @@ function formatBrowardDate(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** El n-esimo `weekday` (0 domingo) del mes; n = -1 es el ultimo. */
+function nthWeekday(year: number, month: number, weekday: number, n: number): Date {
+  if (n > 0) {
+    const first = new Date(year, month, 1);
+    return new Date(year, month, 1 + ((weekday - first.getDay() + 7) % 7) + (n - 1) * 7);
+  }
+  const last = new Date(year, month + 1, 0);
+  return new Date(year, month, last.getDate() - ((last.getDay() - weekday + 7) % 7));
+}
+
+/** Feriado fijo que cae sabado se observa el viernes; domingo, el lunes. */
+function observed(date: Date): Date {
+  if (date.getDay() === 6) return new Date(date.getTime() - DAY_MS);
+  if (date.getDay() === 0) return new Date(date.getTime() + DAY_MS);
+  return date;
+}
+
+/**
+ * 27-oct-2026 (revision de Codex del PR 23, P2): los dias en que los tribunales de Florida no abren no cuentan como
+ * dia de carga del Clerk. Son los feriados legales de Fla. Stat. 110.117 (Ano Nuevo, MLK, Memorial Day, 4 de julio,
+ * Labor Day, Veterans Day, Thanksgiving y el viernes siguiente, Navidad), calculados por regla y no por lista, mas
+ * los cierres sueltos de `extra` (por ejemplo un huracan, por BROWARD_FORECLOSURE_EXTRA_HOLIDAYS).
+ */
+export function esFeriadoJudicial(date: Date, extra: string[] = []): boolean {
+  const key = formatBrowardDate(date);
+  if (extra.includes(key)) return true;
+  const y = date.getFullYear();
+  const thanksgiving = nthWeekday(y, 10, 4, 4);
+  const holidays = [
+    ...[y, y + 1].flatMap((yy) => [new Date(yy, 0, 1), new Date(yy, 6, 4), new Date(yy, 10, 11), new Date(yy, 11, 25)].map(observed)),
+    nthWeekday(y, 0, 1, 3), // MLK, tercer lunes de enero
+    nthWeekday(y, 4, 1, -1), // Memorial Day, ultimo lunes de mayo
+    nthWeekday(y, 8, 1, 1), // Labor Day, primer lunes de septiembre
+    thanksgiving,
+    new Date(thanksgiving.getTime() + DAY_MS),
+  ];
+  return holidays.some((h) => formatBrowardDate(h) === key);
+}
+
+const isBusinessDay = (date: Date, extra: string[] = []) =>
+  date.getDay() !== 0 && date.getDay() !== 6 && !esFeriadoJudicial(date, extra);
+
+function minusBusinessDays(from: Date, businessDays: number, extra: string[] = []): Date {
+  let date = new Date(from.getTime());
+  let left = businessDays;
+  while (left > 0) {
+    date = new Date(date.getTime() - DAY_MS);
+    if (isBusinessDay(date, extra)) left -= 1;
+  }
+  return date;
+}
+
+/** "AAAA-MM-DD" valido, o null. */
+export function parseBrowardDate(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d ? value : null;
+}
+
+/**
+ * 25-oct-2026 (JR: "hay que utilizarlas mejor"). Auditoria de 14 dias: el Clerk carga los expedientes con atraso.
+ * Consultar HOY a las 08:00 nunca trajo nada (20 de 48 unidades), el sabado y el lunes repetian al viernes, y un
+ * dia habil consultado al dia siguiente traia ~3 casos contra ~16 a los dos dias: se perdia la mayoria de las
+ * ejecuciones de lunes a jueves. Plan: UNA consulta por dia habil, de la fecha que quedo `lag` dias habiles atras
+ * (ya completa), y ninguna el fin de semana. Cada fecha habil se consulta una sola vez.
+ */
+/**
+ * 26-oct-2026 (revision de Codex del PR 23, P1): con `lastComplete` (la ultima fecha habil ya consultada entera,
+ * del estado del conector) se piden TODAS las fechas habiles pendientes hasta la de hoy, de la mas vieja a la mas
+ * nueva y hasta `maxDates` por corrida. Asi una consulta que fallo o una corrida que no ocurrio (cortes de luz del
+ * 23 y del 25-oct) no pierden su fecha. El fin de semana solo se reintenta lo pendiente hasta la fecha del viernes.
+ * Sin estado: la fecha de hoy en dia habil, nada el fin de semana (el plan original del PR).
+ */
+export function planBrowardDates(
+  now: Date,
+  lagBusinessDays: number,
+  lastComplete?: string | null,
+  maxDates = 3,
+  extraHolidays: string[] = [],
+): Date[] {
+  let base = new Date(now.getTime());
+  while (!isBusinessDay(base, extraHolidays)) base = new Date(base.getTime() - DAY_MS);
+  const target = minusBusinessDays(base, lagBusinessDays, extraHolidays);
+  const last = parseBrowardDate(lastComplete);
+  if (!last) return isBusinessDay(now, extraHolidays) ? [target] : [];
+  const pending: Date[] = [];
+  let date = target;
+  while (formatBrowardDate(date) > last) {
+    if (isBusinessDay(date, extraHolidays)) pending.unshift(date);
+    date = new Date(date.getTime() - DAY_MS);
+  }
+  return pending.slice(0, Math.max(1, maxDates));
+}
+
 function normalizeQuotedText(value: string) {
   const trimmed = value.trim();
   if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
@@ -233,6 +331,17 @@ function isInvalidSearchResponse(text: string) {
  * resultado de verdad es JSON (objeto o array). Si el cuerpo es solo texto, es
  * un error de la API — aunque el mensaje sea nuevo y no lo hayamos visto nunca.
  */
+function isMalformedJson(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
+  try {
+    JSON.parse(trimmed);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 function isApiRejectionMessage(text: string) {
   const trimmed = text.trim();
   if (!trimmed) return false;
@@ -357,6 +466,30 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     return Math.min(60, Math.round(parsed));
   }
 
+  // 25-oct-2026: dias habiles de atraso de la unica consulta diaria (default 2). 0 vuelve al plan anterior
+  // (hoy y hacia atras hasta encontrar foreclosures), para revertir sin desplegar codigo.
+  private lagBusinessDays() {
+    const raw = process.env.BROWARD_FORECLOSURE_LAG_BUSINESS_DAYS;
+    const parsed = Number(raw === undefined || raw === "" ? 2 : raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return 2;
+    return Math.min(10, Math.round(parsed));
+  }
+
+  // 27-oct-2026: cierres sueltos del tribunal (AAAA-MM-DD separados por coma), ademas de los feriados legales.
+  private extraHolidays() {
+    return String(process.env.BROWARD_FORECLOSURE_EXTRA_HOLIDAYS || "")
+      .split(",")
+      .map((v) => parseBrowardDate(v.trim()))
+      .filter((v): v is string => Boolean(v));
+  }
+
+  // 26-oct-2026: tope de fechas pendientes por corrida (default 3): con un hueco largo se pone al dia de a poco.
+  private maxDatesPerRun() {
+    const parsed = Number(process.env.BROWARD_FORECLOSURE_MAX_DATES_PER_RUN || 3);
+    if (!Number.isFinite(parsed) || parsed < 1) return 3;
+    return Math.min(10, Math.round(parsed));
+  }
+
   private maxRequests() {
     const parsed = Number(process.env.BROWARD_FORECLOSURE_MAX_REQUESTS || 200);
     if (!Number.isFinite(parsed) || parsed < 1) return 200;
@@ -389,7 +522,7 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     return url.toString();
   }
 
-  async sync(): Promise<SyncResult> {
+  async sync(contexto?: ContextoSync): Promise<SyncResult> {
     const authKey = this.authKey();
     if (!authKey) {
       return {
@@ -407,18 +540,38 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     // (2 por llamada, compradas) para que la respuesta venga vacia siempre.
     // Detectado corriendo un domingo: con lookback=2 consulto sabado y domingo,
     // o sea los dos dias garantizados sin datos.
+    const lag = this.lagBusinessDays();
     const datesToQuery: string[] = [];
-    for (let offset = 0; datesToQuery.length < lookbackDays && offset < lookbackDays + 7; offset += 1) {
-      const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
-      const weekday = date.getDay();
-      if (weekday === 0 || weekday === 6) continue;
-      datesToQuery.push(formatBrowardDate(date));
+    if (lag > 0) {
+      const lastComplete = parseBrowardDate(contexto?.estado?.ultimaFechaCompleta);
+      for (const date of planBrowardDates(now, lag, lastComplete, this.maxDatesPerRun(), this.extraHolidays())) {
+        datesToQuery.push(formatBrowardDate(date));
+      }
+      if (!datesToQuery.length) {
+        // Fin de semana sin pendientes, o ya al dia (otra corrida del mismo dia): OK explicito con 0 unidades.
+        return {
+          status: IntegrationStatus.OK,
+          message: "Broward foreclosure: no pending business date to query (0 units)",
+          records: [],
+          metrics: { lagBusinessDays: lag, requestsMade: 0, maxRequests, queriedDates: [], successfulLookups: 0,
+                     ultimaFechaCompleta: lastComplete },
+        };
+      }
+    } else {
+      for (let offset = 0; datesToQuery.length < lookbackDays && offset < lookbackDays + 7; offset += 1) {
+        const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
+        const weekday = date.getDay();
+        if (weekday === 0 || weekday === 6) continue;
+        datesToQuery.push(formatBrowardDate(date));
+      }
     }
 
     const caseTypes = this.caseTypes();
 
     const gathered: JsonRecord[] = [];
     const failureDetails: Array<Record<string, unknown>> = [];
+    const okLookups = new Set<string>();
+    const fechaDe = new Map<JsonRecord, string>();
     let requestsMade = 0;
     let successfulLookups = 0;
 
@@ -469,8 +622,16 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
             continue;
           }
 
+          // 27-oct-2026 (revision de Codex del PR 23, P2): un 200 con JSON cortado o roto no es una respuesta vacia.
+          // Antes contaba como consulta exitosa y, con el estado, la fecha se daba por completa sin datos.
+          if (isMalformedJson(text)) {
+            failureDetails.push({ caseTypeCode, date, status: "MALFORMED_RESPONSE", message: text.trim().slice(0, 120) });
+            continue;
+          }
+
           const rows = parseApiResponse(text);
           successfulLookups += 1;
+          okLookups.add(`${caseTypeCode}|${date}`);
           const matchesBefore = gathered.length;
 
           // Con case_type_code=All viene TODO el civil del dia (deudas de
@@ -481,7 +642,9 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
             const typeName = String(record.Case_Type ?? record.case_type ?? "");
             const typeCode = String(record.Case_Type_Code ?? record.case_type_code ?? caseTypeCode);
             if (caseTypeCode === "All" && !FORECLOSURE_TYPE_PATTERN.test(typeName)) continue;
-            gathered.push(normalizeCaseRecord(row, typeCode));
+            const normalized = normalizeCaseRecord(row, typeCode);
+            gathered.push(normalized);
+            fechaDe.set(normalized, date);
           }
 
           // 14-sep-2026: cortaba contando TODAS las filas, pero con
@@ -489,7 +652,8 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
           // lunes a la manana trajo 200 casos civiles, cero foreclosures, y el
           // conector corto igual sin mirar el viernes. Ahora corta solo si
           // encontro foreclosures DE VERDAD.
-          if (gathered.length > matchesBefore) {
+          // 26-oct-2026: con el plan por fechas pendientes (lag > 0) cada fecha se consulta entera, sin cortar.
+          if (lag === 0 && gathered.length > matchesBefore) {
             break;
           }
         } catch (error) {
@@ -533,7 +697,29 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
       }
     }
 
-    const records = Array.from(deduped.values()).slice(0, maxCases);
+    let records: JsonRecord[];
+    let ultimaFechaCompleta: string | null = null;
+    if (lag > 0) {
+      // Revision de Codex del PR 23 (dos P2): el tope de casos va por fechas ENTERAS. La primera fecha entra completa
+      // aunque pase el tope (si no, se cortaria igual en cada corrida y quedaria trabada); las siguientes entran si
+      // caben. La que no entra no se marca completa y vuelve, entera, en la proxima corrida. Nunca se corta una fecha.
+      const porFecha = new Map<string, JsonRecord[]>();
+      for (const row of deduped.values()) {
+        const date = fechaDe.get(row) ?? "";
+        porFecha.set(date, [...(porFecha.get(date) ?? []), row]);
+      }
+      records = [];
+      let avanza = true;
+      for (const date of datesToQuery) {
+        const delDia = porFecha.get(date) ?? [];
+        if (records.length && records.length + delDia.length > maxCases) break;
+        records.push(...delDia);
+        if (avanza && caseTypes.every((code) => okLookups.has(`${code}|${date}`))) ultimaFechaCompleta = date;
+        else avanza = false;
+      }
+    } else {
+      records = Array.from(deduped.values()).slice(0, maxCases);
+    }
 
     const message = records.length
       ? "Broward foreclosure filings fetched"
@@ -556,7 +742,9 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
         sampledRecords: records.length,
         cappedAt: maxCases,
         ...(failureDetails.length ? { failureDetails } : {}),
+        ...(ultimaFechaCompleta ? { ultimaFechaCompleta } : {}),
       },
+      ...(ultimaFechaCompleta ? { estado: { ultimaFechaCompleta } } : {}),
     };
   }
 

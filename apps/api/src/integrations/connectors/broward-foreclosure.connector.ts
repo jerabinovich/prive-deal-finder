@@ -503,6 +503,7 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     const gathered: JsonRecord[] = [];
     const failureDetails: Array<Record<string, unknown>> = [];
     const okLookups = new Set<string>();
+    const fechaDe = new Map<JsonRecord, string>();
     let requestsMade = 0;
     let successfulLookups = 0;
 
@@ -566,7 +567,9 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
             const typeName = String(record.Case_Type ?? record.case_type ?? "");
             const typeCode = String(record.Case_Type_Code ?? record.case_type_code ?? caseTypeCode);
             if (caseTypeCode === "All" && !FORECLOSURE_TYPE_PATTERN.test(typeName)) continue;
-            gathered.push(normalizeCaseRecord(row, typeCode));
+            const normalized = normalizeCaseRecord(row, typeCode);
+            gathered.push(normalized);
+            fechaDe.set(normalized, date);
           }
 
           // 14-sep-2026: cortaba contando TODAS las filas, pero con
@@ -623,8 +626,12 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
 
     let ultimaFechaCompleta: string | null = null;
     if (lag > 0) {
+      // Revision de Codex del PR 23 (P2): una fecha con registros que el tope de casos dejo afuera no queda completa.
+      const incluidos = new Set(records);
+      const cortadas = new Set(Array.from(deduped.values()).filter((r) => !incluidos.has(r)).map((r) => fechaDe.get(r)));
       for (const date of datesToQuery) {
         if (!caseTypes.every((code) => okLookups.has(`${code}|${date}`))) break;
+        if (cortadas.has(date)) break;
         ultimaFechaCompleta = date;
       }
     }

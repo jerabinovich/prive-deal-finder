@@ -126,6 +126,18 @@ describe("sync de Broward con estado (fechas pendientes)", () => {
     await new BrowardForeclosureConnector().sync(conEstado("2026-10-21"));
     expect(pedidas()).toEqual(["2026-10-22", "2026-10-23"]);
   });
+  it("si el tope de casos corta registros de una fecha, el estado no pasa de la anterior (Codex, P2)", async () => {
+    process.env.BROWARD_FORECLOSURE_MAX_CASES = "2";
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    fetchMock.mockImplementation(async (url: string) => {
+      const d = new URL(url).searchParams.get("date");
+      return { ok: true, status: 200,
+        text: async () => JSON.stringify([{ Case_Number: "CACE-" + d, Case_Type: "Mortgage Foreclosure", Case_Type_Code: "MF" }]) };
+    });
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-20"));
+    expect(r.records).toHaveLength(2);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-22" });
+  });
   it("un estado invalido cuenta como sin estado", async () => {
     jest.useFakeTimers().setSystemTime(at("2026-10-27"));
     await new BrowardForeclosureConnector().sync(conEstado("basura"));

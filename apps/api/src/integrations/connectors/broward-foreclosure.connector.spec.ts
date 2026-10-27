@@ -64,3 +64,71 @@ describe("sync de Broward", () => {
     expect(fetchMock.mock.calls.length).toBe(2);
   });
 });
+
+// 26-oct-2026, revision de Codex del PR 23 (P1): una fecha cuya unica consulta fallo, o la corrida que no ocurrio
+// (cortes de luz del 23 y del 25-oct), no puede perderse para siempre. El conector recibe y devuelve en `estado` la
+// ultima fecha habil completa; pide las pendientes hasta la de hoy (D-2), de la mas vieja a la mas nueva, con tope.
+describe("sync de Broward con estado (fechas pendientes)", () => {
+  const conEstado = (ultima: unknown) => ({ estado: { ultimaFechaCompleta: ultima } });
+  const pedidas = () => fetchMock.mock.calls.map(fechaPedida);
+
+  it("sin estado: pide la de hoy y devuelve el estado con esa fecha", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-26"));
+    const r = await new BrowardForeclosureConnector().sync();
+    expect(pedidas()).toEqual(["2026-10-22"]);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-22" });
+  });
+  it("al dia: el martes pide solo el viernes", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-22"));
+    expect(pedidas()).toEqual(["2026-10-23"]);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-23" });
+  });
+  it("con hueco: pide las pendientes de la mas vieja a la mas nueva", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-20"));
+    expect(pedidas()).toEqual(["2026-10-21", "2026-10-22", "2026-10-23"]);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-23" });
+  });
+  it("tope por corrida (default 3): con un hueco largo avanza de a 3", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-14"));
+    expect(pedidas()).toEqual(["2026-10-15", "2026-10-16", "2026-10-19"]);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-19" });
+  });
+  it("una fecha que falla queda pendiente: el estado avanza solo hasta la anterior", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    fetchMock.mockImplementation(async (url: string) =>
+      new URL(url).searchParams.get("date") === "2026-10-22"
+        ? { ok: false, status: 500, text: async () => "" }
+        : { ok: true, status: 200, text: async () => "[]" });
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-20"));
+    expect(pedidas()).toEqual(["2026-10-21", "2026-10-22", "2026-10-23"]);
+    expect(r.status).toBe(IntegrationStatus.OK);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-21" });
+  });
+  it("volver a correr el mismo dia no gasta unidades", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-23"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r.status).toBe(IntegrationStatus.OK);
+  });
+  it("el fin de semana reintenta lo pendiente hasta la fecha del viernes, y nada mas", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-24"));
+    const r = await new BrowardForeclosureConnector().sync(conEstado("2026-10-20"));
+    expect(pedidas()).toEqual(["2026-10-21"]);
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-21" });
+  });
+  it("no corta en la primera fecha con foreclosures: cada fecha pendiente se consulta", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    fetchMock.mockImplementation(async () => ({ ok: true, status: 200,
+      text: async () => JSON.stringify([{ Case_Number: "CACE26000001", Case_Type: "Mortgage Foreclosure", Case_Type_Code: "MF" }]) }));
+    await new BrowardForeclosureConnector().sync(conEstado("2026-10-21"));
+    expect(pedidas()).toEqual(["2026-10-22", "2026-10-23"]);
+  });
+  it("un estado invalido cuenta como sin estado", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    await new BrowardForeclosureConnector().sync(conEstado("basura"));
+    expect(pedidas()).toEqual(["2026-10-23"]);
+  });
+});

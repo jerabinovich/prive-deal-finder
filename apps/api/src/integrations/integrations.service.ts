@@ -23,7 +23,7 @@ import { MiamiDadeClerkConnector } from "./connectors/miami-dade-clerk.connector
 import { MIAMI_DADE_CLERK_SOURCE, storeRecordedDebt } from "./miami-dade-clerk.debt";
 import { fetchArcgisWhere } from "./connectors/arcgis";
 import { completarDomiciliosPostales, completarDuenosEstatales } from "./domicilio-postal";
-import { guardarCursor, leerCursor } from "./parcelas-corredores";
+import { guardarCursor, guardarEstado, leerCursor, leerEstado } from "./parcelas-corredores";
 import { MIAMI_DADE_FALLBACK_LAYER } from "../deals/deals.types";
 import { IntegrationRunsQueryDto } from "./dto/integration-runs-query.dto";
 import { IntegrationStatusQueryDto } from "./dto/integration-status-query.dto";
@@ -1346,11 +1346,16 @@ export class IntegrationsService {
       }
 
       // 14-oct-2026: los conectores de parcelas siguen el recorrido donde quedo (parcelas-corredores.ts).
-      const result = await connector.sync({ cursor: await leerCursor(this.prisma, source) });
+      const result = await connector.sync({
+        cursor: await leerCursor(this.prisma, source),
+        estado: await leerEstado(this.prisma, source),
+      });
       if (result.status !== IntegrationStatus.OK || !result.records?.length) {
         // 15-oct-2026: una pagina leida pero toda fuera del corredor (Palm Beach filtra West Palm Beach por zip)
         // no tiene nada que ingerir y el recorrido igual avanza; si no, la proxima corrida pide la misma pagina.
         if (result.status === IntegrationStatus.OK && result.cursor) await guardarCursor(this.prisma, source, result.cursor);
+        // 26-oct-2026: un dia sin foreclosures tambien es una fecha completa (revision de Codex del PR 23).
+        if (result.status === IntegrationStatus.OK && result.estado) await guardarEstado(this.prisma, source, result.estado);
         return this.finishRun(run.id, source, {
           status: result.status,
           message: result.message ?? "Sync completed",
@@ -1382,6 +1387,8 @@ export class IntegrationsService {
         const metrics = await this.ingestDistressRecords(source, result.records);
         const rescored = await this.rescoreDealsWithDistress(source);
         Object.assign(metrics as Record<string, unknown>, { seededDeals: seeded, rescoredDeals: rescored });
+        // 26-oct-2026: el estado avanza solo despues de una ingesta exitosa; si algo falla, las fechas se vuelven a pedir.
+        if (result.estado) await guardarEstado(this.prisma, source, result.estado);
         return this.finishRun(run.id, source, {
           status: IntegrationStatus.OK,
           message: result.message ?? "Distress sync completed",

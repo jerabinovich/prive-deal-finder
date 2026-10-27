@@ -20,11 +20,17 @@ export interface SyncResult {
   metrics?: Record<string, unknown>;
   /** 14-oct-2026: proxima posicion del recorrido de parcelas; el servicio la guarda despues de ingerir. */
   cursor?: CursorParcelas;
+  /** 26-oct-2026: estado propio del conector (Integration.meta.estadoConector); el servicio lo guarda si la corrida
+   *  termina OK, despues de ingerir. Lo usa Broward foreclosure para no perder fechas (revision de Codex del PR 23). */
+  estado?: EstadoConector;
 }
+
+export type EstadoConector = Record<string, unknown>;
 
 /** 14-oct-2026: lo que el servicio le pasa al conector en cada sync. */
 export interface ContextoSync {
   cursor?: CursorParcelas | null;
+  estado?: EstadoConector | null;
 }
 
 export interface HealthStatus {

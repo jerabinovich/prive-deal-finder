@@ -3,6 +3,7 @@ import {
   IntegrationAccessMethod,
   IntegrationConnector,
   IntegrationStatus,
+  ContextoSync,
   SyncResult,
 } from "./types";
 
@@ -209,17 +210,47 @@ function formatBrowardDate(date: Date) {
  * ejecuciones de lunes a jueves. Plan: UNA consulta por dia habil, de la fecha que quedo `lag` dias habiles atras
  * (ya completa), y ninguna el fin de semana. Cada fecha habil se consulta una sola vez.
  */
-export function planBrowardDates(now: Date, lagBusinessDays: number): Date[] {
-  const weekday = now.getDay();
-  if (weekday === 0 || weekday === 6) return [];
-  let date = new Date(now.getTime());
-  let left = lagBusinessDays;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const isBusinessDay = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
+
+function minusBusinessDays(from: Date, businessDays: number): Date {
+  let date = new Date(from.getTime());
+  let left = businessDays;
   while (left > 0) {
-    date = new Date(date.getTime() - 24 * 60 * 60 * 1000);
-    const day = date.getDay();
-    if (day !== 0 && day !== 6) left -= 1;
+    date = new Date(date.getTime() - DAY_MS);
+    if (isBusinessDay(date)) left -= 1;
   }
-  return [date];
+  return date;
+}
+
+/** "AAAA-MM-DD" valido, o null. */
+export function parseBrowardDate(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d ? value : null;
+}
+
+/**
+ * 26-oct-2026 (revision de Codex del PR 23, P1): con `lastComplete` (la ultima fecha habil ya consultada entera,
+ * del estado del conector) se piden TODAS las fechas habiles pendientes hasta la de hoy, de la mas vieja a la mas
+ * nueva y hasta `maxDates` por corrida. Asi una consulta que fallo o una corrida que no ocurrio (cortes de luz del
+ * 23 y del 25-oct) no pierden su fecha. El fin de semana solo se reintenta lo pendiente hasta la fecha del viernes.
+ * Sin estado: la fecha de hoy en dia habil, nada el fin de semana (el plan original del PR).
+ */
+export function planBrowardDates(now: Date, lagBusinessDays: number, lastComplete?: string | null, maxDates = 3): Date[] {
+  let base = new Date(now.getTime());
+  while (!isBusinessDay(base)) base = new Date(base.getTime() - DAY_MS);
+  const target = minusBusinessDays(base, lagBusinessDays);
+  const last = parseBrowardDate(lastComplete);
+  if (!last) return isBusinessDay(now) ? [target] : [];
+  const pending: Date[] = [];
+  let date = target;
+  while (formatBrowardDate(date) > last) {
+    if (isBusinessDay(date)) pending.unshift(date);
+    date = new Date(date.getTime() - DAY_MS);
+  }
+  return pending.slice(0, Math.max(1, maxDates));
 }
 
 function normalizeQuotedText(value: string) {
@@ -386,6 +417,13 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     return Math.min(10, Math.round(parsed));
   }
 
+  // 26-oct-2026: tope de fechas pendientes por corrida (default 3): con un hueco largo se pone al dia de a poco.
+  private maxDatesPerRun() {
+    const parsed = Number(process.env.BROWARD_FORECLOSURE_MAX_DATES_PER_RUN || 3);
+    if (!Number.isFinite(parsed) || parsed < 1) return 3;
+    return Math.min(10, Math.round(parsed));
+  }
+
   private maxRequests() {
     const parsed = Number(process.env.BROWARD_FORECLOSURE_MAX_REQUESTS || 200);
     if (!Number.isFinite(parsed) || parsed < 1) return 200;
@@ -418,7 +456,7 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     return url.toString();
   }
 
-  async sync(): Promise<SyncResult> {
+  async sync(contexto?: ContextoSync): Promise<SyncResult> {
     const authKey = this.authKey();
     if (!authKey) {
       return {
@@ -439,14 +477,16 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     const lag = this.lagBusinessDays();
     const datesToQuery: string[] = [];
     if (lag > 0) {
-      for (const date of planBrowardDates(now, lag)) datesToQuery.push(formatBrowardDate(date));
+      const lastComplete = parseBrowardDate(contexto?.estado?.ultimaFechaCompleta);
+      for (const date of planBrowardDates(now, lag, lastComplete, this.maxDatesPerRun())) datesToQuery.push(formatBrowardDate(date));
       if (!datesToQuery.length) {
-        // Fin de semana: no hay fecha nueva que consultar. OK explicito con 0 unidades (no "fallo").
+        // Fin de semana sin pendientes, o ya al dia (otra corrida del mismo dia): OK explicito con 0 unidades.
         return {
           status: IntegrationStatus.OK,
-          message: "Broward foreclosure: weekend, no new business date to query (0 units)",
+          message: "Broward foreclosure: no pending business date to query (0 units)",
           records: [],
-          metrics: { lagBusinessDays: lag, requestsMade: 0, maxRequests, queriedDates: [], successfulLookups: 0 },
+          metrics: { lagBusinessDays: lag, requestsMade: 0, maxRequests, queriedDates: [], successfulLookups: 0,
+                     ultimaFechaCompleta: lastComplete },
         };
       }
     } else {
@@ -462,6 +502,7 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
 
     const gathered: JsonRecord[] = [];
     const failureDetails: Array<Record<string, unknown>> = [];
+    const okLookups = new Set<string>();
     let requestsMade = 0;
     let successfulLookups = 0;
 
@@ -514,6 +555,7 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
 
           const rows = parseApiResponse(text);
           successfulLookups += 1;
+          okLookups.add(`${caseTypeCode}|${date}`);
           const matchesBefore = gathered.length;
 
           // Con case_type_code=All viene TODO el civil del dia (deudas de
@@ -532,7 +574,8 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
           // lunes a la manana trajo 200 casos civiles, cero foreclosures, y el
           // conector corto igual sin mirar el viernes. Ahora corta solo si
           // encontro foreclosures DE VERDAD.
-          if (gathered.length > matchesBefore) {
+          // 26-oct-2026: con el plan por fechas pendientes (lag > 0) cada fecha se consulta entera, sin cortar.
+          if (lag === 0 && gathered.length > matchesBefore) {
             break;
           }
         } catch (error) {
@@ -578,6 +621,14 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
 
     const records = Array.from(deduped.values()).slice(0, maxCases);
 
+    let ultimaFechaCompleta: string | null = null;
+    if (lag > 0) {
+      for (const date of datesToQuery) {
+        if (!caseTypes.every((code) => okLookups.has(`${code}|${date}`))) break;
+        ultimaFechaCompleta = date;
+      }
+    }
+
     const message = records.length
       ? "Broward foreclosure filings fetched"
       : "Broward foreclosure query completed (no filings in selected window)";
@@ -599,7 +650,9 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
         sampledRecords: records.length,
         cappedAt: maxCases,
         ...(failureDetails.length ? { failureDetails } : {}),
+        ...(ultimaFechaCompleta ? { ultimaFechaCompleta } : {}),
       },
+      ...(ultimaFechaCompleta ? { estado: { ultimaFechaCompleta } } : {}),
     };
   }
 

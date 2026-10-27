@@ -104,6 +104,24 @@ export async function leerCursor(prisma: PrismaService, source: string): Promise
   return c && typeof c.clave === "string" ? c : null;
 }
 
+/** 26-oct-2026: estado propio del conector (Integration.meta.estadoConector), o null. */
+export async function leerEstado(prisma: PrismaService, source: string): Promise<Record<string, unknown> | null> {
+  const fila = await prisma.integration.findUnique({ where: { source }, select: { meta: true } });
+  const e = leerMeta(fila?.meta).estadoConector;
+  return e && typeof e === "object" && !Array.isArray(e) ? (e as Record<string, unknown>) : null;
+}
+
+/** Guarda el estado del conector sin pisar el resto de Integration.meta. */
+export async function guardarEstado(prisma: PrismaService, source: string, estado: Record<string, unknown>): Promise<void> {
+  const fila = await prisma.integration.findUnique({ where: { source }, select: { meta: true } });
+  const meta = { ...leerMeta(fila?.meta), estadoConector: estado };
+  await prisma.integration.upsert({
+    where: { source },
+    update: { meta: JSON.stringify(meta) },
+    create: { source, meta: JSON.stringify(meta) },
+  });
+}
+
 /** Guarda el cursor sin pisar el resto de Integration.meta. */
 export async function guardarCursor(prisma: PrismaService, source: string, cursor: CursorParcelas): Promise<void> {
   const fila = await prisma.integration.findUnique({ where: { source }, select: { meta: true } });

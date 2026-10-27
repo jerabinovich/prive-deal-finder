@@ -622,18 +622,28 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
       }
     }
 
-    const records = Array.from(deduped.values()).slice(0, maxCases);
-
+    let records: JsonRecord[];
     let ultimaFechaCompleta: string | null = null;
     if (lag > 0) {
-      // Revision de Codex del PR 23 (P2): una fecha con registros que el tope de casos dejo afuera no queda completa.
-      const incluidos = new Set(records);
-      const cortadas = new Set(Array.from(deduped.values()).filter((r) => !incluidos.has(r)).map((r) => fechaDe.get(r)));
-      for (const date of datesToQuery) {
-        if (!caseTypes.every((code) => okLookups.has(`${code}|${date}`))) break;
-        if (cortadas.has(date)) break;
-        ultimaFechaCompleta = date;
+      // Revision de Codex del PR 23 (dos P2): el tope de casos va por fechas ENTERAS. La primera fecha entra completa
+      // aunque pase el tope (si no, se cortaria igual en cada corrida y quedaria trabada); las siguientes entran si
+      // caben. La que no entra no se marca completa y vuelve, entera, en la proxima corrida. Nunca se corta una fecha.
+      const porFecha = new Map<string, JsonRecord[]>();
+      for (const row of deduped.values()) {
+        const date = fechaDe.get(row) ?? "";
+        porFecha.set(date, [...(porFecha.get(date) ?? []), row]);
       }
+      records = [];
+      let avanza = true;
+      for (const date of datesToQuery) {
+        const delDia = porFecha.get(date) ?? [];
+        if (records.length && records.length + delDia.length > maxCases) break;
+        records.push(...delDia);
+        if (avanza && caseTypes.every((code) => okLookups.has(`${code}|${date}`))) ultimaFechaCompleta = date;
+        else avanza = false;
+      }
+    } else {
+      records = Array.from(deduped.values()).slice(0, maxCases);
     }
 
     const message = records.length

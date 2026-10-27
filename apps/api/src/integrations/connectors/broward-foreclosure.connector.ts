@@ -203,13 +203,6 @@ function formatBrowardDate(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-/**
- * 25-oct-2026 (JR: "hay que utilizarlas mejor"). Auditoria de 14 dias: el Clerk carga los expedientes con atraso.
- * Consultar HOY a las 08:00 nunca trajo nada (20 de 48 unidades), el sabado y el lunes repetian al viernes, y un
- * dia habil consultado al dia siguiente traia ~3 casos contra ~16 a los dos dias: se perdia la mayoria de las
- * ejecuciones de lunes a jueves. Plan: UNA consulta por dia habil, de la fecha que quedo `lag` dias habiles atras
- * (ya completa), y ninguna el fin de semana. Cada fecha habil se consulta una sola vez.
- */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** El n-esimo `weekday` (0 domingo) del mes; n = -1 es el ultimo. */
@@ -272,6 +265,13 @@ export function parseBrowardDate(value: unknown): string | null {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d ? value : null;
 }
 
+/**
+ * 25-oct-2026 (JR: "hay que utilizarlas mejor"). Auditoria de 14 dias: el Clerk carga los expedientes con atraso.
+ * Consultar HOY a las 08:00 nunca trajo nada (20 de 48 unidades), el sabado y el lunes repetian al viernes, y un
+ * dia habil consultado al dia siguiente traia ~3 casos contra ~16 a los dos dias: se perdia la mayoria de las
+ * ejecuciones de lunes a jueves. Plan: UNA consulta por dia habil, de la fecha que quedo `lag` dias habiles atras
+ * (ya completa), y ninguna el fin de semana. Cada fecha habil se consulta una sola vez.
+ */
 /**
  * 26-oct-2026 (revision de Codex del PR 23, P1): con `lastComplete` (la ultima fecha habil ya consultada entera,
  * del estado del conector) se piden TODAS las fechas habiles pendientes hasta la de hoy, de la mas vieja a la mas
@@ -475,7 +475,6 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
     return Math.min(10, Math.round(parsed));
   }
 
-  // 26-oct-2026: tope de fechas pendientes por corrida (default 3): con un hueco largo se pone al dia de a poco.
   // 27-oct-2026: cierres sueltos del tribunal (AAAA-MM-DD separados por coma), ademas de los feriados legales.
   private extraHolidays() {
     return String(process.env.BROWARD_FORECLOSURE_EXTRA_HOLIDAYS || "")
@@ -484,6 +483,7 @@ export class BrowardForeclosureConnector implements IntegrationConnector {
       .filter((v): v is string => Boolean(v));
   }
 
+  // 26-oct-2026: tope de fechas pendientes por corrida (default 3): con un hueco largo se pone al dia de a poco.
   private maxDatesPerRun() {
     const parsed = Number(process.env.BROWARD_FORECLOSURE_MAX_DATES_PER_RUN || 3);
     if (!Number.isFinite(parsed) || parsed < 1) return 3;

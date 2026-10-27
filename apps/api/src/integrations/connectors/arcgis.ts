@@ -1,4 +1,4 @@
-import { jsonConPlazo } from "../arcgis-pagina";
+import { consultarCapa } from "../arcgis-pagina";
 async function fetchArcgisQuery(
   serviceUrl: string,
   limit: number,
@@ -15,17 +15,18 @@ async function fetchArcgisQuery(
   // VA POR CONECTOR, NO POR ENV GLOBAL: lo probe con una variable global
   // (ARCGIS_ORDER_BY=FOLIO_NUMBER) y rompi Palm Beach y Miami-Dade en el acto,
   // porque ese campo no existe en sus capas. Cada fuente ordena por lo suyo.
-  const queryUrl =
-    `${layerUrl}/query?where=${encodeURIComponent(whereClause)}` +
-    `&outFields=*&f=json&returnGeometry=true&outSR=4326&resultRecordCount=${limit}` +
-    (orderByFields ? `&orderByFields=${encodeURIComponent(orderByFields)}` : "");
-  // 25-oct-2026: con plazo (jsonConPlazo, arcgis-pagina.ts); antes un pedido sin respuesta colgaba la corrida.
-  const data = (await jsonConPlazo(queryUrl, {}, plazoMs)) as { error?: { message?: string }; features?: unknown[] };
-  if (data?.error?.message) {
-    throw new Error(`ArcGIS query error: ${data.error.message}`);
-  }
-  const features = Array.isArray(data?.features) ? data.features : [];
-  return features;
+  // 25-oct-2026: el pedido lo hace el cliente unico (consultarCapa, arcgis-pagina.ts), por GET y con los mismos
+  // parametros en el mismo orden que antes; el plazo de 120 s sigue saliendo de ahi.
+  const parametros: Record<string, string> = {
+    where: whereClause,
+    outFields: "*",
+    f: "json",
+    returnGeometry: "true",
+    outSR: "4326",
+    resultRecordCount: String(limit),
+  };
+  if (orderByFields) parametros.orderByFields = orderByFields;
+  return consultarCapa(layerUrl, parametros, { metodo: "GET", plazoMs });
 }
 
 export async function fetchArcgisSample(

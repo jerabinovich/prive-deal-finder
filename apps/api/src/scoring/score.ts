@@ -111,6 +111,17 @@ export function computeTriageScore(params: {
     };
   }
 
+  // --- GATE G (25-oct-2026, JR: las parcelas de gobierno no aplican): tierra de gobierno por codigo DOR. Mismo orden que
+  // evaluarRuido, para que el score de la ingesta y el triage digan lo mismo (antes un servicio publico sobre codigo de
+  // gobierno era ruido UTILITY aca y no ruido en el triage, y cada uno lo reescribia). ---
+  if (esTierraP3) {
+    return {
+      score: 0, isNoise: true, noiseReason: "GOVERNMENT",
+      reasons: ["descartado: inmueble de gobierno, fuera de la busqueda"],
+      version: TRIAGE_SCORE_VERSION,
+    };
+  }
+
   // --- GATE 0: codigo DOR no adquirible (gubernamental, servidumbre, pantano...) ---
   // Va ANTES del filtro por texto porque el codigo es univoco y el texto no.
   if (!esTierraP3 && (isNonAcquirableDorCode(params.propertyUseCode) || isNonAcquirableDorCode(params.assetType))) {
@@ -143,6 +154,13 @@ export function computeTriageScore(params: {
     return {
       score: 0, isNoise: true, noiseReason: ownerType === "UTILITY" ? "UTILITY" : "UNKNOWN",
       reasons: [`descartado: propietario ${ownerType} — no transacciona`],
+      version: TRIAGE_SCORE_VERSION,
+    };
+  }
+  if (ownerType === "GOV") {
+    return {
+      score: 0, isNoise: true, noiseReason: "GOVERNMENT",
+      reasons: ["descartado: dueno de gobierno, fuera de la busqueda"],
       version: TRIAGE_SCORE_VERSION,
     };
   }
@@ -225,7 +243,9 @@ export function evaluarRuido(params: {
   // "VACANT GOVERNMENTAL" como ruido generico, y eso tapaba 6 parcelas que van
   // al carril P3. El codigo DOR es univoco; el texto no. Mismo argumento que
   // dor-use-codes.ts ya dejaba escrito para el pantano del DOR 96.
-  if (esTierraP3) return { isNoise: false, noiseReason: null, esTierraP3: true };
+  // 25-oct-2026 (JR: "las parcelas del gov no aplican en nuestra busqueda, no merecen analisis"): reemplaza el "A P3"
+  // del 15-oct. La tierra de gobierno por codigo DOR es ruido GOVERNMENT, y un dueno de gobierno tambien (abajo).
+  if (esTierraP3) return { isNoise: true, noiseReason: "GOVERNMENT", esTierraP3: true };
   const porTexto = detectNoiseReason(params.assetType, params.propertyUseCode);
   if (isNonAcquirableDorCode(params.propertyUseCode) || isNonAcquirableDorCode(params.assetType)) {
     return { isNoise: true, noiseReason: porTexto ?? "UNKNOWN", esTierraP3 };
@@ -237,5 +257,6 @@ export function evaluarRuido(params: {
   if (ownerType === "UTILITY" || ownerType === "HOA") {
     return { isNoise: true, noiseReason: ownerType === "UTILITY" ? "UTILITY" : "UNKNOWN", esTierraP3 };
   }
+  if (ownerType === "GOV") return { isNoise: true, noiseReason: "GOVERNMENT", esTierraP3 };
   return { isNoise: false, noiseReason: null, esTierraP3 };
 }

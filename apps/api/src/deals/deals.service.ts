@@ -25,7 +25,7 @@ import { UpdateWorkflowTaskDto } from "./dto/update-workflow-task.dto";
 // sufijo agregada el 13-sep, asi que contra una capa ArcGIS con join este archivo
 // no encontraba nada, en silencio. Ese bug desaparece al importar.
 import { DealClassification, OpportunityClassificationResult, OperationalDecision, InsightConfidence, ENGINE_VERSION, OPPORTUNITY_THRESHOLDS, SPREAD_SANITY, MIAMI_DADE_FALLBACK_LAYER, MIN_COMPARABLE_SALE_PRICE, MAX_COMPARABLE_SALE_PRICE } from "./deals.types";
-import { toNumber, pickField, normalizeConfidence, extractGeometryPoint, distanceMiles, parseJson } from "./deals.utils";
+import { toNumber, pickField, normalizeConfidence, extractGeometryPoint, distanceMiles, parseJson, computeDealCompletenessScore, esFuenteDeParcelas } from "./deals.utils";
 
 
 
@@ -75,41 +75,6 @@ function safePercent(numerator: number, denominator: number) {
 function isSpreadOutlier(spreadToAskPct: number | null) {
   if (typeof spreadToAskPct !== "number" || !Number.isFinite(spreadToAskPct)) return false;
   return spreadToAskPct < SPREAD_SANITY.minPct || spreadToAskPct > SPREAD_SANITY.maxPct;
-}
-
-function computeDealCompletenessScore(input: {
-  parcelId?: string | null;
-  address?: string | null;
-  city?: string | null;
-  zip?: string | null;
-  propertyUseCode?: string | null;
-  lotSizeSqft?: number | null;
-  buildingSizeSqft?: number | null;
-  yearBuilt?: number | null;
-  zoning?: string | null;
-  askingPrice?: number | null;
-  pricePerSqft?: number | null;
-  latitude?: number | null;
-  longitude?: number | null;
-}) {
-  const checks = [
-    Boolean(toCleanText(input.parcelId ?? null)),
-    Boolean(toCleanText(input.address ?? null)),
-    Boolean(toCleanText(input.city ?? null)),
-    Boolean(toCleanText(input.zip ?? null)),
-    Boolean(toCleanText(input.propertyUseCode ?? null)),
-    typeof input.lotSizeSqft === "number" && input.lotSizeSqft > 0,
-    typeof input.buildingSizeSqft === "number" && input.buildingSizeSqft > 0,
-    typeof input.yearBuilt === "number" && input.yearBuilt >= 1700,
-    Boolean(toCleanText(input.zoning ?? null)),
-    typeof input.askingPrice === "number" && input.askingPrice > 0,
-    typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
-    typeof input.latitude === "number",
-    typeof input.longitude === "number",
-  ];
-
-  const completed = checks.filter(Boolean).length;
-  return Number(((completed / checks.length) * 100).toFixed(1));
 }
 
 function toCleanText(value: string | null | undefined) {
@@ -340,14 +305,14 @@ export class DealsService {
     zoning: string | null;
     askingPrice: number | null;
     pricePerSqft: number | null;
+    source?: string | null;
   }) {
     return (
       deal.lotSizeSqft === null ||
       deal.buildingSizeSqft === null ||
       deal.yearBuilt === null ||
       deal.zoning === null ||
-      deal.askingPrice === null ||
-      deal.pricePerSqft === null
+      (!esFuenteDeParcelas(deal.source) && (deal.askingPrice === null || deal.pricePerSqft === null))
     );
   }
 
@@ -677,6 +642,14 @@ export class DealsService {
         localUpdateData.pricePerSqft = localPricingFallback.pricePerSqft;
       }
 
+      // 25-oct-2026 (JR): una parcela no tiene precio pedido; la tasacion y la venta quedan en MdpaAssessment y MdpaSale.
+      if (esFuenteDeParcelas(deal.source)) {
+        delete localUpdateData.askingPrice;
+        delete localUpdateData.pricePerSqft;
+        if (deal.askingPrice !== null) localUpdateData.askingPrice = null;
+        if (deal.pricePerSqft !== null) localUpdateData.pricePerSqft = null;
+      }
+
       const mergedLocalFacts = {
         parcelId: deal.parcelId,
         address: deal.address,
@@ -691,6 +664,7 @@ export class DealsService {
         pricePerSqft: deal.pricePerSqft,
         latitude: deal.latitude,
         longitude: deal.longitude,
+        source: deal.source,
       };
       const localCompletenessScore = computeDealCompletenessScore(mergedLocalFacts);
       if (
@@ -778,6 +752,14 @@ export class DealsService {
       updateData.pricePerSqft = pricingFallback.pricePerSqft;
     }
 
+    // 25-oct-2026 (JR): una parcela no tiene precio pedido; la tasacion y la venta quedan en MdpaAssessment y MdpaSale.
+    if (esFuenteDeParcelas(deal.source)) {
+      delete updateData.askingPrice;
+      delete updateData.pricePerSqft;
+      if (deal.askingPrice !== null) updateData.askingPrice = null;
+      if (deal.pricePerSqft !== null) updateData.pricePerSqft = null;
+    }
+
     if (deal.latitude === null && typeof facts.latitude === "number") updateData.latitude = facts.latitude;
     if (deal.longitude === null && typeof facts.longitude === "number") updateData.longitude = facts.longitude;
 
@@ -795,6 +777,7 @@ export class DealsService {
       pricePerSqft: (updateData.pricePerSqft as number | undefined) ?? deal.pricePerSqft,
       latitude: (updateData.latitude as number | undefined) ?? deal.latitude,
       longitude: (updateData.longitude as number | undefined) ?? deal.longitude,
+      source: deal.source,
     };
     const completenessScore = computeDealCompletenessScore(mergedFacts);
     if (
@@ -1360,7 +1343,9 @@ export class DealsService {
     pricePerSqft: number | null;
     latitude: number | null;
     longitude: number | null;
+    source?: string | null;
   }) {
+    const conPrecio = !esFuenteDeParcelas(deal.source);
     return [
       deal.parcelId ? null : "parcelId",
       deal.address ? null : "address",
@@ -1371,8 +1356,8 @@ export class DealsService {
       deal.buildingSizeSqft ? null : "buildingSizeSqft",
       deal.yearBuilt ? null : "yearBuilt",
       deal.zoning ? null : "zoning",
-      deal.askingPrice ? null : "askingPrice",
-      deal.pricePerSqft ? null : "pricePerSqft",
+      conPrecio && !deal.askingPrice ? "askingPrice" : null,
+      conPrecio && !deal.pricePerSqft ? "pricePerSqft" : null,
       deal.latitude ? null : "latitude",
       deal.longitude ? null : "longitude",
     ].filter((item): item is string => Boolean(item));
@@ -1890,6 +1875,7 @@ export class DealsService {
       pricePerSqft: data.pricePerSqft,
       latitude: data.latitude,
       longitude: data.longitude,
+      source: data.source,
     });
     return this.prisma.deal.create({ data: { ...data, dataCompletenessScore } });
   }
@@ -1913,6 +1899,7 @@ export class DealsService {
       pricePerSqft: data.pricePerSqft ?? current.pricePerSqft,
       latitude: data.latitude ?? current.latitude,
       longitude: data.longitude ?? current.longitude,
+      source: data.source ?? current.source,
     });
     return this.prisma.deal.update({ where: { id }, data: { ...data, dataCompletenessScore } });
   }

@@ -112,12 +112,26 @@ export function isSpreadOutlier(spreadToAskPct: number | null) {
   return spreadToAskPct < SPREAD_SANITY.minPct || spreadToAskPct > SPREAD_SANITY.maxPct;
 }
 
+/**
+ * 25-oct-2026 (decision de JR): askingPrice es el precio que pide alguien, y solo existe en listings y brokers. Una
+ * parcela del condado no tiene precio pedido: la tasacion y la ultima venta quedan como referencia, con su fuente, en
+ * MdpaAssessment y MdpaSale. Antes se copiaba la tasacion a askingPrice y el spread comparaba la valuacion contra la
+ * tasacion como si fuera un precio pedido.
+ */
+export function esFuenteDeParcelas(source?: string | null) {
+  const s = (source ?? "").trim().toLowerCase();
+  return s.endsWith("-parcels") || s === "mdpa";
+}
+
+/** La unica cuenta de completitud. En parcelas no cuentan askingPrice ni pricePerSqft, que alli no existen. */
 export function computeDealCompletenessScore(input: {
   parcelId?: string | null; address?: string | null; city?: string | null; zip?: string | null;
   propertyUseCode?: string | null; lotSizeSqft?: number | null; buildingSizeSqft?: number | null;
   yearBuilt?: number | null; zoning?: string | null; askingPrice?: number | null;
   pricePerSqft?: number | null; latitude?: number | null; longitude?: number | null;
+  source?: string | null;
 }) {
+  const conPrecio = !esFuenteDeParcelas(input.source);
   const checks = [
     Boolean(toCleanText(input.parcelId ?? null)),
     Boolean(toCleanText(input.address ?? null)),
@@ -128,8 +142,10 @@ export function computeDealCompletenessScore(input: {
     typeof input.buildingSizeSqft === "number" && input.buildingSizeSqft > 0,
     typeof input.yearBuilt === "number" && input.yearBuilt >= 1700,
     Boolean(toCleanText(input.zoning ?? null)),
-    typeof input.askingPrice === "number" && input.askingPrice > 0,
-    typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
+    ...(conPrecio ? [
+      typeof input.askingPrice === "number" && input.askingPrice > 0,
+      typeof input.pricePerSqft === "number" && input.pricePerSqft > 0,
+    ] : []),
     typeof input.latitude === "number",
     typeof input.longitude === "number",
   ];
@@ -194,7 +210,20 @@ export function parseEventDate(value: unknown) {
  * of Broward County Inc" o "County Line Plaza LLC" contaban como gobierno por decir COUNTY. Un nombre con forma de
  * empresa o de entidad privada no es gobierno, salvo "municipal corporation". Se suma Village of (Wellington).
  */
-const RE_GOBIERNO = /COUNTY|CITY OF|STATE OF|TOWN OF|VILLAGE OF/;
+// 25-oct-2026 (revision de Codex del PR 26): con "gobierno es ruido", el dueno decide cuando el codigo de uso no es de
+// gobierno. Se suman el gobierno federal, los departamentos y juntas del estado, las autoridades publicas (aeropuerto,
+// vivienda, puerto) y los distritos especiales (parques, hospital, agua). Medido el 25-oct sobre las parcelas que no
+// eran ruido: Boca Raton Airport Authority, Boca Raton Housing Authority, Housing Authority of the City, Greater Boca
+// Raton Beach & Park Dist y Lower Fl Keys Hospital Dist. El filtro de forma privada (LLC, INC...) sigue mandando.
+const RE_GOBIERNO = new RegExp([
+  "COUNTY", "CITY OF", "STATE OF", "TOWN OF", "VILLAGE OF", "UNITED STATES",
+  // Segunda revision de Codex: "BOARD OF TRUSTEES" y "DEPARTMENT OF" solos tambien los usan entidades privadas
+  // (la junta de una universidad privada). Van atados al gobierno: el fondo estatal de tierras y los departamentos
+  // del estado o de la nacion, y transporte.
+  "\\b(FLORIDA|FLA|FL|U ?S|UNITED STATES) (DEPARTMENT|DEPT) OF\\b", "\\b(DEPARTMENT|DEPT) OF TRANSPORTATION\\b",
+  "INTERNAL IMPROVEMENT", "\\bAUTHORITY\\b",
+  "\\b(PARK|HOSPITAL|WATER|DRAINAGE|SCHOOL|FIRE|SPECIAL|MGMT|MANAGEMENT|IMPROVEMENT|SOIL|MOSQUITO|INLET|PORT|TRANSIT|INDEPENDENT) (DIST|DISTRICT)\\b",
+].join("|"));
 const RE_PRIVADO =
   /\b(INC|INCORPORATED|LLC|L L C|LLP|LP|LTD|CORP|CORPORATION|COMPANY|FOUNDATION|ASSOCIATION|ASSN|ASSOC|CHURCH|MINISTRIES|BANK|CLUB|UNITED WAY|HOLDINGS|PROPERTIES|PARTNERS)\b/;
 

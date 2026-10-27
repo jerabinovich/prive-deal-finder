@@ -4,6 +4,7 @@ import { ChatMessageRole } from "@prisma/client";
 import { createHash } from "crypto";
 import { AgentsService } from "../agents/agents.service";
 import { DealsService } from "../deals/deals.service";
+import { esFuenteDeParcelas } from "../deals/deals.utils";
 import { PrismaService } from "../shared/prisma.service";
 import { ChatQueryDto } from "./dto/chat-query.dto";
 import { ChatSuggestFiltersDto } from "./dto/chat-suggest-filters.dto";
@@ -269,6 +270,7 @@ export class ChatService {
             market: overview.deal.market,
             assetType: overview.deal.assetType,
             askingPrice: overview.deal.askingPrice,
+            source: overview.deal.source,
             score: overview.deal.score,
           },
           opportunitySummary: overview.opportunitySummary ?? null,
@@ -664,7 +666,9 @@ export class ChatService {
 
     const missingCritical: string[] = [];
     if (!this.readString(deal, "parcelId") && !this.readString(deal, "address")) missingCritical.push("parcel/address");
-    if (this.readNumber(deal, "askingPrice") === null && this.readNumber(facts, "askingPrice") === null) missingCritical.push("askingPrice");
+    // 25-oct-2026 (JR): una parcela no tiene precio pedido; que falte no es un dato critico (esFuenteDeParcelas).
+    if (!esFuenteDeParcelas(this.readString(deal, "source")) &&
+        this.readNumber(deal, "askingPrice") === null && this.readNumber(facts, "askingPrice") === null) missingCritical.push("askingPrice");
     if (this.readString(deal, "assetType") === null) missingCritical.push("assetType");
     if (this.readNumber(facts, "buildingSizeSqft") === null) missingCritical.push("buildingSizeSqft");
 

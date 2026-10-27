@@ -50,6 +50,7 @@ export type NoiseReason =
   | "CENTRALLY_ASSESSED"
   | "UTILITY"
   | "CONSERVATION"
+  | "GOVERNMENT"
   | "UNKNOWN";
 
 export type OpportunityGateStatus = {

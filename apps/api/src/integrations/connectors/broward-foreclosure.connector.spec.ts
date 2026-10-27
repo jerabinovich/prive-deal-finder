@@ -1,5 +1,5 @@
 import { IntegrationStatus } from "./types";
-import { BrowardForeclosureConnector, planBrowardDates } from "./broward-foreclosure.connector";
+import { BrowardForeclosureConnector, esFeriadoJudicial, planBrowardDates } from "./broward-foreclosure.connector";
 
 // 25-oct-2026: una sola consulta por dia habil, de la fecha que quedo 2 dias habiles atras; ninguna el fin de
 // semana. Nada de esto llama al portal: fetch es simulado y cuenta las llamadas (cada una son 2 unidades).
@@ -151,5 +151,47 @@ describe("sync de Broward con estado (fechas pendientes)", () => {
     jest.useFakeTimers().setSystemTime(at("2026-10-27"));
     await new BrowardForeclosureConnector().sync(conEstado("basura"));
     expect(pedidas()).toEqual(["2026-10-23"]);
+  });
+});
+
+// 27-oct-2026, revision de Codex del PR 23 (dos P2 mas): feriados de los tribunales de Florida y JSON roto.
+describe("feriados de los tribunales (Fla. Stat. 110.117, con el traslado del fin de semana)", () => {
+  it.each([
+    ["2027-01-01", true], ["2027-01-18", true], ["2027-05-31", true], ["2026-09-07", true],
+    ["2026-11-11", true], ["2026-11-26", true], ["2026-11-27", true], ["2026-12-25", true],
+    ["2026-07-03", true],  // 4 de julio de 2026 cae sabado: se observa el viernes 3
+    ["2027-07-05", true],  // 4 de julio de 2027 cae domingo: se observa el lunes 5
+    ["2026-10-27", false], ["2026-07-06", false], ["2026-11-25", false], ["2026-06-19", false],
+  ])("%s -> %s", (fecha, esperado) => {
+    expect(esFeriadoJudicial(at(fecha))).toBe(esperado);
+  });
+  it("el martes despues de Labor Day pide el jueves (el lunes feriado no cuenta en el atraso)", () => {
+    expect(planBrowardDates(at("2026-09-08"), 2, "2026-09-02").map(ymd)).toEqual(["2026-09-03"]);
+  });
+  it("en el feriado no hay fecha nueva que pedir", () => {
+    expect(planBrowardDates(at("2026-09-07"), 2, "2026-09-02")).toEqual([]);
+    expect(planBrowardDates(at("2026-09-07"), 2)).toEqual([]);
+  });
+  it("un feriado dentro de las pendientes no se consulta", () => {
+    // miercoles 2-dic: D-2 habiles es el lunes 30-nov; Thanksgiving (26) y el viernes 27 se saltean
+    expect(planBrowardDates(at("2026-12-02"), 2, "2026-11-23").map(ymd)).toEqual(["2026-11-24", "2026-11-25", "2026-11-30"]);
+  });
+  it("cierres sueltos por BROWARD_FORECLOSURE_EXTRA_HOLIDAYS (por ejemplo un huracan)", async () => {
+    process.env.BROWARD_FORECLOSURE_EXTRA_HOLIDAYS = "2026-10-28, basura";
+    jest.useFakeTimers().setSystemTime(at("2026-10-30"));
+    await new BrowardForeclosureConnector().sync({ estado: { ultimaFechaCompleta: "2026-10-26" } });
+    expect(fetchMock.mock.calls.map(fechaPedida)).toEqual(["2026-10-27"]);
+    delete process.env.BROWARD_FORECLOSURE_EXTRA_HOLIDAYS;
+  });
+});
+
+describe("respuestas rotas", () => {
+  it("un 200 con JSON cortado es una consulta fallida: la fecha queda pendiente", async () => {
+    jest.useFakeTimers().setSystemTime(at("2026-10-27"));
+    fetchMock.mockImplementation(async (url: string) => ({ ok: true, status: 200,
+      text: async () => (new URL(url).searchParams.get("date") === "2026-10-22" ? '[{"Case_Number":"CACE' : "[]") }));
+    const r = await new BrowardForeclosureConnector().sync({ estado: { ultimaFechaCompleta: "2026-10-20" } });
+    expect(r.estado).toEqual({ ultimaFechaCompleta: "2026-10-21" });
+    expect(JSON.stringify(r.metrics)).toContain("MALFORMED_RESPONSE");
   });
 });

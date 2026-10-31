@@ -206,6 +206,33 @@ describe("catastro estatal: el recorrido", () => {
     expect(r2.vuelta).toBe(1);
   });
 
+  it("si empieza en la cola y no hay parcelas ahi, sigue desde el principio en la misma corrida (Martin, 28 oct)", async () => {
+    pagina.mockResolvedValueOnce([fila(1001), fila(1002), fila(1003)]);
+    const r = await recorrerCondado(MARTIN, null, base());
+    pagina.mockReset();
+    pagina.mockResolvedValueOnce([]).mockResolvedValueOnce([fila(1001), fila(1002)]).mockResolvedValue([]);
+    const r2 = await recorrerCondado(MARTIN, { ...r.cursor, offset: 5000 }, base());
+    expect(r2.desde).toBe(5000);
+    expect(r2.records.map((x) => x.attributes.PARCEL_ID)).toEqual(["P-1001", "P-1002"]);
+    expect(pagina.mock.calls.map((c) => c[1].match(/OBJECTID >= (\d+) AND OBJECTID < (\d+)/)!.slice(1).join("-"))).toEqual([
+      "5000-7000",
+      "1000-3000",
+      "3000-5000",
+    ]);
+    expect(r2.vuelta).toBe(1);
+    expect(r2.cursor).toMatchObject({ offset: 5000, vueltas: 1 });
+  });
+
+  it("despues de dar la vuelta corta igual al juntar la cantidad", async () => {
+    pagina.mockResolvedValueOnce([fila(1001), fila(1002), fila(1003)]);
+    const r = await recorrerCondado(MARTIN, null, base());
+    pagina.mockReset();
+    pagina.mockResolvedValueOnce([fila(6001)]).mockResolvedValueOnce([fila(1001), fila(1002), fila(1003)]).mockResolvedValue([]);
+    const r2 = await recorrerCondado(MARTIN, { ...r.cursor, offset: 5000 }, base());
+    expect(r2.records.map((x) => x.attributes.PARCEL_ID)).toEqual(["P-6001", "P-1001", "P-1002"]);
+    expect(r2.cursor).toMatchObject({ offset: 1003, vueltas: 1 });
+  });
+
   it("respeta el tope de tiempo: corta despues del tramo en curso", async () => {
     let t = 0;
     pagina.mockResolvedValue([]);

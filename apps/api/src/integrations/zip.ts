@@ -35,6 +35,46 @@ const CAPA_ZCTA = "2020 Census ZIP Code Tabulation Areas";
 const cachePorPunto = new Map<string, string | null>();
 
 /**
+ * 31-oct-2026: corte del Census. Despues de FALLAS_PARA_CORTAR consultas seguidas sin respuesta, no se le pregunta
+ * por PAUSA_MS: cada consulta espera hasta 8 s y una corrida de 500 parcelas nuevas tardaria mas de una hora. Lo que
+ * queda sin zip lo completa la proxima corrida. "No hay ZCTA" es una respuesta, no una falla.
+ */
+export const FALLAS_PARA_CORTAR = 3;
+export const PAUSA_MS = 15 * 60 * 1000;
+let fallasSeguidas = 0;
+let pausaHasta = 0;
+
+/** Solo para las pruebas: vuelve el corte a cero. */
+export function reiniciarCorteCensus(): void {
+  fallasSeguidas = 0;
+  pausaHasta = 0;
+}
+
+function anotarFalla(): void {
+  fallasSeguidas += 1;
+  if (fallasSeguidas >= FALLAS_PARA_CORTAR) {
+    pausaHasta = Date.now() + PAUSA_MS;
+    fallasSeguidas = 0;
+  }
+}
+
+/**
+ * 31-oct-2026: el zip que la parcela ya tiene guardado, si sus coordenadas son las mismas (a 6 decimales, la misma
+ * clave que la cache del Census). Si se movio, no tiene zip o no tiene coordenadas, null: hay que consultar.
+ */
+export function zipGuardado(
+  deal: { zip?: string | null; latitude?: number | null; longitude?: number | null } | null | undefined,
+  lat: number | null | undefined,
+  lon: number | null | undefined,
+): string | null {
+  const zip = normalizarZip(deal?.zip);
+  if (!zip || !deal) return null;
+  const mismo = (a: number | null | undefined, b: number | null | undefined) =>
+    typeof a === "number" && typeof b === "number" && Number.isFinite(a) && Number.isFinite(b) && a.toFixed(6) === b.toFixed(6);
+  return mismo(deal.latitude, lat) && mismo(deal.longitude, lon) ? zip : null;
+}
+
+/**
  * La respuesta del Census para el punto: si contesto y, si contesto, el zip (null si el punto no cae en
  * ninguna ZCTA, como pasa en zonas sin poblacion de los Everglades). Nunca tira. Las fallas de red no se
  * guardan en cache: la proxima corrida vuelve a intentar. 13-oct-2026: separa "no contesto" de "no hay
@@ -50,6 +90,7 @@ export async function consultarZcta(
   }
   const clave = `${lat.toFixed(6)},${lon.toFixed(6)}`;
   if (cachePorPunto.has(clave)) return { respondio: true, zip: cachePorPunto.get(clave) ?? null };
+  if (Date.now() < pausaHasta) return { respondio: false, zip: null };
   const url =
     `${CENSUS}?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current` +
     `&layers=${encodeURIComponent(CAPA_ZCTA)}&format=json`;
@@ -57,17 +98,25 @@ export async function consultarZcta(
   const reloj = setTimeout(() => control.abort(), timeoutMs);
   try {
     const respuesta = await fetch(url, { signal: control.signal });
-    if (!respuesta.ok) return { respondio: false, zip: null };
+    if (!respuesta.ok) {
+      anotarFalla();
+      return { respondio: false, zip: null };
+    }
     const cuerpo = (await respuesta.json()) as {
       result?: { geographies?: Record<string, Array<Record<string, unknown>>> };
     };
-    if (!cuerpo.result?.geographies) return { respondio: false, zip: null };
+    if (!cuerpo.result?.geographies) {
+      anotarFalla();
+      return { respondio: false, zip: null };
+    }
+    fallasSeguidas = 0;
     const capas = cuerpo.result.geographies;
     const zcta = Object.entries(capas).find(([nombre]) => /ZIP Code Tabulation/i.test(nombre))?.[1] ?? [];
     const zip = normalizarZip(zcta[0]?.ZCTA5 ?? zcta[0]?.BASENAME);
     cachePorPunto.set(clave, zip);
     return { respondio: true, zip };
   } catch {
+    anotarFalla();
     return { respondio: false, zip: null };
   } finally {
     clearTimeout(reloj);

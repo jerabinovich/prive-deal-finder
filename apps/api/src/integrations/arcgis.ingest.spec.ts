@@ -41,6 +41,25 @@ describe("ingestArcgisRecords", () => {
     });
   });
 
+  it("la parcela que ya tiene zip y no se movio no consulta al Census (31-oct)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const prisma = prismaFalso({ id: "viejo", distressStage: "NONE", zip: "33305", latitude: 26.1606, longitude: -80.1464 });
+    await ingestArcgisRecords(prisma as never, "broward-parcels", "Broward", [LOCAL]);
+    expect(zipMock).not.toHaveBeenCalled();
+    expect(prisma.deal.update.mock.calls[0][0].data.zip).toBe("33305");
+  });
+
+  it("si se movio o no tenia zip, consulta al Census como antes (31-oct)", async () => {
+    zipMock.mockResolvedValue("33311");
+    const movida = prismaFalso({ id: "viejo", distressStage: "NONE", zip: "33305", latitude: 26.17, longitude: -80.1464 });
+    await ingestArcgisRecords(movida as never, "broward-parcels", "Broward", [LOCAL]);
+    expect(zipMock).toHaveBeenCalledTimes(1);
+    expect(movida.deal.update.mock.calls[0][0].data.zip).toBe("33311");
+    const sinZip = prismaFalso({ id: "viejo", distressStage: "NONE", zip: null, latitude: 26.1606, longitude: -80.1464 });
+    await ingestArcgisRecords(sinZip as never, "broward-parcels", "Broward", [LOCAL]);
+    expect(zipMock).toHaveBeenCalledTimes(2);
+  });
+
   it("con zip valido en la capa no consulta al Census", async () => {
     const prisma = prismaFalso(null);
     await ingestArcgisRecords(prisma as never, "broward-parcels", "Broward", [

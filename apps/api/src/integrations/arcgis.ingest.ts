@@ -2,7 +2,7 @@ import { PrismaService } from "../shared/prisma.service";
 import { computeTriageScore } from "../scoring/score";
 import { geocodeAddress } from "./geocoding";
 import { resolveDorUseCode } from "./dor-use-codes";
-import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipPorCoordenadas } from "./zip";
+import { CAMPOS_CIUDAD_DEL_SITIO, CAMPOS_ZIP_DEL_SITIO, normalizarZip, zipGuardado, zipPorCoordenadas } from "./zip";
 import { domicilioDeLaCapa } from "./domicilio-postal";
 import { foliosDescartados } from "./descartados";
 import { CAMPOS_ZONING } from "./zoning";
@@ -242,16 +242,18 @@ export async function ingestArcgisRecords(
       }
     }
 
-    // 13-oct-2026: si la capa no trae el zip del sitio (Palm Beach nunca, Broward a veces "0"), sale de las
-    // coordenadas de la parcela contra las ZCTA del Census. Sin coordenadas queda vacio: no se adivina.
-    const zip = zipDeLaCapa ?? (await zipPorCoordenadas(latitude, longitude)) ?? undefined;
-
     const name = address || (parcelId ? `Parcel ${parcelId}` : "Parcel Record");
 
-    let deal = null;
-    if (parcelId) {
-      deal = await prisma.deal.findFirst({ where: { parcelId } });
-    } else if (address) {
+    let deal = parcelId ? await prisma.deal.findFirst({ where: { parcelId } }) : null;
+
+    // 13-oct-2026: si la capa no trae el zip del sitio (Palm Beach nunca, Broward a veces "0"), sale de las
+    // coordenadas de la parcela contra las ZCTA del Census. Sin coordenadas queda vacio: no se adivina.
+    // 31-oct-2026: si la parcela ya tiene zip y no se movio, ese es el zip: el Census daria el mismo. Antes cada
+    // resincronizacion de Palm Beach consultaba al Census una vez por parcela, con 8 s de espera; el 29 y el 30 oct
+    // el Census no contesto y la corrida de 500 parcelas tardo 67 y 45 minutos en vez de uno.
+    const zip = zipDeLaCapa ?? zipGuardado(deal, latitude, longitude) ?? (await zipPorCoordenadas(latitude, longitude)) ?? undefined;
+
+    if (!deal && !parcelId && address) {
       deal = await prisma.deal.findFirst({ where: { address, city, zip } });
     }
 

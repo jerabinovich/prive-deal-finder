@@ -248,6 +248,11 @@ export async function recorrerCondado(
   let repetidas = 0;
   let tramos = 0;
   let completo = false;
+  // 31-oct-2026: una corrida que empezo pasado el principio y llega al final con lugar para mas sigue desde el
+  // principio, hasta donde empezo. Antes devolvia lo que hubiera en la cola, aunque fuera nada: el 27 oct el tope de
+  // tiempo dejo a Martin en su ultimo tramo, sin parcelas del buy box, y el 28 la corrida vino vacia y el aviso por
+  // fuente lo marco como falla. Como en Palm Beach, que vuelve al principio en la misma corrida.
+  let dioLaVuelta = false;
   while (pos <= rango.hi && records.length < opciones.cantidad) {
     if (tramos > 0 && reloj() - inicio > presupuesto) break;
     const filas = (await tramoConReintento(url, whereTramo(cfg, pos, zips), opciones.esperaMs ?? 3000)) as Fila[];
@@ -279,7 +284,16 @@ export async function recorrerCondado(
       }
     }
     pos = siguiente;
-    if (pos > rango.hi) completo = true;
+    if (pos > rango.hi) {
+      if (!dioLaVuelta && desde > rango.lo && records.length < opciones.cantidad) {
+        pos = rango.lo;
+        vueltas += 1;
+        dioLaVuelta = true;
+      } else {
+        completo = true;
+      }
+    }
+    if (dioLaVuelta && pos >= desde) break;
   }
   const proximo: CursorParcelas = completo
     ? { clave, offset: rango.lo, vueltas: vueltas + 1, actualizado: new Date().toISOString() }

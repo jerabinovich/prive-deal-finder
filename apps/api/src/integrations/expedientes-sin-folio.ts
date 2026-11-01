@@ -18,7 +18,8 @@ export const DIAS_A_LA_VISTA = 30;
 export const MAX_SIN_FOLIO = 200;
 /** Marca de la corrida: el expediente vuelve de la lista y no repite la busqueda por nombre. No se guarda. */
 export const MARCA_REINTENTO = "reintentoSinFolio";
-const REINTENTABLES = new Set(["SIN_LIS_PENDENS", "ERROR", "SIN_INTENTO"]);
+// 1-nov-2026: ANIO_SIN_LEER tambien; su hipoteca esta en una exportacion anual que el tope de la corrida no leyo.
+const REINTENTABLES = new Set(["SIN_LIS_PENDENS", "ERROR", "SIN_INTENTO", "ANIO_SIN_LEER"]);
 const CAMPOS_DE_LA_CORRIDA = ["parcelId", "parcelIds", "registroOficial", "subdivision", MARCA_REINTENTO];
 
 export type ExpedienteSinFolio = {

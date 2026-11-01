@@ -127,6 +127,42 @@ describe("code enforcement", () => {
   });
 });
 
+describe("la sentencia final como remate (1-nov-2026, decision 6 del estudio de remates)", () => {
+  const COMERCIAL = "Real Prop Comm Fore $250,000 or More";
+  const foreclosure = (caseNumber: string, tipo: string, caption: string) => ({
+    source: "broward-foreclosure",
+    metadata: JSON.stringify({ caseNumber, caseTypeCode: tipo, caption, metadata: { Case_Type: tipo, Caption: caption } }),
+  });
+  const sentencia = (caseNumber: string, fechaRegistro = "2026-10-27") => ({
+    source: "broward-sentencia",
+    metadata: JSON.stringify({ caseNumber, fechaRegistro, remateDesde: "2026-11-16", remateHasta: "2026-12-01" }),
+  });
+
+  it("foreclosure que cumple el criterio con sentencia en su caso: AUCTION_SCHEDULED", () => {
+    const d = decidirDistress([foreclosure("CACE26016536", COMERCIAL, BANCO), sentencia("CACE26016536")], null);
+    expect(d.stage).toBe("AUCTION_SCHEDULED");
+    expect(d.motivo).toContain("2026-10-27");
+  });
+  it("el caso se compara sin guiones, como el externalId", () => {
+    expect(decidirDistress([foreclosure("CACE-26-016536", COMERCIAL, BANCO), sentencia("CACE26016536")], null).stage).toBe(
+      "AUCTION_SCHEDULED",
+    );
+  });
+  it("la sentencia de otro caso no alcanza", () => {
+    expect(decidirDistress([foreclosure("CACE26016536", COMERCIAL, BANCO), sentencia("CACE26000001")], null).stage).toBe(
+      "PRE_FORECLOSURE",
+    );
+  });
+  it("la sentencia de un consorcio cobrando expensas no es remate de interes", () => {
+    expect(decidirDistress([foreclosure("CACE26016536", COMERCIAL, HOA), sentencia("CACE26016536")], null).stage).toBe(
+      "SIGNALS_ONLY",
+    );
+  });
+  it("una sentencia sola, sin foreclosure, no cambia nada", () => {
+    expect(decidirDistress([sentencia("CACE26016536")], null).stage).toBe("NONE");
+  });
+});
+
 describe("la decision final, que es la que veran el carril y el puntaje", () => {
   it("un foreclosure serio manda a PRE_FORECLOSURE", () => {
     const d = decidirDistress(

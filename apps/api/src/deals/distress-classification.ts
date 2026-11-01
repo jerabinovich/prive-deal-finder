@@ -242,24 +242,60 @@ const ORDEN: Record<string, number> = {
   CODE_ENFORCEMENT: 3, SIGNALS_ONLY: 2, NONE: 1,
 };
 
+/** 1-nov-2026: la fuente de la sentencia final de Official Records de Broward (integrations/sentencias-broward.ts). */
+export const FUENTE_SENTENCIA = "broward-sentencia";
+const claveDeCaso = (caso: string) => caso.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** El caso de una senal de foreclosure, con la misma forma que el externalId de la ingesta. */
+function casoDeLaSenal(metadata?: string | null): string {
+  const raw = leerJson(metadata);
+  for (const clave of ["externalId", "caseNumber", "CASE_NUM", "Case_Number"]) {
+    const valor = texto(raw, clave);
+    if (valor) return claveDeCaso(valor);
+  }
+  return "";
+}
+
+/** Caso -> fecha de registro (AAAA-MM-DD) de su sentencia final mas reciente. */
+function sentenciasPorCaso(signals: SenalCruda[]): Map<string, string> {
+  const porCaso = new Map<string, string>();
+  for (const s of signals) {
+    if (s.source !== FUENTE_SENTENCIA) continue;
+    const raw = leerJson(s.metadata);
+    const caso = claveDeCaso(texto(raw, "caseNumber"));
+    const fecha = texto(raw, "fechaRegistro");
+    if (!caso || !fecha) continue;
+    const previa = porCaso.get(caso);
+    if (!previa || fecha > previa) porCaso.set(caso, fecha);
+  }
+  return porCaso;
+}
+
 /**
  * Unica funcion que decide la etapa. La usan el carril y el puntaje, para que
  * no puedan volver a decir cosas distintas del mismo deal.
  *
- * AUCTION_SCHEDULED no se puede alcanzar todavia: hace falta el calendario de
- * remates judiciales, que no esta conectado. Eso es el techo de 55 que score.ts
- * ya documenta, y se ve, no se tapa.
+ * AUCTION_SCHEDULED: desde el 1-nov-2026 la alcanza un foreclosure que cumple el
+ * criterio y tiene sentencia final registrada en su mismo caso (senal
+ * FUENTE_SENTENCIA): el remate cae entre 20 y 35 dias despues (s. 45.031, F.S.).
+ * Antes no se podia alcanzar, porque faltaba el calendario de remates.
  */
 export function decidirDistress(signals: SenalCruda[], propertyUseCode?: string | null): DecisionDistress {
   const foreclosures = signals.filter((s) => (s.source ?? "").includes("foreclosure"));
   const codeEnf = signals.filter((s) => (s.source ?? "").includes("code-enforcement"));
 
+  const sentencias = sentenciasPorCaso(signals);
   let deInteres = 0;
   let deMunicipio = 0;
+  let sentencia: string | null = null;
   for (const s of foreclosures) {
     const caso = leerCasoForeclosure(s.metadata);
-    if (esForeclosureDeInteres(caso, propertyUseCode)) deInteres += 1;
-    else if (caso.demandanteEsMunicipio) deMunicipio += 1;
+    if (esForeclosureDeInteres(caso, propertyUseCode)) {
+      deInteres += 1;
+      // 1-nov-2026 (JR, decision 6 del estudio de remates): la sentencia tiene que ser de ESTE caso, que cumple el criterio.
+      const fecha = sentencias.get(casoDeLaSenal(s.metadata));
+      if (fecha && (!sentencia || fecha > sentencia)) sentencia = fecha;
+    } else if (caso.demandanteEsMunicipio) deMunicipio += 1;
   }
   const descartados = foreclosures.length - deInteres;
   const ce = resumirCodeEnforcement(codeEnf);
@@ -267,7 +303,10 @@ export function decidirDistress(signals: SenalCruda[], propertyUseCode?: string 
   let stage: DistressStage = "NONE";
   let motivo = "sin senal de distress";
 
-  if (deInteres > 0) {
+  if (deInteres > 0 && sentencia) {
+    stage = "AUCTION_SCHEDULED";
+    motivo = `sentencia final registrada el ${sentencia} en un foreclosure que cumple el criterio: remate entre 20 y 35 dias despues`;
+  } else if (deInteres > 0) {
     stage = "PRE_FORECLOSURE";
     motivo = `${deInteres} foreclosure(s) que cumplen el criterio`;
   } else if (ce.vigentes >= MINIMO_VIOLACIONES_VIGENTES) {

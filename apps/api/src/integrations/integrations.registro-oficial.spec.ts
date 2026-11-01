@@ -6,6 +6,7 @@ import type { OrigenRegistro } from "./registro-oficial-broward";
 
 jest.mock("./connectors/arcgis", () => ({ ...jest.requireActual("./connectors/arcgis"), fetchArcgisWhere: jest.fn() }));
 const arcgis = fetchArcgisWhere as jest.MockedFunction<typeof fetchArcgisWhere>;
+jest.mock("./rescore-distress", () => ({ ...jest.requireActual("./rescore-distress"), recalcularDistressYPuntaje: jest.fn(async () => 1) }));
 
 // 31-oct-2026: el registro oficial de Broward dentro del servicio: la cadena para los que el nombre no resolvio, y la
 // lista de expedientes sin folio que se reintenta en las corridas siguientes.
@@ -47,8 +48,11 @@ function armarServicio() {
     alertRule: { findMany: jest.fn(async () => []) },
     alertInboxItem: { createMany: jest.fn(async () => ({})) },
     stagingRecord: { createMany: jest.fn() },
+    dealDistressSignal: { findMany: jest.fn(async () => []), findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
   };
   const service = new IntegrationsService(mock, {} as any);
+  // 1-nov-2026: ninguna corrida de prueba abre el FTP real; las sentencias leen la ventana falsa.
+  (service as any).abrirRegistroOficial = jest.fn(async () => origenFalso());
   return { service, s: service as any, metas, mock };
 }
 
@@ -193,5 +197,64 @@ describe("IntegrationsService: la lista de expedientes de Broward sin folio", ()
     await c.correr();
     expect(c.sembrados).toHaveLength(1);
     expect(c.metas["broward-foreclosure"]).toBe(antes);
+  });
+});
+
+describe("IntegrationsService: la sentencia final como remate (1-nov-2026)", () => {
+  const anterior = process.env.BROWARD_REGISTRO_OFICIAL;
+  afterEach(() => {
+    if (anterior === undefined) delete process.env.BROWARD_REGISTRO_OFICIAL;
+    else process.env.BROWARD_REGISTRO_OFICIAL = anterior;
+  });
+  function conSentencia(): OrigenRegistro {
+    const archivos: Record<string, string> = {
+      "Official_Records_Download/10-29-2026doc-ver.txt": doc("121178001", "FJ", "20261027", "101500", "", "CACE-26-016536"),
+      "Official_Records_Download/10-29-2026nme-ver.txt": "",
+      "Official_Records_Download/10-29-2026lnk-ver.txt": "",
+    };
+    return {
+      listar: async (dir) => Object.keys(archivos).filter((k) => k.startsWith(`${dir}/`)).map((k) => k.slice(dir.length + 1)),
+      leer: async (ruta) => archivos[ruta] ?? "",
+      leerInicio: async () => "",
+      recorrer: async () => undefined,
+      cerrar: jest.fn(async () => undefined),
+    };
+  }
+  function corrida() {
+    const base = armarServicio();
+    const bf = base.s.connectors.find((c: { source: string }) => c.source === "broward-foreclosure");
+    jest.spyOn(bf, "sync").mockResolvedValue({ status: IntegrationStatus.OK, records: [], estado: { ultimaFechaCompleta: "2026-10-28" } });
+    const fin = jest.spyOn(base.s, "finishRun");
+    return { ...base, fin, correr: () => base.service.sync("broward-foreclosure", { confirmPaidDataUse: true }) };
+  }
+
+  it("un dia sin expedientes nuevos igual mira las sentencias: la de un caso conocido entra y se recalcula su deal", async () => {
+    const c = corrida();
+    c.s.abrirRegistroOficial = jest.fn(async () => conSentencia());
+    c.mock.dealDistressSignal.findMany.mockResolvedValue([{ dealId: "deal-1", externalId: "CACE26016536" }]);
+    await c.correr();
+    expect(c.mock.dealDistressSignal.upsert.mock.calls[0][0].create).toMatchObject({ dealId: "deal-1", source: "broward-sentencia" });
+    const { recalcularDistressYPuntaje } = jest.requireMock("./rescore-distress");
+    expect(recalcularDistressYPuntaje).toHaveBeenCalledWith(c.mock, ["deal-1"]);
+    expect((c.fin.mock.calls[0] as any[])[2].metrics.sentencias).toEqual({ activo: true, enVentana: 1, conSenal: 1, nuevas: 1, recalculados: 1 });
+  });
+
+  it("si el FTP falla, la corrida sigue OK y la metrica lo dice", async () => {
+    const c = corrida();
+    c.s.abrirRegistroOficial = jest.fn(async () => {
+      throw new Error("FTP de Official Records: la conexion sin respuesta en 25 s");
+    });
+    await c.correr();
+    expect((c.fin.mock.calls[0] as any[])[2].status).toBe(IntegrationStatus.OK);
+    expect((c.fin.mock.calls[0] as any[])[2].metrics.sentencias.error).toContain("sin respuesta");
+  });
+
+  it("BROWARD_REGISTRO_OFICIAL=off no abre el FTP", async () => {
+    process.env.BROWARD_REGISTRO_OFICIAL = "off";
+    const c = corrida();
+    c.s.abrirRegistroOficial = jest.fn();
+    await c.correr();
+    expect(c.s.abrirRegistroOficial).not.toHaveBeenCalled();
+    expect((c.fin.mock.calls[0] as any[])[2].metrics.sentencias).toEqual({ activo: false });
   });
 });

@@ -223,10 +223,16 @@ describe("registro-oficial-broward: exportaciones anuales", () => {
     archivos["Official_Records_Download/10-29-2026nme-ver.txt"] = nombres.join("\n");
     archivos["Official_Records_Download/10-29-2026lnk-ver.txt"] = enlaces.join("\n");
     const origen = origenFalso(archivos);
-    await resolverCadenas(docs.map((_, i) => ({ caso: `CACE260990${10 + i}` })), origen);
+    const res = await resolverCadenas(docs.map((_, i) => ({ caso: `CACE260990${10 + i}` })), origen);
     const anios = origen.recorridos.filter((r) => r.endsWith("doc-rec.txt")).map((r) => r.slice(-15, -11));
     expect(anios.length).toBe(MAX_ANIOS_POR_CORRIDA);
     expect(anios[0]).toBe(String(2010 + MAX_ANIOS_POR_CORRIDA + 1));
+    // 1-nov-2026: los dos anios que el tope no leyo (2010 y 2011) quedan para reintentar, no como un no definitivo.
+    expect(res.get("CACE26099010")?.estado).toBe("ANIO_SIN_LEER");
+    expect(res.get("CACE26099011")?.estado).toBe("ANIO_SIN_LEER");
+    expect(res.get("CACE26099010")?.motivo).toContain("100000050 (2010)");
+    expect(res.get("CACE26099010")?.motivo).toContain("se reintenta");
+    for (let i = 2; i < MAX_ANIOS_POR_CORRIDA + 2; i += 1) expect(res.get(`CACE260990${10 + i}`)?.estado).toBe("HIPOTECA_NO_ENCONTRADA");
   });
 });
 

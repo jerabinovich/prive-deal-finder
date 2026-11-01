@@ -72,7 +72,9 @@ export type EstadoCadena =
   | "HIPOTECA_NO_ENCONTRADA"
   | "DEUDOR_NO_COINCIDE"
   | "SIN_ESCRITURA"
-  | "VARIOS_FOLIOS";
+  | "VARIOS_FOLIOS"
+  /** 1-nov-2026: una hipoteca del caso es de un anio que el tope de la corrida no leyo. Se reintenta: no es un no. */
+  | "ANIO_SIN_LEER";
 export type ResultadoCadena = { estado: EstadoCadena; folios: string[]; motivo: string };
 export type CasoBuscado = { caso: string; demandado?: string | null };
 
@@ -276,6 +278,17 @@ export async function buscarEnAnio(origen: OrigenRegistro, anio: string, buscado
   });
 }
 
+/** Las hipotecas que enlazan los lis pendens del caso, sin repetir. */
+function hipotecasDelCaso(caso: string, ind: Indice): string[] {
+  return [
+    ...new Set(
+      (ind.lisPendens.get(caso) ?? []).flatMap((lp) =>
+        (ind.enlaces.get(lp.instrumento) ?? []).filter((e) => TIPOS_HIPOTECA.has(e.tipoDestino)).map((e) => e.destino),
+      ),
+    ),
+  ];
+}
+
 const PRIORIDAD: EstadoCadena[] = ["DEUDOR_NO_COINCIDE", "SIN_ESCRITURA", "HIPOTECA_NO_ENCONTRADA"];
 
 /**
@@ -309,13 +322,7 @@ export function evaluarCadenas(casos: CasoBuscado[], ind: Indice): {
     const delExpediente = c.demandado ? analizarDemandado(c.demandado) : null;
     if (delExpediente) demandados.push(delExpediente);
 
-    const hipotecas = [
-      ...new Set(
-        lps.flatMap((lp) =>
-          (ind.enlaces.get(lp.instrumento) ?? []).filter((e) => TIPOS_HIPOTECA.has(e.tipoDestino)).map((e) => e.destino),
-        ),
-      ),
-    ];
+    const hipotecas = hipotecasDelCaso(caso, ind);
     const lpTxt = lps.map((lp) => lp.instrumento).join(", ");
     if (!hipotecas.length) {
       resultados.set(caso, { estado: "SIN_HIPOTECA_ENLAZADA", folios: [], motivo: `lis pendens ${lpTxt} sin hipoteca enlazada` });
@@ -365,7 +372,8 @@ export function evaluarCadenas(casos: CasoBuscado[], ind: Indice): {
 
 /**
  * La cadena completa: carga la ventana diaria, evalua, busca en las exportaciones anuales las hipotecas que faltan
- * (las mas recientes primero, hasta MAX_ANIOS_POR_CORRIDA) y vuelve a evaluar.
+ * (las mas recientes primero, hasta MAX_ANIOS_POR_CORRIDA) y vuelve a evaluar. El caso cuya hipoteca quedo en un anio
+ * sin leer sale ANIO_SIN_LEER, para que la lista de expedientes sin folio lo reintente.
  */
 export async function resolverCadenas(casos: CasoBuscado[], origen: OrigenRegistro): Promise<Map<string, ResultadoCadena>> {
   const ind = await cargarVentana(origen);
@@ -374,16 +382,38 @@ export async function resolverCadenas(casos: CasoBuscado[], origen: OrigenRegist
 
   const rangos = await rangosAnuales(origen);
   const porAnio = new Map<string, Set<string>>();
+  const anioDeHipoteca = new Map<string, string>();
   for (const h of primera.hipotecasFaltantes) {
     const anio = anioDelInstrumento(h, rangos);
     if (!anio) continue;
+    anioDeHipoteca.set(h, anio);
     const buscados = porAnio.get(anio) ?? new Set<string>();
     for (let k = 0; k <= MAX_SALTO_ESCRITURA; k += 1) buscados.add(vecino(h, k));
     porAnio.set(anio, buscados);
   }
   const anios = [...porAnio.keys()].sort().reverse().slice(0, MAX_ANIOS_POR_CORRIDA);
   for (const anio of anios) await buscarEnAnio(origen, anio, porAnio.get(anio) as Set<string>, ind);
-  return evaluarCadenas(casos, ind).resultados;
+  const resultados = evaluarCadenas(casos, ind).resultados;
+
+  // 1-nov-2026: con mas de MAX_ANIOS_POR_CORRIDA anios, los mas viejos no se leen. Esos casos quedaban como
+  // HIPOTECA_NO_ENCONTRADA, que no se reintenta, y se perdian para siempre: en el atraso del 16 al 30 oct fueron 4 de
+  // 13. Ahora quedan ANIO_SIN_LEER y vuelven en la corrida siguiente (expedientes-sin-folio.ts).
+  const leidos = new Set(anios);
+  for (const [caso, r] of resultados) {
+    if (r.estado === "CADENA" || r.estado === "VARIOS_FOLIOS" || r.estado === "SIN_LIS_PENDENS" || r.estado === "SIN_HIPOTECA_ENLAZADA") continue;
+    const sinLeer = hipotecasDelCaso(caso, ind).filter((h) => {
+      const anio = anioDeHipoteca.get(h);
+      return anio !== undefined && !leidos.has(anio) && !ind.docs.has(h);
+    });
+    if (!sinLeer.length) continue;
+    const cuales = sinLeer.map((h) => `${h} (${anioDeHipoteca.get(h)})`).join(", ");
+    resultados.set(caso, {
+      estado: "ANIO_SIN_LEER",
+      folios: [],
+      motivo: `hipoteca ${cuales}: exportacion anual sin leer en esta corrida (tope de ${MAX_ANIOS_POR_CORRIDA} anios), se reintenta; ${r.motivo}`,
+    });
+  }
+  return resultados;
 }
 
 export const huellaDeClave = (clave: Buffer) => createHash("sha256").update(clave).digest("base64").replace(/=+$/, "");

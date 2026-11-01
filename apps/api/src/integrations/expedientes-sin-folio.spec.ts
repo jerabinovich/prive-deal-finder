@@ -32,8 +32,10 @@ describe("expedientes sin folio: que se reintenta", () => {
       exp("D", "2026-10-30", "SIN_HIPOTECA_ENLAZADA"),
       exp("E", "2026-10-30", "DEUDOR_NO_COINCIDE"),
       exp("F", "2026-10-30", "SIN_ESCRITURA"),
+      exp("G", "2026-10-30", "HIPOTECA_NO_ENCONTRADA"),
+      exp("H", "2026-10-30", "ANIO_SIN_LEER"),
     ];
-    expect(paraReintentar(lista, hoy).map((r) => r.caseNumber)).toEqual(["A", "B", "C"]);
+    expect(paraReintentar(lista, hoy).map((r) => r.caseNumber)).toEqual(["A", "B", "C", "H"]);
   });
   it(`hasta ${DIAS_DE_REINTENTO} dias desde que entro`, () => {
     const lista = [exp("A", "2026-10-19", "SIN_LIS_PENDENS"), exp("B", "2026-10-18", "SIN_LIS_PENDENS")];

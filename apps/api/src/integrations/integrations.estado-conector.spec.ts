@@ -24,6 +24,10 @@ function armar(resultado: Record<string, unknown>, metaInicial?: Record<string, 
   const bf = (service as any).connectors.find((c: { source: string }) => c.source === "broward-foreclosure");
   const sync = jest.spyOn(bf, "sync").mockResolvedValue(resultado);
   const s = service as any;
+  // 1-nov-2026: cada corrida OK de broward-foreclosure lee las sentencias del FTP; en los tests, una ventana vacia.
+  s.abrirRegistroOficial = jest.fn(async () => ({
+    listar: async () => [], leer: async () => "", leerInicio: async () => "", recorrer: async () => undefined, cerrar: async () => undefined,
+  }));
   jest.spyOn(s, "seedDealsFromDistressFolios").mockResolvedValue(0);
   jest.spyOn(s, "ingestDistressRecords").mockResolvedValue({ signals: 1 });
   jest.spyOn(s, "rescoreDealsWithDistress").mockResolvedValue(0);

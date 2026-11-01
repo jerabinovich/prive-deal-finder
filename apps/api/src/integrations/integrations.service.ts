@@ -1,5 +1,16 @@
 import { clasificarClaseCaso } from "../deals/distress-classification";
 import { demandanteDeCaratula, resolverDemandadoBroward } from "./broward-demandado";
+import {
+  actualizarSinFolio,
+  casoDelRegistro,
+  guardarSinFolio,
+  leerSinFolio,
+  MARCA_REINTENTO,
+  paraReintentar,
+  tieneFolio,
+  type ExpedienteSinFolio,
+} from "./expedientes-sin-folio";
+import { abrirOrigenBroward, registroOficialActivo, resolverCadenas, type OrigenRegistro } from "./registro-oficial-broward";
 import { normalizarRegistrosBroward, subdivisionesBroward } from "./broward-parcelas";
 import { urlTablaBroward } from "./broward-servicio";
 import { recalcularDistressYPuntaje } from "./rescore-distress";
@@ -477,6 +488,8 @@ export class IntegrationsService {
     const features: unknown[] = [];
     for (const item of records) {
       const record = item as Record<string, unknown>;
+      // 31-oct-2026: un expediente que vuelve de la lista sin folio ya probo el nombre; solo prueba el registro oficial.
+      if (record?.[MARCA_REINTENTO] === true) continue;
       const demandado = String(record?.defendantName ?? "").trim();
       if (!demandado) continue;
       const interno = (record.metadata && typeof record.metadata === "object" ? record.metadata : {}) as Record<
@@ -503,6 +516,9 @@ export class IntegrationsService {
       }
     }
 
+    // 31-oct-2026: los que el nombre no resolvio prueban la cadena de Official Records (registro-oficial-broward.ts).
+    features.push(...(await this.foliosPorRegistroOficial(url, records as Array<Record<string, unknown>>)));
+
     if (!features.length) return 0;
     // 13-oct-2026: el nombre de la subdivision o del condominio viaja con el expediente; con el se reconoce
     // al consorcio que demanda sin decir "association" (distress-classification.ts).
@@ -519,6 +535,81 @@ export class IntegrationsService {
     const ingested = await ingestArcgisRecords(this.prisma, "broward-parcels", "Broward", normalizadas);
     await this.completarDomicilios("broward-parcels");
     return ingested.createdDeals + ingested.updatedDeals;
+  }
+
+  /** 31-oct-2026: lo que hizo el registro oficial en la ultima siembra de Broward, para las metricas de la corrida. */
+  private registroOficialUltimo: Record<string, unknown> | null = null;
+  /** El FTP del condado; los tests lo reemplazan por uno falso. */
+  private abrirRegistroOficial: () => Promise<OrigenRegistro> = () => abrirOrigenBroward();
+
+  /**
+   * 31-oct-2026: folio por la cadena de Official Records (lis pendens, hipoteca, escritura) para los expedientes que
+   * el nombre no resolvio. Escribe los folios en el propio registro, como la busqueda por nombre, con
+   * resolucionFolio REGISTRO_OFICIAL y la cadena en el motivo, y devuelve sus parcelas del catastro para sembrar los
+   * deals. Un folio que el catastro no tiene no se usa. Si el FTP falla, la siembra sigue igual que antes y los
+   * expedientes quedan en la lista sin folio para la proxima corrida. Gratis: no gasta unidades del Clerk.
+   */
+  private async foliosPorRegistroOficial(url: string, records: Array<Record<string, unknown>>): Promise<unknown[]> {
+    const sinFolio = records.filter((r) => !tieneFolio(r) && casoDelRegistro(r));
+    const activo = registroOficialActivo();
+    const resumen: Record<string, unknown> = { activo, consultados: activo ? sinFolio.length : 0, resueltos: 0 };
+    this.registroOficialUltimo = resumen;
+    if (!activo || !sinFolio.length) return [];
+    let origen: OrigenRegistro | null = null;
+    try {
+      origen = await this.abrirRegistroOficial();
+      const resultados = await resolverCadenas(
+        sinFolio.map((r) => ({ caso: casoDelRegistro(r), demandado: typeof r.defendantName === "string" ? r.defendantName : null })),
+        origen,
+      );
+      const estados: Record<string, number> = {};
+      const candidatos = new Map<Record<string, unknown>, { folios: string[]; motivo: string }>();
+      for (const r of sinFolio) {
+        const res = resultados.get(casoDelRegistro(r));
+        if (!res) continue;
+        estados[res.estado] = (estados[res.estado] ?? 0) + 1;
+        r.registroOficial = { estado: res.estado, motivo: res.motivo };
+        if (res.estado === "CADENA" && res.folios.length) candidatos.set(r, { folios: res.folios, motivo: res.motivo });
+      }
+      resumen.estados = estados;
+      if (!candidatos.size) return [];
+      const folios = [...new Set([...candidatos.values()].flatMap((c) => c.folios))];
+      const features = await fetchArcgisWhere(
+        url,
+        `FOLIO_NUMBER IN (${folios.map((f) => `'${f}'`).join(",")})`,
+        20,
+        "FOLIO_NUMBER",
+      );
+      const enCatastro = new Set(
+        features.map((f) => String(((f as { attributes?: Record<string, unknown> }).attributes ?? {}).FOLIO_NUMBER ?? "").toUpperCase()),
+      );
+      for (const [r, c] of candidatos) {
+        const quedan = c.folios.filter((f) => enCatastro.has(f));
+        if (!quedan.length) {
+          r.registroOficial = { estado: "FOLIO_FUERA_DEL_CATASTRO", motivo: c.motivo };
+          continue;
+        }
+        r.resolucionFolioPorNombre = r.resolucionFolio;
+        r.resolucionFolio = { estado: "REGISTRO_OFICIAL", folios: quedan, motivo: c.motivo };
+        r.parcelId = quedan[0];
+        r.parcelIds = quedan;
+        resumen.resueltos = Number(resumen.resueltos) + 1;
+      }
+      return features.filter((f) =>
+        [...candidatos.keys()].some((r) =>
+          ((r.parcelIds as string[] | undefined) ?? []).includes(
+            String(((f as { attributes?: Record<string, unknown> }).attributes ?? {}).FOLIO_NUMBER ?? "").toUpperCase(),
+          ),
+        ),
+      );
+    } catch (error) {
+      const motivo = error instanceof Error ? error.message : String(error);
+      for (const r of sinFolio) if (!tieneFolio(r)) r.registroOficial = { estado: "ERROR", motivo };
+      resumen.error = motivo;
+      return [];
+    } finally {
+      await origen?.cerrar().catch(() => undefined);
+    }
   }
 
   /**
@@ -1350,6 +1441,11 @@ export class IntegrationsService {
         cursor: await leerCursor(this.prisma, source),
         estado: await leerEstado(this.prisma, source),
       });
+      // 31-oct-2026: Broward suma los expedientes sin folio que todavia pueden resolver (expedientes-sin-folio.ts).
+      const sinFolioAntes: ExpedienteSinFolio[] =
+        source === "broward-foreclosure" && result.status === IntegrationStatus.OK ? await leerSinFolio(this.prisma, source) : [];
+      const reintentos: unknown[] = paraReintentar(sinFolioAntes, new Date());
+      if (reintentos.length) result.records = [...(result.records ?? []), ...reintentos];
       if (result.status !== IntegrationStatus.OK || !result.records?.length) {
         // 15-oct-2026: una pagina leida pero toda fuera del corredor (Palm Beach filtra West Palm Beach por zip)
         // no tiene nada que ingerir y el recorrido igual avanza; si no, la proxima corrida pide la misma pagina.
@@ -1383,10 +1479,24 @@ export class IntegrationsService {
         // resuelve contra el catastro y se crea el deal. Es el orden correcto
         // para un buscador de oportunidades — primero el problema, despues la
         // propiedad.
+        this.registroOficialUltimo = null;
         const seeded = await this.seedDealsFromDistressFolios(source, result.records);
-        const metrics = await this.ingestDistressRecords(source, result.records);
+        // 31-oct-2026: un reintento que sigue sin folio no va a la ingesta: solo sumaria "unmatched" cada dia.
+        for (const r of reintentos) delete (r as Record<string, unknown>)[MARCA_REINTENTO];
+        const paraIngesta = reintentos.length
+          ? result.records.filter((r) => !reintentos.includes(r) || tieneFolio(r as Record<string, unknown>))
+          : result.records;
+        const metrics = await this.ingestDistressRecords(source, paraIngesta);
         const rescored = await this.rescoreDealsWithDistress(source);
         Object.assign(metrics as Record<string, unknown>, { seededDeals: seeded, rescoredDeals: rescored });
+        if (source === "broward-foreclosure") {
+          const sf = actualizarSinFolio(sinFolioAntes, result.records as Array<Record<string, unknown>>, new Date());
+          await guardarSinFolio(this.prisma, source, sf.lista);
+          Object.assign(metrics as Record<string, unknown>, {
+            sinFolio: { pendientes: sf.lista.length, nuevos: sf.nuevos, resueltos: sf.resueltos, vencidos: sf.vencidos, reintentados: reintentos.length },
+            ...(this.registroOficialUltimo ? { registroOficial: this.registroOficialUltimo } : {}),
+          });
+        }
         // 26-oct-2026: el estado avanza solo despues de una ingesta exitosa; si algo falla, las fechas se vuelven a pedir.
         if (result.estado) await guardarEstado(this.prisma, source, result.estado);
         return this.finishRun(run.id, source, {

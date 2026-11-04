@@ -68,6 +68,12 @@ describe("recalcularDistressYPuntaje y GOVERNMENT_LAND (25-oct)", () => {
   }
   const base = { ...deal, score: -1, isNoise: false, noiseReason: null };
 
+  it("solo cuentan las senales CONFIRMED, como en el triage: un caso cerrado (CLEARED) no es distress (4-nov)", async () => {
+    const prisma = prismaDistress({ ...base, distressStage: "PRE_FORECLOSURE" });
+    await recalcularDistressYPuntaje(prisma as never, ["d1"]);
+    expect(prisma.dealDistressSignal.findMany.mock.calls[0][0].where).toEqual({ dealId: { in: ["d1"] }, status: "CONFIRMED" });
+  });
+
   it("sin senales y con codigo de gobierno: sigue GOVERNMENT_LAND", async () => {
     const prisma = prismaDistress({ ...base, propertyUseCode: "Vacant Governmental (DOR 80)", assetType: "Vacant Governmental (DOR 80)", distressStage: "GOVERNMENT_LAND" });
     await recalcularDistressYPuntaje(prisma as never, ["d1"]);

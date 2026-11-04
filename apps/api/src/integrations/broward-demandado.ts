@@ -20,6 +20,8 @@ import { fetchArcgisWhere } from "./connectors/arcgis";
  * folios del demandado deciden los campos del caso, nunca el orden:
  *   - caso residencial: solo parcelas residenciales (codigo DOR 00 a 09);
  *   - caso homestead: la parcela con homestead (SOH_YEAR); caso non homestead: la que no lo tiene;
+ *   - caso homestead de una persona cuyas parcelas no tienen homestead ni son vivienda unifamiliar: no se engancha por
+ *     nombre (4-nov-2026, abajo);
  *   - demandante municipal ("City of Wilton Manors"): la parcela dentro de ese municipio.
  * Si aun asi quedan varias que no se pueden distinguir, o ninguna, el expediente NO se engancha. Igual
  * que en la regla de JR: donde falta el dato, no dispara.
@@ -212,7 +214,16 @@ export function coincideDueno(d: Demandado, dueno: string): boolean {
   return fuerzaCoincidencia(d, dueno) > 0;
 }
 
+const SIN_DUENO = "ningun dueño con ese nombre en el catastro";
 const esUsoResidencial = (uso: string) => /^0\d$/.test((uso || "").trim());
+
+/** DOR 01 casa, 02 casa movil, 04 condominio y 05 cooperativa: donde vive una persona aunque no haya pedido homestead. */
+const VIVIENDA_UNIFAMILIAR = new Set(["01", "02", "04", "05"]);
+/** Sucesion, fideicomiso o usufructo en el nombre del catastro: el homestead se pierde aunque sea la casa del caso. */
+const PIERDE_HOMESTEAD = new Set(["EST", "ESTATE", "TR", "TRS", "TRSTEE", "TRUSTEE", "LE", "REM"]);
+function homesteadPerdidoPorTitularidad(dueno: string): boolean {
+  return limpiarNombre(dueno).replace(/,/g, " ").split(" ").some((t) => PIERDE_HOMESTEAD.has(t));
+}
 
 /** Quedarse con las que cumplen, salvo que no cumpla ninguna: un filtro que vacia no decide nada. */
 function preferir(pool: Candidata[], cumple: (c: Candidata) => boolean): Candidata[] {
@@ -245,14 +256,38 @@ export function elegirParcelas(
   // El expediente trae segundo nombre: el folio que lo tiene entero gana al que no lo tiene.
   const mejor = Math.max(0, ...pool.map((c) => fuerzaCoincidencia(d, c.dueno)));
   pool = pool.filter((c) => fuerzaCoincidencia(d, c.dueno) === mejor);
-  if (contexto.clase === "RES_HOMESTEAD") pool = preferir(pool, (c) => c.homestead);
+  if (contexto.clase === "RES_HOMESTEAD") {
+    // 4-nov-2026 (JR: "arregla"): CACE26017400, Freedom Mortgage contra Earl G Richards, es la casa homestead de 7005 NW 95 Ave
+    // en Tamarac, que el catastro tiene a nombre de la codemandada (COLLINS,VERONICA M). Por nombre se engancho el duplex de
+    // 1711 SW 41 Ave (RICHARDS,EARL, sin homestead) y salio en la alerta como multifamily. Medido el 4-nov sobre las 71
+    // senales homestead resueltas por nombre: 11 caen en una parcela sin homestead; 10 son casas o condos (el dueño puede
+    // no haberlo pedido, o recien compro: Crowell, Taveras y Aquino compraron ese mismo folio, Aquino en nov 2025) y 1 es
+    // el duplex de Richards, el unico mal enganchado probado. Regla: si ninguna parcela de la persona tiene homestead y ninguna es vivienda unifamiliar, la casa
+    // del caso no esta entre ellas; no se elige por nombre y prueba la cadena del registro oficial. Salvo que el nombre lo
+    // explique: una sucesion o un fideicomiso (TURNER,KEVIN EST) pierde el homestead y sigue siendo la casa del caso.
+    const conHomestead = pool.filter((c) => c.homestead);
+    if (conHomestead.length) pool = conHomestead;
+    else if (
+      d.tipo === "PERSONA" &&
+      pool.length &&
+      !pool.some((c) => VIVIENDA_UNIFAMILIAR.has((c.uso || "").trim())) &&
+      !pool.some((c) => homesteadPerdidoPorTitularidad(c.dueno))
+    ) {
+      return {
+        estado: "SIN_COINCIDENCIA",
+        folios: [],
+        motivo:
+          "caso homestead y ninguna parcela del demandado tiene homestead ni es vivienda unifamiliar: la casa puede estar a nombre de otro demandado",
+      };
+    }
+  }
   if (contexto.clase === "RES_NO_HOMESTEAD") pool = preferir(pool, (c) => !c.homestead);
   const folios = [...new Set(pool.map((c) => c.folio))];
 
   if (!folios.length) {
     const motivo = delDemandado.length
       ? `${delDemandado.length} parcela(s) del demandado, ninguna residencial para un caso residencial`
-      : "ningun dueño con ese nombre en el catastro";
+      : SIN_DUENO;
     return { estado: "SIN_COINCIDENCIA", folios: [], motivo };
   }
   if (folios.length === 1) return { estado: "UNICA", folios, motivo: "un solo folio del demandado" };
@@ -289,6 +324,9 @@ export async function resolverDemandadoBroward(
   const d = analizarDemandado(demandadoCrudo);
   if (!d) return { resolucion: { estado: "SIN_NOMBRE", folios: [], motivo: "demandado sin nombre util" }, features: [] };
   let ultima: Resolucion = { estado: "SIN_COINCIDENCIA", folios: [], motivo: "sin consulta" };
+  // 4-nov-2026: el motivo de una busqueda que encontro parcelas del demandado (el homestead que no coincide, por ejemplo)
+  // dice mas que el "ningun dueño" del apellido compuesto que se prueba despues.
+  let conParcelas: Resolucion | null = null;
   for (const prefijo of prefijosDeBusqueda(d)) {
     const where = `NAME_LINE_1 LIKE '${prefijo.replace(/'/g, "''")}%'`;
     const features: unknown[] = await fetchArcgisWhere(url, where, TOPE_CANDIDATAS, "FOLIO_NUMBER");
@@ -297,8 +335,9 @@ export async function resolverDemandadoBroward(
       const elegidos = new Set(ultima.folios);
       return { resolucion: ultima, features: features.filter((f) => elegidos.has(aCandidata(f).folio)) };
     }
+    if (!conParcelas && ultima.motivo !== SIN_DUENO) conParcelas = ultima;
   }
-  return { resolucion: ultima, features: [] };
+  return { resolucion: conParcelas ?? ultima, features: [] };
 }
 
 /** El demandante de la caratula de Broward ("X Plaintiff vs. Y Defendant"). */

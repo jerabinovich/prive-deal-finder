@@ -62,7 +62,8 @@ export async function guardarSentencias(
   const resultado: ResultadoSentencias = { enVentana: sentencias.size, conSenal: 0, nuevas: 0, dealIds: [] };
   if (!sentencias.size) return resultado;
   const senales = await prisma.dealDistressSignal.findMany({
-    where: { source: FUENTE_FORECLOSURE, externalId: { in: [...sentencias.keys()] } },
+    // 4-nov-2026: solo los casos abiertos; uno cerrado por venta o liberacion (cierres-broward.ts) no vuelve por una sentencia.
+    where: { source: FUENTE_FORECLOSURE, status: "CONFIRMED", externalId: { in: [...sentencias.keys()] } },
     select: { dealId: true, externalId: true },
   });
   const deals = new Set<string>();

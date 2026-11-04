@@ -63,6 +63,8 @@ describe("sentencias de Broward: senal del deal", () => {
     const r = await guardarSentencias(p, sentencias());
     expect(r).toEqual({ enVentana: 2, conSenal: 1, nuevas: 1, dealIds: ["deal-1"] });
     expect(p.dealDistressSignal.findMany.mock.calls[0][0].where.source).toBe("broward-foreclosure");
+    // 4-nov-2026: un caso cerrado por venta o liberacion (cierres-broward.ts) no vuelve por una sentencia.
+    expect(p.dealDistressSignal.findMany.mock.calls[0][0].where.status).toBe("CONFIRMED");
     const { create } = p.dealDistressSignal.upsert.mock.calls[0][0];
     expect(create).toMatchObject({ dealId: "deal-1", source: FUENTE_SENTENCIA, externalId: "CACE26016536", status: "CONFIRMED", confidence: "HIGH" });
     expect(create.observedAt.toISOString()).toBe("2026-10-27T12:00:00.000Z");

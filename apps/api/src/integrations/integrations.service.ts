@@ -12,6 +12,7 @@ import {
 } from "./expedientes-sin-folio";
 import { abrirOrigenBroward, cargarVentana, registroOficialActivo, resolverCadenas, type OrigenRegistro } from "./registro-oficial-broward";
 import { guardarSentencias, sentenciasDelIndice } from "./sentencias-broward";
+import { ESTADO_CERRADA, FUENTE_CIERRE, guardarCierres } from "./cierres-broward";
 import { normalizarRegistrosBroward, subdivisionesBroward } from "./broward-parcelas";
 import { urlTablaBroward } from "./broward-servicio";
 import { recalcularDistressYPuntaje } from "./rescore-distress";
@@ -618,19 +619,42 @@ export class IntegrationsService {
    * ya son senal de broward-foreclosure (sentencias-broward.ts), y la etapa y el puntaje de esos deals otra vez. Corre en
    * cada corrida OK, tambien sin expedientes nuevos: la sentencia llega meses despues del lis pendens. Si el FTP falla,
    * queda en la metrica y la corrida sigue. Gratis: no gasta unidades del Clerk.
+   *
+   * 4-nov-2026 (JR: "arregla"): con la misma ventana, los casos que terminaron antes del remate, por venta del demandado o
+   * por liberacion del caso (cierres-broward.ts). La ventana se lee una vez; cada paso falla por su cuenta.
    */
-  private async sentenciasPorRegistroOficial(): Promise<Record<string, unknown>> {
-    if (!registroOficialActivo()) return { activo: false };
+  private async pasesDelRegistroOficial(): Promise<{ sentencias: Record<string, unknown>; cierres: Record<string, unknown> }> {
+    if (!registroOficialActivo()) return { sentencias: { activo: false }, cierres: { activo: false } };
     let origen: OrigenRegistro | null = null;
     try {
       origen = await this.abrirRegistroOficial();
-      const r = await guardarSentencias(this.prisma, sentenciasDelIndice(await cargarVentana(origen)));
+      const ind = await cargarVentana(origen);
+      return { sentencias: await this.pasoSentencias(ind), cierres: await this.pasoCierres(ind) };
+    } catch (error) {
+      const fallo = { activo: true, error: error instanceof Error ? error.message : String(error) };
+      return { sentencias: fallo, cierres: fallo };
+    } finally {
+      await origen?.cerrar().catch(() => undefined);
+    }
+  }
+
+  private async pasoSentencias(ind: Awaited<ReturnType<typeof cargarVentana>>): Promise<Record<string, unknown>> {
+    try {
+      const r = await guardarSentencias(this.prisma, sentenciasDelIndice(ind));
       const recalculados = r.dealIds.length ? await recalcularDistressYPuntaje(this.prisma, r.dealIds) : 0;
       return { activo: true, enVentana: r.enVentana, conSenal: r.conSenal, nuevas: r.nuevas, recalculados };
     } catch (error) {
       return { activo: true, error: error instanceof Error ? error.message : String(error) };
-    } finally {
-      await origen?.cerrar().catch(() => undefined);
+    }
+  }
+
+  private async pasoCierres(ind: Awaited<ReturnType<typeof cargarVentana>>): Promise<Record<string, unknown>> {
+    try {
+      const r = await guardarCierres(this.prisma, ind);
+      const recalculados = r.dealIds.length ? await recalcularDistressYPuntaje(this.prisma, r.dealIds) : 0;
+      return { activo: true, revisadas: r.revisadas, cerradas: r.cerradas, porLiberacion: r.porLiberacion, porVenta: r.porVenta, recalculados };
+    } catch (error) {
+      return { activo: true, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -793,10 +817,19 @@ export class IntegrationsService {
         if (externalId) {
           const where = { dealId_source_externalId: { dealId: deal.id, source, externalId } };
           existing = await this.prisma.dealDistressSignal.findUnique({ where, select: { id: true } });
+          // 4-nov-2026: un caso de Broward que el registro oficial ya cerro (venta o liberacion, cierres-broward.ts) sigue
+          // cerrado aunque vuelva del Clerk.
+          const cerrado =
+            source === "broward-foreclosure" &&
+            (await this.prisma.dealDistressSignal.findUnique({
+              where: { dealId_source_externalId: { dealId: deal.id, source: FUENTE_CIERRE, externalId } },
+              select: { id: true },
+            }));
+          const datosDelDeal = cerrado ? { ...datos, status: ESTADO_CERRADA } : datos;
           await this.prisma.dealDistressSignal.upsert({
             where,
-            update: { ...datos, ...(fechaReal ? { observedAt: fechaReal } : {}) },
-            create: { ...datos, dealId: deal.id, source, externalId, observedAt },
+            update: { ...datosDelDeal, ...(fechaReal ? { observedAt: fechaReal } : {}) },
+            create: { ...datosDelDeal, dealId: deal.id, source, externalId, observedAt },
           });
         } else {
           existing = await this.prisma.dealDistressSignal.findFirst({
@@ -1469,8 +1502,9 @@ export class IntegrationsService {
       const reintentos: unknown[] = paraReintentar(sinFolioAntes, new Date());
       if (reintentos.length) result.records = [...(result.records ?? []), ...reintentos];
       // 1-nov-2026: la sentencia final de un caso ya conocido sube la etapa a remate (sentencias-broward.ts).
+      // 4-nov-2026: y el caso que termino antes del remate, por venta o liberacion, sale del distress (cierres-broward.ts).
       if (source === "broward-foreclosure" && result.status === IntegrationStatus.OK) {
-        result.metrics = { ...(result.metrics ?? {}), sentencias: await this.sentenciasPorRegistroOficial() };
+        result.metrics = { ...(result.metrics ?? {}), ...(await this.pasesDelRegistroOficial()) };
       }
       if (result.status !== IntegrationStatus.OK || !result.records?.length) {
         // 15-oct-2026: una pagina leida pero toda fuera del corredor (Palm Beach filtra West Palm Beach por zip)

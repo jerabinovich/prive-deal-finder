@@ -47,7 +47,9 @@ export async function recalcularDistressYPuntaje(prisma: PrismaClient, ids: stri
   if (!unicos.length) return 0;
 
   const signals = await prisma.dealDistressSignal.findMany({
-    where: { dealId: { in: unicos } },
+    // 4-nov-2026: solo las CONFIRMED, como el triage (deals-triage.service.ts). Un caso cerrado por el registro oficial
+    // queda en CLEARED (cierres-broward.ts) y ya no cuenta como distress.
+    where: { dealId: { in: unicos }, status: "CONFIRMED" },
     select: { dealId: true, source: true, metadata: true },
   });
   const porDeal = new Map<string, Array<{ source: string | null; metadata: string | null }>>(

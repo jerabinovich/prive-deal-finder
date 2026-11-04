@@ -239,6 +239,53 @@ describe("IntegrationsService: la sentencia final como remate (1-nov-2026)", () 
     expect((c.fin.mock.calls[0] as any[])[2].metrics.sentencias).toEqual({ activo: true, enVentana: 1, conSenal: 1, nuevas: 1, recalculados: 1 });
   });
 
+  // 4-nov-2026: con la misma ventana, el caso que termino antes del remate (cierres-broward.ts). CACE26015855, real.
+  function conCierre(): OrigenRegistro {
+    const archivos: Record<string, string> = {
+      "Official_Records_Download/10-26-2026doc-ver.txt": [
+        doc("121171429", "RST", "20261026", "121833", "", "CACE-26-015855"),
+        `121172402|20261026|x|033012|D|425000.00|||O||484124022810|||2|0|V||E||`,
+      ].join("\n"),
+      "Official_Records_Download/10-26-2026nme-ver.txt": [
+        "121171429|GNZ FUNDING LLC|D|",
+        "121171429|JAVIAC ENTERPRISES CORP|R|",
+        "121172402|JAVIAC ENTERPRISES CORP|D|",
+        "121172402|NORTH LAUDERDALE LLC|R|",
+      ].join("\n"),
+      "Official_Records_Download/10-26-2026lnk-ver.txt": "",
+    };
+    return {
+      listar: async (dir) => Object.keys(archivos).filter((k) => k.startsWith(`${dir}/`)).map((k) => k.slice(dir.length + 1)),
+      leer: async (ruta) => archivos[ruta] ?? "",
+      leerInicio: async () => "",
+      recorrer: async () => undefined,
+      cerrar: jest.fn(async () => undefined),
+    };
+  }
+
+  it("el caso vendido y liberado sale del distress: cierre guardado, senal en CLEARED y deal recalculado", async () => {
+    const c = corrida();
+    c.s.abrirRegistroOficial = jest.fn(async () => conCierre());
+    c.mock.dealDistressSignal.update = jest.fn(async () => ({}));
+    c.mock.dealDistressSignal.findMany.mockResolvedValue([
+      {
+        id: "s-1",
+        dealId: "deal-margate",
+        externalId: "CACE26015855",
+        metadata: JSON.stringify({ defendantName: "JAVIAC ENTERPRISES CORP", filedDate: "09/29/2026" }),
+        deal: { parcelId: "484124022810" },
+      },
+    ]);
+    await c.correr();
+    expect(c.mock.dealDistressSignal.upsert.mock.calls[0][0].create).toMatchObject({ dealId: "deal-margate", source: "broward-cierre", status: "CLEARED" });
+    expect(c.mock.dealDistressSignal.update).toHaveBeenCalledWith({ where: { id: "s-1" }, data: { status: "CLEARED" } });
+    const { recalcularDistressYPuntaje } = jest.requireMock("./rescore-distress");
+    expect(recalcularDistressYPuntaje).toHaveBeenCalledWith(c.mock, ["deal-margate"]);
+    expect((c.fin.mock.calls[0] as any[])[2].metrics.cierres).toEqual({
+      activo: true, revisadas: 1, cerradas: 1, porLiberacion: 1, porVenta: 1, recalculados: 1,
+    });
+  });
+
   it("si el FTP falla, la corrida sigue OK y la metrica lo dice", async () => {
     const c = corrida();
     c.s.abrirRegistroOficial = jest.fn(async () => {
@@ -247,6 +294,7 @@ describe("IntegrationsService: la sentencia final como remate (1-nov-2026)", () 
     await c.correr();
     expect((c.fin.mock.calls[0] as any[])[2].status).toBe(IntegrationStatus.OK);
     expect((c.fin.mock.calls[0] as any[])[2].metrics.sentencias.error).toContain("sin respuesta");
+    expect((c.fin.mock.calls[0] as any[])[2].metrics.cierres.error).toContain("sin respuesta");
   });
 
   it("BROWARD_REGISTRO_OFICIAL=off no abre el FTP", async () => {
@@ -256,5 +304,32 @@ describe("IntegrationsService: la sentencia final como remate (1-nov-2026)", () 
     await c.correr();
     expect(c.s.abrirRegistroOficial).not.toHaveBeenCalled();
     expect((c.fin.mock.calls[0] as any[])[2].metrics.sentencias).toEqual({ activo: false });
+    expect((c.fin.mock.calls[0] as any[])[2].metrics.cierres).toEqual({ activo: false });
+  });
+});
+
+describe("IntegrationsService: la ingesta respeta el cierre del registro oficial (4-nov-2026)", () => {
+  function ingesta(conCierre: boolean) {
+    const { s, mock } = armarServicio();
+    mock.deal = { findFirst: jest.fn(async () => ({ id: "deal-margate" })) };
+    mock.dealDistressSignal.findUnique = jest.fn(async ({ where }: any) =>
+      where.dealId_source_externalId.source === "broward-cierre" ? (conCierre ? { id: "cierre-1" } : null) : { id: "s-1" },
+    );
+    const registro = { caseNumber: "CACE26015855", parcelId: "484124022810", status: "CONFIRMED", defendantName: "JAVIAC ENTERPRISES CORP" };
+    return { correr: () => s.ingestDistressRecords("broward-foreclosure", [registro]), mock };
+  }
+
+  it("un caso que vuelve del Clerk ya cerrado queda en CLEARED", async () => {
+    const i = ingesta(true);
+    await i.correr();
+    const { update, create } = i.mock.dealDistressSignal.upsert.mock.calls[0][0];
+    expect(update.status).toBe("CLEARED");
+    expect(create.status).toBe("CLEARED");
+  });
+
+  it("sin cierre la senal sigue CONFIRMED, como siempre", async () => {
+    const i = ingesta(false);
+    await i.correr();
+    expect(i.mock.dealDistressSignal.upsert.mock.calls[0][0].update.status).toBe("CONFIRMED");
   });
 });

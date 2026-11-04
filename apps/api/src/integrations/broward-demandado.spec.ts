@@ -159,6 +159,24 @@ describe("elegirParcelas", () => {
     });
   });
 
+  it("caso homestead de una persona sin ninguna parcela con homestead: no se engancha por nombre (Earl Richards, real)", () => {
+    // 4-nov-2026: CACE26017400 es la casa de 7005 NW 95 Ave (Tamarac), a nombre de la codemandada; por nombre salia el duplex.
+    const candidatas = [c("504113020252", "RICHARDS,EARL", "08", "BC", false)];
+    const r = elegirParcelas(dem("Earl G Richards A/K/A Earl Richards"), homestead, candidatas, false);
+    expect(r).toMatchObject({ estado: "SIN_COINCIDENCIA", folios: [] });
+    expect(r.motivo).toContain("homestead");
+  });
+
+  it("caso homestead y una casa o un condo sin homestead: se mantiene, el dueño puede no haberlo pedido", () => {
+    const candidatas = [c("514118AE2040", "TAVERAS,BEHYSI M", "04", "PI", false)];
+    expect(elegirParcelas(dem("Behysi M Taveras"), homestead, candidatas, false)).toMatchObject({ estado: "UNICA", folios: ["514118AE2040"] });
+  });
+
+  it("caso homestead de una sociedad: el homestead no decide, una sociedad no lo tiene", () => {
+    const candidatas = [c("504205081212", "USHO 2541 LLC", "01", "FL", false)];
+    expect(elegirParcelas(dem("USHO 2541 LLC"), homestead, candidatas, false)).toMatchObject({ estado: "UNICA", folios: ["504205081212"] });
+  });
+
   it("caso residencial: descarta las parcelas no residenciales del mismo dueño", () => {
     const candidatas = [c("1", "LAINGOR,VERONICA", "04", "DB"), c("2", "LAINGOR,VERONICA", "11", "DB")];
     expect(elegirParcelas(dem("Veronica Laingor"), { clase: "RES_NO_HOMESTEAD" }, candidatas, false)).toMatchObject({
@@ -218,6 +236,14 @@ describe("resolverDemandadoBroward", () => {
     const r = await resolverDemandadoBroward("https://capa", "Rodolfo Muniz rivero", homestead);
     expect(fetchMock).toHaveBeenNthCalledWith(2, "https://capa", "NAME_LINE_1 LIKE 'MUNIZ RIVERO,RODOLFO%'", TOPE_CANDIDATAS, "FOLIO_NUMBER");
     expect(r.resolucion).toMatchObject({ estado: "UNICA", folios: ["9"] });
+  });
+
+  it("el motivo del homestead no se pierde al probar el apellido compuesto", async () => {
+    fetchMock.mockResolvedValueOnce([feature(c("504113020252", "RICHARDS,EARL", "08", "BC", false))]).mockResolvedValueOnce([]);
+    const r = await resolverDemandadoBroward("https://capa", "Earl G Richards A/K/A Earl Richards", homestead);
+    expect(r.resolucion.estado).toBe("SIN_COINCIDENCIA");
+    expect(r.resolucion.motivo).toContain("homestead");
+    expect(r.features).toEqual([]);
   });
 
   it("sin nombre util no consulta", async () => {

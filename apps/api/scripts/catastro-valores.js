@@ -9,6 +9,9 @@
  *   node scripts/catastro-valores.js --aplicar --todos        vuelve a pasar por todos (rol nuevo, ventas nuevas)
  *   --fuente broward-parcels                                  una sola fuente (se puede repetir)
  *   --limite N                                                N deals por fuente
+ *
+ * 4-nov-2026: un lote de folios que la capa no contesta (504 despues de 3 intentos) ya no corta la corrida: se anota en
+ * el log, la corrida sigue con el resto y al final escribe una linea "error:" con la cuenta y sale con codigo 1.
  */
 const { PrismaClient } = require("@prisma/client");
 const { enriquecerConCatastro } = require("../dist/integrations/catastro-valores");
@@ -27,9 +30,16 @@ async function main() {
       limite,
       log: (m) => console.log(new Date().toISOString(), m),
     });
-    const total = { deals: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0, puntajes: 0 };
+    const total = { deals: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0, puntajes: 0, lotesFallidos: 0, foliosSinConsultar: 0 };
     for (const x of r) for (const k of Object.keys(total)) total[k] += x[k];
     console.log(new Date().toISOString(), args.includes("--aplicar") ? "aplicado" : "prueba (sin escribir)", JSON.stringify(total));
+    if (total.lotesFallidos > 0) {
+      console.error(
+        new Date().toISOString(),
+        `error: ${total.lotesFallidos} lotes sin respuesta de la capa (${total.foliosSinConsultar} folios sin consultar); el resto se cargo`,
+      );
+      process.exitCode = 1;
+    }
   } finally {
     await prisma.$disconnect();
   }

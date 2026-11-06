@@ -1,4 +1,5 @@
 import {
+  calcularPatrimonio,
   cargarIndicePatrimonio,
   carteraDelDueno,
   claseAcreedor,
@@ -346,5 +347,66 @@ describe("patrimonio de Broward: control con el juicio", () => {
     const e = estimarPatrimonio(0, o, ind, 460000, HOY, 1);
     expect(e.confianza).toBe("BAJA");
     expect(e.motivos.join(" ")).toMatch(/menor que el tramo/);
+  });
+});
+
+describe("patrimonio de Broward: la corrida recalcula todos los estimados", () => {
+  function prismaFalso(equityGuardado: { equityRatio: number | null; equityConfidence: string | null }) {
+    const llamadas = { updates: 0, creates: 0 };
+    const prisma = {
+      dealDistressSignal: {
+        findMany: async (a: { where?: { externalId?: unknown } }) =>
+          a.where?.externalId
+            ? [{ externalId: "CACE26000001", deal: { parcelId: "494212040070" } }]
+            : [{ dealId: "d1", source: "broward-foreclosure", status: "CONFIRMED", externalId: "CACE26000001", metadata: JSON.stringify({ caption: "Some Bank NA Plaintiff vs. X LLC Defendant" }), observedAt: new Date() }],
+      },
+      deal: {
+        findMany: async (a: { select?: Record<string, boolean> }) =>
+          a.select?.equityRatio ? [equityGuardado] : [{ id: "d1", parcelId: "494212040070" }],
+        update: async () => {
+          llamadas.updates += 1;
+          return {};
+        },
+      },
+      dealOwner: { findMany: async () => [{ dealId: "d1", ownerId: "o1", owner: { name: "X LLC" } }] },
+      mdpaAssessment: { findMany: async () => [{ dealId: "d1", taxYear: 2026, justValue: 800000 }] },
+      stagingRecord: {
+        findFirst: async () => ({ id: "s1" }),
+        create: async () => {
+          llamadas.creates += 1;
+          return {};
+        },
+        update: async () => ({}),
+      },
+    };
+    return { prisma, llamadas };
+  }
+  const archivos: ArchivoLocal[] = [
+    { ruta: "CY2021doc-rec.txt", tipo: "doc", anio: 2021 },
+    { ruta: "CY2021nme-rec.txt", tipo: "nme", anio: 2021 },
+  ];
+  const lector = async () => undefined;
+
+  it("con el patrimonio sin cambios igual recalcula el score de todos (otra corrida pudo pisarlo)", async () => {
+    const { prisma, llamadas } = prismaFalso({ equityRatio: null, equityConfidence: "BAJA" });
+    const pedidos: string[][] = [];
+    const r = await calcularPatrimonio(prisma as never, {
+      aplicar: true, archivos, lector, hoy: new Date("2026-11-06T12:00:00Z"),
+      recalcular: async (ids) => {
+        pedidos.push(ids);
+        return 1;
+      },
+    });
+    expect(r.cambiados).toBe(0);
+    expect(llamadas.updates).toBe(0);
+    expect(pedidos).toEqual([["d1"]]);
+    expect(r.puntajes).toBe(1);
+  });
+
+  it("sin aplicar no recalcula nada", async () => {
+    const { prisma } = prismaFalso({ equityRatio: null, equityConfidence: "BAJA" });
+    const pedidos: string[][] = [];
+    await calcularPatrimonio(prisma as never, { archivos, lector, recalcular: async (ids) => (pedidos.push(ids), 0) });
+    expect(pedidos).toEqual([]);
   });
 });

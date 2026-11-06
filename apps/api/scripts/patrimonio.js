@@ -6,7 +6,8 @@
  * Uso, desde apps/api, despues del build y con el .env cargado:
  *   node scripts/patrimonio.js                        calcula y cuenta, no escribe
  *   node scripts/patrimonio.js --aplicar              guarda el detalle (StagingRecord patrimonio-estimado), el ratio y la
- *                                                     confianza en el deal, y recalcula el score de los que cambiaron
+ *                                                     confianza en el deal, y recalcula el score de todos los estimados
+ *                                                     (solo escribe los que difieren)
  *   --limite N                                        N deals
  *   --json ruta                                       deja todas las estimaciones en un archivo para revisar
  */

@@ -800,6 +800,9 @@ export async function calcularPatrimonio(
     }
   }
   resumen.cambiados = cambiados.length;
-  if (opciones.aplicar && cambiados.length && opciones.recalcular) resumen.puntajes = await opciones.recalcular(cambiados);
+  // 6-nov-2026 (JR: "ok, ajusta"): el score de TODOS los deals estimados, no solo los que cambiaron de patrimonio. Otra
+  // corrida (la ingesta de un proceso sin este codigo, por ejemplo) puede haber guardado un score sin el patrimonio, y
+  // con solo los cambiados no se corregia hasta que el patrimonio cambiara. recalcularPuntaje solo escribe si difiere.
+  if (opciones.aplicar && opciones.recalcular) resumen.puntajes = await opciones.recalcular(objetivos.map((o) => o.dealId));
   return resumen;
 }

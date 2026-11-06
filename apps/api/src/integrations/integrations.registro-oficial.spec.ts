@@ -2,7 +2,7 @@ import { IntegrationsService } from "./integrations.service";
 import { IntegrationStatus } from "./connectors/types";
 import { fetchArcgisWhere } from "./connectors/arcgis";
 import { CLAVE_SIN_FOLIO, MARCA_REINTENTO } from "./expedientes-sin-folio";
-import type { OrigenRegistro } from "./registro-oficial-broward";
+import { indiceVacio, type OrigenRegistro } from "./registro-oficial-broward";
 
 jest.mock("./connectors/arcgis", () => ({ ...jest.requireActual("./connectors/arcgis"), fetchArcgisWhere: jest.fn() }));
 const arcgis = fetchArcgisWhere as jest.MockedFunction<typeof fetchArcgisWhere>;
@@ -53,6 +53,8 @@ function armarServicio() {
   const service = new IntegrationsService(mock, {} as any);
   // 1-nov-2026: ninguna corrida de prueba abre el FTP real; las sentencias leen la ventana falsa.
   (service as any).abrirRegistroOficial = jest.fn(async () => origenFalso());
+  // 6-nov-2026: ni la ventana local de los lis pendens (pasoLisPendens): vacia, para que estas corridas no la lean.
+  (service as any).ventanaLisPendens = jest.fn(async () => indiceVacio());
   return { service, s: service as any, metas, mock };
 }
 

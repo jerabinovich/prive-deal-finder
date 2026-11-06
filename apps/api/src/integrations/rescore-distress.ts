@@ -6,6 +6,8 @@ import { computeTriageScore } from "../scoring/score";
 type DealGuardado = {
   assetType: string | null; propertyUseCode: string | null; mailingAddress: string | null; city: string | null;
   municipality: string | null; state: string | null; yearBuilt: number | null; lotSizeSqft: number | null; source: string | null;
+  /** 6-nov-2026: patrimonio estimado guardado (patrimonio-broward.ts). */
+  equityRatio?: number | null; equityConfidence?: string | null;
 };
 
 /** Lo que computeTriageScore lee de un deal guardado y sus duenos, salvo la etapa de distress. */
@@ -21,6 +23,8 @@ export function entradaDeTriage(deal: DealGuardado, ownerNames: string[]) {
     yearBuilt: deal.yearBuilt,
     lotSizeSqft: deal.lotSizeSqft,
     source: deal.source,
+    equityRatio: deal.equityRatio ?? null,
+    equityConfidence: deal.equityConfidence ?? null,
   };
 }
 

@@ -144,6 +144,9 @@ model Deal {
   isNoise    Boolean     @default(false)
   noiseReason NoiseReason?
   laneUpdatedAt DateTime?
+  /// 6-nov-2026 (JR): patrimonio estimado / tasacion y su confianza (integrations/patrimonio-broward.ts). Entra al score.
+  equityRatio Float?
+  equityConfidence String?
   latitude   Float?
   longitude  Float?
   lotSizeSqft      Float?

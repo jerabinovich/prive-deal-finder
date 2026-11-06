@@ -30,7 +30,7 @@ async function main() {
       log: (m) => console.log(new Date().toISOString(), m),
     });
     if (iJson >= 0 && args[iJson + 1]) fs.writeFileSync(args[iJson + 1], JSON.stringify(r.estimaciones, null, 1));
-    const { estimaciones, ...resto } = r;
+    const { estimaciones: _estimaciones, ...resto } = r;
     console.log(new Date().toISOString(), aplicar ? "aplicado" : "prueba (sin escribir)", JSON.stringify({ ...resto, segundos: Math.round((Date.now() - t0) / 1000) }));
   } finally {
     await prisma.$disconnect();

@@ -285,6 +285,9 @@ export async function ingestArcgisRecords(
       // 13-oct-2026: un deal que ya existe conserva su etapa de distress. Sin esto, la resincronizacion
       // diaria de parcelas le borraba el premio de distress del score hasta la proxima corrida judicial.
       distressStage: deal?.distressStage,
+      // 6-nov-2026: y su patrimonio estimado (patrimonio-broward.ts), por la misma razon.
+      equityRatio: deal?.equityRatio,
+      equityConfidence: deal?.equityConfidence,
     });
     const score = triage.score;
     // 25-oct-2026: la completitud se calcula sobre lo que queda guardado (lo de la capa y, si falta, lo que el deal ya

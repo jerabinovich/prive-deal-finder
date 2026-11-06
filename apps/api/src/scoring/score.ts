@@ -97,6 +97,9 @@ export function computeTriageScore(params: {
   source?: string | null;
   /** Etapa de distress si ya hay senal oficial. Hoy siempre NONE: faltan las fuentes. */
   distressStage?: string | null;
+  /** 6-nov-2026: patrimonio estimado / tasacion y su confianza (integrations/patrimonio-broward.ts). */
+  equityRatio?: number | null;
+  equityConfidence?: string | null;
 }): TriageScoreResult {
   // 29-sep-2026: una sola definicion, y corta antes que los gates de texto.
   const esTierraP3 = isGovP3DorCode(params.propertyUseCode) || isGovP3DorCode(params.assetType);
@@ -209,11 +212,33 @@ export function computeTriageScore(params: {
     reasons.push("lote >= 10.000 sqft (+5)");
   }
 
+  // --- Patrimonio (6-nov-2026, JR: "1 and 2, the most comprehensive"): tasacion menos deuda registrada ---
+  const pp = puntosPatrimonio(params.equityRatio, params.equityConfidence);
+  if (pp) {
+    score += pp;
+    reasons.push(
+      `patrimonio estimado ${Math.round(Number(params.equityRatio) * 100)}% de la tasacion, confianza ${params.equityConfidence} (${pp > 0 ? "+" : ""}${pp})`,
+    );
+  }
+
   return {
     score: Math.max(0, Math.min(100, Math.round(score))),
     isNoise: false, noiseReason: null, reasons,
     version: TRIAGE_SCORE_VERSION,
   };
+}
+
+/**
+ * PATRIMONIO (6-nov-2026, JR). Cuanto suma o resta el patrimonio estimado en el score: ratio = (tasacion - deuda alta)
+ * / tasacion, el conservador. 40% o mas +10, 20 a 40% +6, 0 a 20% +2, bajo el agua -5 (sigue siendo jugada con el
+ * banco: no se descarta). Confianza MEDIA pesa 0,6; BAJA y SIN_DATOS no cuentan (se muestran, no puntuan).
+ */
+export function puntosPatrimonio(ratio: number | null | undefined, confianza: string | null | undefined): number {
+  if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) return 0;
+  const base = ratio >= 0.4 ? 10 : ratio >= 0.2 ? 6 : ratio >= 0 ? 2 : -5;
+  if (confianza === "ALTA") return base;
+  if (confianza === "MEDIA") return Math.round(base * 0.6);
+  return 0;
 }
 
 /** Compatibilidad: los ingests solo guardan el numero. El detalle vive en computeTriageScore. */

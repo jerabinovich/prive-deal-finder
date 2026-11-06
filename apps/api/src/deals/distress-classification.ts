@@ -111,7 +111,7 @@ export const DOR_INTERES_EN_CASO_OTRO = new Set<string>([
 const RE_CONSORCIO_FUERTE =
   /(CONDO|HOMEOWNER|\bHOA\b|\bPOA\b|PROPERTY OWNERS|\b(COMMUNITY|MASTER|OWNERS|CLUB|TOWNHOMES?|ESTATES)\s+ASSOC)/;
 const RE_ASOCIACION = /(ASSOCIAT|\bASSOC\b|\bASSN\b)/;
-const RE_PRESTAMISTA =
+export const RE_PRESTAMISTA =
   /(\bBANK\b|NATIONAL\s+AS|\bN\.?\s?A\.?(?=[\s,]|$)|MORTGAGE|TRUST\s+CO|\bLOAN|SAVINGS|CREDIT\s+UNION|LENDING|FUNDING|FINANC|SERVICING|\bFSB\b)/;
 
 export function esDemandanteConsorcio(demandante: string): boolean {

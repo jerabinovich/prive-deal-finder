@@ -21,6 +21,7 @@ type DealParaRecalculo = {
   id: string; assetType: string | null; propertyUseCode: string | null; mailingAddress: string | null; city: string | null;
   municipality: string | null; state: string | null; yearBuilt: number | null; lotSizeSqft: number | null; source: string | null;
   distressStage: string | null; score: number | null; isNoise: boolean; noiseReason: string | null;
+  equityRatio?: number | null; equityConfidence?: string | null;
   owners: Array<{ owner: { name: string | null } | null }>;
 };
 
@@ -41,6 +42,7 @@ export async function planear(prisma: Pick<PrismaClient, "deal">, fuentes?: stri
     select: {
       id: true, assetType: true, propertyUseCode: true, mailingAddress: true, city: true, municipality: true, state: true,
       yearBuilt: true, lotSizeSqft: true, source: true, distressStage: true, score: true, isNoise: true, noiseReason: true,
+      equityRatio: true, equityConfidence: true,
       owners: { select: { owner: { select: { name: true } } } },
     },
   })) as unknown as DealParaRecalculo[];
@@ -117,6 +119,7 @@ export async function vigenteDe(prisma: Pick<PrismaClient, "deal">, id: string):
     select: {
       id: true, assetType: true, propertyUseCode: true, mailingAddress: true, city: true, municipality: true, state: true,
       yearBuilt: true, lotSizeSqft: true, source: true, distressStage: true, score: true, isNoise: true, noiseReason: true,
+      equityRatio: true, equityConfidence: true,
       owners: { select: { owner: { select: { name: true } } } },
     },
   })) as unknown as DealParaRecalculo | null;

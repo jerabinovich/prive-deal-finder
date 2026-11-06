@@ -213,3 +213,73 @@ describe("enriquecerConCatastro recalcula el score de los deals que recibieron l
     expect(recalcular).not.toHaveBeenCalled();
   });
 });
+
+describe("un lote que la capa no contesta se anota y la corrida sigue (4-nov)", () => {
+  // El 1-nov (repaso mensual) y el 4-nov un 504 del catastro despues de los 3 intentos corto la corrida entera: el
+  // 1-nov no se cargo nada en ningun condado. Tipado explicito para que corra contra la version sin `fallidos` (rojo).
+  type Fallido = { url: string; folios: number; error: string };
+  const consultarConFallidos = consultarCatastro as (
+    c: number, f: string[], b: unknown, u?: string, fallidos?: Fallido[],
+  ) => Promise<Map<string, unknown>>;
+  const ventasConFallidos = consultarVentasDelCondado as (
+    fuente: string, f: string[], b: unknown, fallidos?: Fallido[],
+  ) => Promise<Map<string, unknown[]>>;
+  const caido = () => Promise.reject(new Error("ArcGIS query failed 504"));
+  type Opciones = Parameters<typeof enriquecerConCatastro>[1];
+
+  it("catastro: el lote caido queda anotado y los otros lotes se cargan", async () => {
+    const otro = { attributes: { ...FILA.attributes, PARCEL_ID: "OTRO" } };
+    const buscar = jest.fn().mockResolvedValueOnce([FILA]).mockImplementationOnce(caido).mockResolvedValueOnce([otro]);
+    const fallidos: Fallido[] = [];
+    const r = await consultarConFallidos(16, Array.from({ length: 450 }, (_, i) => `F${i}`), buscar, "https://capa/0", fallidos);
+    expect(buscar).toHaveBeenCalledTimes(3);
+    expect([...r.keys()]).toEqual(["494126380040", "OTRO"]);
+    expect(fallidos).toEqual([{ url: "https://capa/0", folios: 200, error: "ArcGIS query failed 504" }]);
+  });
+
+  it("sin lista de fallidos sigue lanzando, como antes", async () => {
+    await expect(consultarCatastro(16, ["F1"], jest.fn().mockImplementation(caido))).rejects.toThrow("504");
+  });
+
+  it("ventas del condado: el lote caido queda anotado y el resto se agrupa", async () => {
+    const venta = { attributes: { FOLIO_NUMBER: "B", SALE_DATE: 1, SALE_AMOUNT: "$500,000", SALE_VER: "Q" } };
+    const buscar = jest.fn().mockImplementationOnce(caido).mockResolvedValueOnce([venta]);
+    const fallidos: Fallido[] = [];
+    const r = await ventasConFallidos("broward-parcels", Array.from({ length: 300 }, (_, i) => (i < 200 ? `A${i}` : "B")), buscar, fallidos);
+    expect(r.get("B")).toHaveLength(1);
+    expect(fallidos).toEqual([{ url: VENTAS_DEL_CONDADO["broward-parcels"].url, folios: 200, error: "ArcGIS query failed 504" }]);
+  });
+
+  it("enriquecer: el condado caido queda en su resumen y el siguiente condado se carga igual", async () => {
+    const prisma = {
+      deal: {
+        findMany: jest.fn().mockResolvedValue([{ id: "d1", parcelId: "494126380040", lotSizeSqft: 5000 }, { id: "d2", parcelId: "OTRO", lotSizeSqft: 5000 }]),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      mdpaDatasetSnapshot: { findFirst: jest.fn().mockResolvedValue({ id: "snap" }), create: jest.fn() },
+      mdpaAssessment: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({}), update: jest.fn() },
+      mdpaSale: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({}) },
+    };
+    const buscar = jest.fn().mockImplementation(async (_url: string, where: string) =>
+      (where.startsWith("CO_NO=54") ? caido() : [FILA]));
+    const log = jest.fn();
+    const r = await enriquecerConCatastro(prisma as never, {
+      aplicar: true, fuentes: ["monroe-parcels", "martin-parcels"], buscar, log, recalcular: jest.fn().mockResolvedValue(0),
+    } as Opciones);
+    expect(r.map((x) => [x.fuente, x.tasaciones, (x as { lotesFallidos?: number }).lotesFallidos, (x as { foliosSinConsultar?: number }).foliosSinConsultar]))
+      .toEqual([["monroe-parcels", 0, 1, 2], ["martin-parcels", 1, 0, 0]]);
+    expect(log.mock.calls.map((c) => c[0]).join("\n")).toMatch(/monroe-parcels: lote de 2 folios sin respuesta .*ArcGIS query failed 504/);
+  });
+
+  it("una falla de la base no se tapa: la corrida se corta como antes", async () => {
+    const prisma = {
+      deal: { findMany: jest.fn().mockResolvedValue([{ id: "d1", parcelId: "494126380040", lotSizeSqft: 5000 }]), update: jest.fn() },
+      mdpaDatasetSnapshot: { findFirst: jest.fn().mockResolvedValue({ id: "snap" }), create: jest.fn() },
+      mdpaAssessment: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockRejectedValue(new Error("base caida")), update: jest.fn() },
+      mdpaSale: { findFirst: jest.fn(), create: jest.fn() },
+    };
+    await expect(enriquecerConCatastro(prisma as never, {
+      aplicar: true, fuentes: ["martin-parcels"], buscar: jest.fn().mockResolvedValue([FILA]),
+    } as Opciones)).rejects.toThrow("base caida");
+  });
+});

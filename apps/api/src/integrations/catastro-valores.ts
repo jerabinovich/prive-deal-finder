@@ -125,20 +125,47 @@ async function buscarPartiendo(buscar: Buscar, url: string, folios: string[], ar
   }
 }
 
+/**
+ * 4-nov-2026: un lote que la capa no contesta despues de los 3 intentos. El 1-nov (repaso mensual) y el 4-nov un 504
+ * del catastro corto la corrida entera; el 1-nov no se cargo nada en ningun condado. Con una lista de fallidos el lote
+ * se anota y la corrida sigue; sin lista se lanza, como antes. Sin --todos, los deals de ese lote siguen sin tasacion y
+ * la corrida del dia siguiente los vuelve a pedir.
+ */
+export type LoteFallido = { url: string; folios: number; error: string };
+
+/** Pide los folios de a FOLIOS_POR_CONSULTA y devuelve todas las filas. */
+async function consultarEnLotes(
+  buscar: Buscar,
+  url: string,
+  folios: string[],
+  armar: (lista: string) => string,
+  fallidos?: LoteFallido[],
+): Promise<unknown[]> {
+  const filas: unknown[] = [];
+  for (let i = 0; i < folios.length; i += FOLIOS_POR_CONSULTA) {
+    const lote = folios.slice(i, i + FOLIOS_POR_CONSULTA);
+    try {
+      filas.push(...(await buscarPartiendo(buscar, url, lote, armar)));
+    } catch (e) {
+      if (!fallidos) throw e;
+      fallidos.push({ url, folios: lote.length, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return filas;
+}
+
 export async function consultarCatastro(
   condado: number,
   folios: string[],
   buscar: Buscar = buscarEnCatastro,
   url = CAPA_CATASTRO_PUNTOS,
+  fallidos?: LoteFallido[],
 ): Promise<Map<string, ValoresCatastro>> {
   const salida = new Map<string, ValoresCatastro>();
-  for (let i = 0; i < folios.length; i += FOLIOS_POR_CONSULTA) {
-    const filas = await buscarPartiendo(buscar, url, folios.slice(i, i + FOLIOS_POR_CONSULTA),
-      (lista) => `CO_NO=${condado} AND PARCEL_ID IN (${lista})`);
-    for (const fila of filas) {
-      const v = valoresDeFila(((fila as { attributes?: Record<string, unknown> })?.attributes) ?? {});
-      if (v) salida.set(v.parcelId, v);
-    }
+  const filas = await consultarEnLotes(buscar, url, folios, (lista) => `CO_NO=${condado} AND PARCEL_ID IN (${lista})`, fallidos);
+  for (const fila of filas) {
+    const v = valoresDeFila(((fila as { attributes?: Record<string, unknown> })?.attributes) ?? {});
+    if (v) salida.set(v.parcelId, v);
   }
   return salida;
 }
@@ -247,20 +274,18 @@ export async function consultarVentasDelCondado(
   fuente: string,
   folios: string[],
   buscar: Buscar = buscarEnCatastro,
+  fallidos?: LoteFallido[],
 ): Promise<Map<string, VentaCatastro[]>> {
   const cfg = VENTAS_DEL_CONDADO[fuente];
   const salida = new Map<string, VentaCatastro[]>();
   if (!cfg) return salida;
-  for (let i = 0; i < folios.length; i += FOLIOS_POR_CONSULTA) {
-    const filas = await buscarPartiendo(buscar, cfg.url, folios.slice(i, i + FOLIOS_POR_CONSULTA),
-      (lista) => `${cfg.campoFolio} IN (${lista})`);
-    for (const fila of filas) {
-      const a = ((fila as { attributes?: Record<string, unknown> })?.attributes) ?? {};
-      const folio = String(a[cfg.campoFolio] ?? "").trim();
-      const venta = cfg.venta(a);
-      if (!folio || !venta) continue;
-      salida.set(folio, [...(salida.get(folio) ?? []), venta]);
-    }
+  const filas = await consultarEnLotes(buscar, cfg.url, folios, (lista) => `${cfg.campoFolio} IN (${lista})`, fallidos);
+  for (const fila of filas) {
+    const a = ((fila as { attributes?: Record<string, unknown> })?.attributes) ?? {};
+    const folio = String(a[cfg.campoFolio] ?? "").trim();
+    const venta = cfg.venta(a);
+    if (!folio || !venta) continue;
+    salida.set(folio, [...(salida.get(folio) ?? []), venta]);
   }
   return salida;
 }
@@ -268,6 +293,8 @@ export async function consultarVentasDelCondado(
 export type ResumenCatastro = {
   fuente: string; deals: number; encontrados: number; tasaciones: number; ventas: number; ventasCondado: number; lotes: number;
   puntajes: number;
+  /** 4-nov-2026: lotes de folios que la capa no contesto (catastro o ventas del condado) y cuantos folios llevaban. */
+  lotesFallidos: number; foliosSinConsultar: number;
 };
 
 type Recalcular = (prisma: PrismaClient, ids: string[]) => Promise<number>;
@@ -311,8 +338,10 @@ export async function enriquecerConCatastro(
     });
     const resumen: ResumenCatastro = {
       fuente, deals: deals.length, encontrados: 0, tasaciones: 0, ventas: 0, ventasCondado: 0, lotes: 0, puntajes: 0,
+      lotesFallidos: 0, foliosSinConsultar: 0,
     };
-    const valores = await consultarCatastro(condado, deals.map((d) => d.parcelId as string), opciones.buscar);
+    const fallidos: LoteFallido[] = [];
+    const valores = await consultarCatastro(condado, deals.map((d) => d.parcelId as string), opciones.buscar, undefined, fallidos);
     for (const deal of deals) {
       const v = valores.get(deal.parcelId as string);
       if (!v) continue;
@@ -336,13 +365,16 @@ export async function enriquecerConCatastro(
       }
     }
     if (VENTAS_DEL_CONDADO[fuente]) {
-      const ventas = await consultarVentasDelCondado(fuente, deals.map((d) => d.parcelId as string), opciones.buscar);
+      const ventas = await consultarVentasDelCondado(fuente, deals.map((d) => d.parcelId as string), opciones.buscar, fallidos);
       for (const deal of deals) {
         const lista = ventas.get(deal.parcelId as string) ?? [];
         if (!lista.length) continue;
         resumen.ventasCondado += opciones.aplicar ? await guardarVentas(prisma, deal.id, lista, null) : lista.length;
       }
     }
+    for (const f of fallidos) log(`${fuente}: lote de ${f.folios} folios sin respuesta de ${f.url}: ${f.error}`);
+    resumen.lotesFallidos = fallidos.length;
+    resumen.foliosSinConsultar = fallidos.reduce((n, f) => n + f.folios, 0);
     log(`${fuente}: ${JSON.stringify(resumen)}`);
     resumenes.push(resumen);
   }

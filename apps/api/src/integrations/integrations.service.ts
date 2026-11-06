@@ -10,7 +10,19 @@ import {
   tieneFolio,
   type ExpedienteSinFolio,
 } from "./expedientes-sin-folio";
-import { abrirOrigenBroward, cargarVentana, registroOficialActivo, resolverCadenas, type OrigenRegistro } from "./registro-oficial-broward";
+import { abrirOrigenBroward, cargarVentana, normalizarCaso, registroOficialActivo, resolverCadenas, type Indice, type OrigenRegistro } from "./registro-oficial-broward";
+import {
+  aplicarInferencia,
+  candidatosLisPendens,
+  datosDeHipotecas,
+  hipotecaDelCaso,
+  inferirTipoDeCaso,
+  lisPendensActivo,
+  registroDesdeLisPendens,
+  ventanaLocal,
+  type DatosHipoteca,
+} from "./lis-pendens-broward";
+import { archivosLocales, leerPorLineas, type ArchivoLocal } from "./patrimonio-broward";
 import { guardarSentencias, sentenciasDelIndice } from "./sentencias-broward";
 import { ESTADO_CERRADA, FUENTE_CIERRE, guardarCierres } from "./cierres-broward";
 import { normalizarRegistrosBroward, subdivisionesBroward } from "./broward-parcelas";
@@ -643,6 +655,75 @@ export class IntegrationsService {
       const r = await guardarSentencias(this.prisma, sentenciasDelIndice(ind));
       const recalculados = r.dealIds.length ? await recalcularDistressYPuntaje(this.prisma, r.dealIds) : 0;
       return { activo: true, enVentana: r.enVentana, conSenal: r.conSenal, nuevas: r.nuevas, recalculados };
+    } catch (error) {
+      return { activo: true, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  /**
+   * 6-nov-2026 (JR, fase 2: "Inferir y contar"): los juicios hipotecarios de la ventana del registro oficial que el Clerk
+   * no trajo (lis-pendens-broward.ts). Corre en cada corrida de broward-foreclosure, tambien si el Clerk fallo o no trajo
+   * expedientes: no gasta unidades. La corrida conserva el estado del Clerk; esto queda en sus metricas. Lee la ventana
+   * del archivo propio (registro-diario-broward.ts) y la hipoteca de la exportacion anual local.
+   */
+  /** 6-nov-2026: la ventana y el indice anual locales de los lis pendens; los tests los reemplazan. */
+  private ventanaLisPendens: () => Promise<Indice> = () => ventanaLocal();
+  private archivosLisPendens: () => Promise<ArchivoLocal[]> = () => archivosLocales();
+
+  private async pasoLisPendens(registrosDelClerk: unknown[]): Promise<Record<string, unknown>> {
+    if (!lisPendensActivo()) return { activo: false };
+    try {
+      const ind = await this.ventanaLisPendens();
+      if (!ind.dias.length) return { activo: true, enVentana: 0, motivo: "sin archivo diario del registro" };
+      const conocidos = new Set<string>();
+      for (const s of await this.prisma.dealDistressSignal.findMany({
+        where: { source: "broward-foreclosure" },
+        select: { externalId: true },
+        distinct: ["externalId"],
+      }))
+        if (s.externalId) conocidos.add(normalizarCaso(s.externalId));
+      for (const r of registrosDelClerk) conocidos.add(casoDelRegistro(r as Record<string, unknown>));
+      const candidatos = candidatosLisPendens(ind, conocidos);
+      const resumen: Record<string, unknown> = { activo: true, dias: ind.dias.length, enVentana: ind.lisPendens.size, candidatos: candidatos.length };
+      if (!candidatos.length) return resumen;
+      const hipotecas = await datosDeHipotecas(new Set(candidatos.flatMap((c) => c.hipotecas)), ind, await this.archivosLisPendens(), leerPorLineas);
+      const hoy = new Date();
+      const porRegistro = new Map<Record<string, unknown>, DatosHipoteca | undefined>();
+      const registros = candidatos.map((c) => {
+        const h = hipotecaDelCaso(c, hipotecas);
+        const r = registroDesdeLisPendens(c, h);
+        porRegistro.set(r, h);
+        return r;
+      });
+      this.registroOficialUltimo = null;
+      await this.seedDealsFromDistressFolios("broward-foreclosure", registros);
+      const conFolio = registros.filter((r) => tieneFolio(r));
+      const ids: string[] = [];
+      for (const r of conFolio) {
+        const folio = String((r.parcelIds as string[])[0]);
+        const deal = await this.prisma.deal.findFirst({ where: { parcelId: folio }, select: { id: true, propertyUseCode: true, assetType: true } });
+        const inf = inferirTipoDeCaso(deal?.propertyUseCode ?? deal?.assetType, porRegistro.get(r), hoy);
+        aplicarInferencia(r, inf);
+        if (deal) ids.push(deal.id);
+      }
+      const ingesta = conFolio.length ? await this.ingestDistressRecords("broward-foreclosure", conFolio) : null;
+      const recalculados = ids.length ? await recalcularDistressYPuntaje(this.prisma, ids) : 0;
+      const etapas = ids.length
+        ? (await this.prisma.deal.findMany({ where: { id: { in: ids } }, select: { distressStage: true } })).reduce<Record<string, number>>(
+            (m, d) => ({ ...m, [String(d.distressStage)]: (m[String(d.distressStage)] ?? 0) + 1 }),
+            {},
+          )
+        : {};
+      return {
+        ...resumen,
+        conHipoteca: registros.filter((r) => porRegistro.get(r)).length,
+        conFolio: conFolio.length,
+        sinFolio: registros.length - conFolio.length,
+        ingesta,
+        recalculados,
+        etapas,
+        ...(this.registroOficialUltimo ? { registroOficial: this.registroOficialUltimo } : {}),
+      };
     } catch (error) {
       return { activo: true, error: error instanceof Error ? error.message : String(error) };
     }
@@ -1512,10 +1593,12 @@ export class IntegrationsService {
         if (result.status === IntegrationStatus.OK && result.cursor) await guardarCursor(this.prisma, source, result.cursor);
         // 26-oct-2026: un dia sin foreclosures tambien es una fecha completa (revision de Codex del PR 23).
         if (result.status === IntegrationStatus.OK && result.estado) await guardarEstado(this.prisma, source, result.estado);
+        // 6-nov-2026: los lis pendens corren aunque el Clerk haya fallado o no haya traido expedientes; el estado es el del Clerk.
+        const lisPendens = source === "broward-foreclosure" ? await this.pasoLisPendens(result.records ?? []) : null;
         return this.finishRun(run.id, source, {
           status: result.status,
           message: result.message ?? "Sync completed",
-          metrics: result.metrics,
+          metrics: lisPendens ? { ...(result.metrics ?? {}), lisPendens } : result.metrics,
         });
       }
 
@@ -1556,6 +1639,8 @@ export class IntegrationsService {
             sinFolio: { pendientes: sf.lista.length, nuevos: sf.nuevos, resueltos: sf.resueltos, vencidos: sf.vencidos, reintentados: reintentos.length },
             ...(this.registroOficialUltimo ? { registroOficial: this.registroOficialUltimo } : {}),
           });
+          // 6-nov-2026: despues de los del Clerk, los lis pendens que el Clerk no trajo (pasoLisPendens).
+          Object.assign(metrics as Record<string, unknown>, { lisPendens: await this.pasoLisPendens(result.records) });
         }
         // 26-oct-2026: el estado avanza solo despues de una ingesta exitosa; si algo falla, las fechas se vuelven a pedir.
         if (result.estado) await guardarEstado(this.prisma, source, result.estado);
